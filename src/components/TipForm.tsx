@@ -39,7 +39,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const stroops    = (() => {
-    try { return usdcToStroops(amount); } catch { return 0n; }
+    try { return usdcToStroops(amount); } catch { return BigInt(0); }
   })();
   const amountValid = isValidTipAmount(stroops);
   const canSubmit   = isConnected && amountValid && step === "input";

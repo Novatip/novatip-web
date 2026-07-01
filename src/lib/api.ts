@@ -5,7 +5,7 @@
  * All methods throw ApiError on non-2xx responses.
  */
 
-import { config } from "./config.js";
+import { config } from "./config";
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 

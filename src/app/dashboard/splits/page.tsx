@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { creatorApi, type CreatorProfile } from "@/lib/api";
+import { creatorApi, authApi, type CreatorProfile } from "@/lib/api";
 import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 
@@ -22,13 +22,13 @@ export default function SplitsPage() {
 
   useEffect(() => {
     if (!jwt) return;
-    creatorApi
-      .me?.(jwt)
-      ?.then((r: { creator: CreatorProfile }) => setCreator(r.creator))
-      ?.catch((e: Error) => setError(e.message))
-      ?.finally(() => setLoading(false));
-    // Fallback: fetch via auth/me if creator.me not available
-    setLoading(false);
+    // Fetch the creator profile via the auth/me + creator slug
+    authApi
+      .me(jwt)
+      .then((r) => creatorApi.getBySlug(r.user.slug))
+      .then((r) => setCreator(r.creator))
+      .catch((e: Error) => setError(e.message))
+      .finally(() => setLoading(false));
   }, [jwt]);
 
   async function handleSave(splits: SplitRow[]) {

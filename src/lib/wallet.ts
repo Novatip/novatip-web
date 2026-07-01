@@ -13,7 +13,7 @@ import {
   usdcToStroops,
   type NetworkConfig,
 } from "@novatip/sdk";
-import { config } from "./config.js";
+import { config } from "./config";
 
 // ── Singleton instances ───────────────────────────────────────────────────────
 
