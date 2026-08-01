@@ -7,7 +7,7 @@
  * Fetches on mount and re-fetches whenever a tip succeeds (via tipEvents).
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { analyticsApi } from "@/lib/api";
 import { tipEvents } from "@/lib/tipEvents";
 import { formatUsdc } from "@novatip/sdk";
@@ -36,17 +36,41 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const fetchSupporters = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     analyticsApi
-      .topSupporters(jwt, limit)
-      .then((r) => { setSupporters(r.supporters); setError(null); })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .topSupporters(jwt, limit, { signal: controller.signal })
+      .then((r) => {
+        setSupporters(r.supporters);
+        setError(null);
+      })
+      .catch((e: any) => {
+        if (e.code === "ABORTED") return;
+        setError(e.message);
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          setLoading(false);
+        }
+      });
   }, [jwt, limit]);
 
   // Initial fetch
   useEffect(() => {
     fetchSupporters();
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchSupporters]);
 
   // Re-fetch whenever a tip succeeds — gives the leaderboard a chance to
@@ -55,7 +79,12 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
     const unsub = tipEvents.subscribe(() => {
       fetchSupporters();
     });
-    return unsub;
+    return () => {
+      unsub();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchSupporters]);
 
   return (

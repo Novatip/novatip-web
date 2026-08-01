@@ -6,7 +6,7 @@
  * Dashboard page showing the creator's QR code + share link.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { authApi } from "@/lib/api";
 import { QRDownload } from "@/components/QRDownload";
@@ -17,13 +17,39 @@ export default function QRPage() {
   const [slug,   setSlug]   = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (!jwt) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
     authApi
-      .me(jwt)
-      .then((r) => setSlug(r.user.slug))
-      .catch(() => setSlug(null))
-      .finally(() => setLoading(false));
+      .me(jwt, { signal: controller.signal })
+      .then((r) => {
+        setSlug(r.user.slug);
+      })
+      .catch((e: any) => {
+        if (e.code === "ABORTED") return;
+        setSlug(null);
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [jwt]);
 
   const pngUrl = slug
