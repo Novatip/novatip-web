@@ -66,6 +66,29 @@ NEXT_PUBLIC_USDC_CONTRACT_ID         - USDC Stellar Asset Contract ID
     npm run typecheck - tsc --noEmit
     npm run lint      - eslint
     npm run format    - prettier
+    npm test          - run tests once (Vitest)
+    npm run test:watch - run tests in watch mode
+
+## Testing
+
+The project uses [Vitest](https://vitest.dev) with [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/).
+
+**Running tests**
+
+    npm test            # single run, exits with pass/fail
+    npm run test:watch  # watch mode — re-runs on file changes
+
+**Writing tests**
+
+Place test files next to the source they test: `src/components/Foo.test.tsx` or `src/lib/bar.test.ts`. They are picked up automatically.
+
+Vitest globals (`describe`, `it`, `expect`, `vi`) are available without imports. `@testing-library/jest-dom` matchers (`.toBeInTheDocument()`, `.toBeDisabled()`, etc.) are loaded globally via `src/test/setup.ts`.
+
+If a test depends on `@novatip/sdk`, the stub at `src/test/mocks/novatip-sdk.ts` is resolved automatically. To override specific exports in a single test file, use `vi.mock('@novatip/sdk', ...)`.
+
+**CI**
+
+`npm test` runs as part of the GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`, alongside lint, typecheck, and build steps.
 
 ## License
 MIT
