@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { getTipSplitterClient, makeSignTransaction, usdcToStroops } from "@/lib/wallet";
 import { isValidTipAmount } from "@novatip/sdk";
+import { tipEvents } from "@/lib/tipEvents";
 
 interface TipFormProps {
   jarId: string;
@@ -65,6 +66,13 @@ export function TipForm({ jarId, slug }: TipFormProps) {
 
       setTxAmount(amount);
       setStep("success");
+
+      // Notify RecentTips and Leaderboard so they can refresh immediately
+      tipEvents.emit({
+        fromAddress: publicKey,
+        amount,
+        message: message.trim(),
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Transaction failed. Please try again.";
       setError(msg);
