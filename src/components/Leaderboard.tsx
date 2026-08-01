@@ -4,11 +4,12 @@
  * Leaderboard.tsx
  *
  * Displays the top supporters ranked by total USDC sent.
- * Fetches from /analytics/top-supporters via the backend API.
+ * Fetches on mount and re-fetches whenever a tip succeeds (via tipEvents).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { analyticsApi } from "@/lib/api";
+import { tipEvents } from "@/lib/tipEvents";
 import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
@@ -26,7 +27,7 @@ function shortAddress(addr: string): string {
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 interface LeaderboardProps {
-  jwt:   string;
+  jwt:    string;
   limit?: number;
 }
 
@@ -35,13 +36,27 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
   const [loading,    setLoading]    = useState(true);
   const [error,      setError]      = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchSupporters = useCallback(() => {
     analyticsApi
       .topSupporters(jwt, limit)
-      .then((r) => setSupporters(r.supporters))
+      .then((r) => { setSupporters(r.supporters); setError(null); })
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [jwt, limit]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchSupporters();
+  }, [fetchSupporters]);
+
+  // Re-fetch whenever a tip succeeds — gives the leaderboard a chance to
+  // update without waiting for a page reload.
+  useEffect(() => {
+    const unsub = tipEvents.subscribe(() => {
+      fetchSupporters();
+    });
+    return unsub;
+  }, [fetchSupporters]);
 
   return (
     <Card>
