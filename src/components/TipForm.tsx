@@ -22,6 +22,11 @@ import { getTipSplitterClient, makeSignTransaction, usdcToStroops } from "@/lib/
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 
+// FRONTEND MESSAGE LENGTH LIMIT
+// TODO: Once the contract-side limit lands and is exported by the SDK,
+// import this value from @novatip/sdk instead of hardcoding here.
+export const MAX_MESSAGE_LENGTH = 200;
+
 interface TipFormProps {
   jarId: string;
   slug:  string;
@@ -43,7 +48,8 @@ export function TipForm({ jarId, slug }: TipFormProps) {
     try { return usdcToStroops(amount); } catch { return BigInt(0); }
   })();
   const amountValid = isValidTipAmount(stroops);
-  const canSubmit   = isConnected && amountValid && step === "input";
+  const trimmedMessage = message.trim();
+  const canSubmit   = isConnected && amountValid && trimmedMessage.length <= MAX_MESSAGE_LENGTH && step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleTip() {
@@ -123,7 +129,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
             onChange={(e) => setMessage(e.target.value)}
             disabled={step === "signing"}
             placeholder="Say something nice… 🎉"
-            maxLength={200}
+            maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
             className="w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3
                        text-sm text-white placeholder:text-gray-600 resize-none
@@ -132,7 +138,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
             aria-label="Optional tip message"
           />
           <p className="text-right text-xs text-gray-600">
-            {message.length}/200
+            {trimmedMessage.length}/{MAX_MESSAGE_LENGTH}
           </p>
         </div>
 
