@@ -8,7 +8,7 @@
  * SplitsManager, and saves changes to the backend on submit.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { creatorApi, authApi, type CreatorProfile } from "@/lib/api";
 import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
@@ -20,15 +20,41 @@ export default function SplitsPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   useEffect(() => {
     if (!jwt) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    setLoading(true);
     // Fetch the creator profile via the auth/me + creator slug
     authApi
-      .me(jwt)
-      .then((r) => creatorApi.getBySlug(r.user.slug))
-      .then((r) => setCreator(r.creator))
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .me(jwt, { signal: controller.signal })
+      .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
+      .then((r) => {
+        setCreator(r.creator);
+      })
+      .catch((e: any) => {
+        if (e.code === "ABORTED") return;
+        setError(e.message);
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [jwt]);
 
   async function handleSave(splits: SplitRow[]) {

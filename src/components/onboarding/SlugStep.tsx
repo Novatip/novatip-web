@@ -29,14 +29,25 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   useEffect(() => {
     if (!slugValid) { setAvailable(null); return; }
     setChecking(true);
+    const controller = new AbortController();
     const timer = setTimeout(() => {
       creatorApi
-        .checkSlug(slug)
+        .checkSlug(slug, { signal: controller.signal })
         .then((r) => setAvailable(r.available))
-        .catch(() => setAvailable(null))
-        .finally(() => setChecking(false));
+        .catch((e: any) => {
+          if (e.code === "ABORTED") return;
+          setAvailable(null);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setChecking(false);
+          }
+        });
     }, 500);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [slug, slugValid]);
 
   async function handleClaim() {

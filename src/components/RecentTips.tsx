@@ -108,14 +108,22 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   const fastUntilRef = useRef<number | null>(null);
   const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   // Keep a ref to pendingTips so the fetch callback can read the latest value
   // without being re-created every time pendingTips changes.
   const pendingRef = useRef<PendingTip[]>([]);
   useEffect(() => { pendingRef.current = pendingTips; }, [pendingTips]);
 
   const fetchTips = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     analyticsApi
-      .recent(jwt, limit)
+      .recent(jwt, limit, { signal: controller.signal })
       .then((r) => {
         const fresh: IndexedTip[] = r.tips.map((t) => ({ kind: "indexed" as const, ...t }));
         setIndexedTips(fresh);
@@ -127,8 +135,16 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
           prev.filter((p) => !confirmedAddresses.has(p.fromAddress)),
         );
       })
-      .catch((e: Error) => setError(e.message))
-      .finally(() => setLoading(false));
+      .catch((e: any) => {
+        if (e.code === "ABORTED") return;
+        setError(e.message);
+      })
+      .finally(() => {
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+          setLoading(false);
+        }
+      });
   }, [jwt, limit]);
 
   const startPolling = useCallback(
@@ -154,6 +170,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
     startPolling(NORMAL_INTERVAL);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
   }, [fetchTips, startPolling]);
 
@@ -174,7 +193,12 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
       fetchTips();
       startPolling(FAST_INTERVAL);
     });
-    return unsub;
+    return () => {
+      unsub();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchTips, startPolling]);
 
   // Combine for rendering
