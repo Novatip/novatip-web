@@ -10,6 +10,7 @@
 import Link from "next/link";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "./WalletConnectButton";
+import { ThemeToggle } from "./ThemeToggle";
 
 export function Header() {
   const { isConnected } = useWallet();
@@ -41,6 +42,7 @@ export function Header() {
                 Dashboard
               </Link>
             )}
+            <ThemeToggle />
             <WalletConnectButton size="sm" />
           </nav>
 

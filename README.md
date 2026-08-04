@@ -58,6 +58,27 @@ NEXT_PUBLIC_USDC_CONTRACT_ID         - USDC Stellar Asset Contract ID
 4. JWT stored in localStorage
 5. JWT attached to all authenticated API requests
 
+## Theming
+
+Light and dark are driven by a `dark` class on `<html>` (Tailwind `darkMode: "class"`).
+
+The theme is applied **before the first paint** by a small blocking inline script in
+the `<head>` of `src/app/layout.tsx` — `THEME_INIT_SCRIPT`, defined in `src/lib/theme.ts`.
+It reads `localStorage.novatip_theme` and falls back to `prefers-color-scheme`. Because
+the server render cannot know the result, `<html>` carries `suppressHydrationWarning`.
+
+Two rules keep it flash-free:
+
+- **Never re-derive the theme after hydration.** `ThemeToggle` reads the class the
+  script already applied (`getAppliedTheme()`), it does not read storage and re-apply.
+- **Style with the semantic tokens, not raw colours.** Use `bg-canvas`, `bg-surface`,
+  `border-hairline`, `text-fg` / `-muted` / `-subtle` / `-faint` / `-dim`, `text-accent`,
+  and `success` / `warning` / `danger`. They are CSS variables defined for both themes in
+  `src/app/globals.css` and mapped in `tailwind.config.ts`; opacity modifiers still work
+  (`bg-canvas/80`). Reach for a literal colour or a `dark:` variant only when a value is
+  genuinely theme-independent — e.g. `text-white` on a brand-coloured button, or the QR
+  code's white backing.
+
 ## Scripts
 
     npm run dev       - hot reload dev server

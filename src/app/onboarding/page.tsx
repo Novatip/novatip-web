@@ -17,6 +17,7 @@ import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { SlugStep }      from "@/components/onboarding/SlugStep";
 import { SplitsStep }    from "@/components/onboarding/SplitsStep";
 import { ShareStep }     from "@/components/onboarding/ShareStep";
+import { ThemeToggle }   from "@/components/ThemeToggle";
 import { Card }          from "@/components/ui/Card";
 import Link from "next/link";
 
@@ -31,10 +32,11 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
 
       {/* Back link */}
-      <div className="w-full max-w-md mb-6">
+      <div className="w-full max-w-md mb-6 flex items-center justify-between">
         <Link href="/" className="text-sm text-fg-faint hover:text-fg-muted transition-colors">
           ← Back
         </Link>
+        <ThemeToggle />
       </div>
 
       <div className="w-full max-w-md flex flex-col gap-6 animate-slide-up">

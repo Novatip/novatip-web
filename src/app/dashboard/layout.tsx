@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -35,7 +36,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+      <div className="relative min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
         <p className="text-fg-subtle text-sm">Connect your wallet to access the dashboard</p>
         <WalletConnectButton size="lg" />
       </div>
@@ -55,7 +59,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </span>
             <span className="text-fg-dim text-sm hidden sm:block">/ Dashboard</span>
           </Link>
-          <WalletConnectButton size="sm" />
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <WalletConnectButton size="sm" />
+          </div>
         </div>
       </header>
 
