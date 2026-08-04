@@ -3,11 +3,12 @@ import { cn } from "@/lib/utils";
 type BadgeVariant = "default" | "success" | "warning" | "error" | "usdc";
 
 const variants: Record<BadgeVariant, string> = {
-  default: "bg-white/10 text-gray-300",
-  success: "bg-green-500/20 text-green-400 border border-green-500/30",
-  warning: "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
-  error:   "bg-red-500/20 text-red-400 border border-red-500/30",
-  usdc:    "bg-blue-500/20 text-blue-300 border border-blue-500/30",
+  default: "bg-surface-strong text-fg-muted",
+  success: "bg-success/20 text-success border border-success/30",
+  warning: "bg-warning/20 text-warning border border-warning/30",
+  error:   "bg-danger/20 text-danger border border-danger/30",
+  // USDC keeps its own brand blue; the dark variant lifts it for contrast.
+  usdc:    "bg-usdc/20 text-usdc border border-usdc/30 dark:text-blue-300 dark:border-blue-500/30",
 };
 
 interface BadgeProps {

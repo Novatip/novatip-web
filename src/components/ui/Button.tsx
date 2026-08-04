@@ -11,10 +11,11 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variants: Record<Variant, string> = {
+  // text-white is intentional on primary — it sits on brand-500 in both themes.
   primary:   "bg-brand-500 hover:bg-brand-600 text-white shadow-lg shadow-brand-500/20",
-  secondary: "bg-white/10 hover:bg-white/20 text-white border border-white/20",
-  ghost:     "hover:bg-white/10 text-gray-300 hover:text-white",
-  danger:    "bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30",
+  secondary: "bg-surface-strong hover:bg-hairline text-fg border border-hairline-strong",
+  ghost:     "hover:bg-surface-strong text-fg-muted hover:text-fg",
+  danger:    "bg-danger/20 hover:bg-danger/30 text-danger border border-danger/30",
 };
 
 const sizes: Record<Size, string> = {

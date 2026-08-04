@@ -1,6 +1,16 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Semantic colour token.
+ *
+ * The CSS variables hold space-separated RGB channels (see globals.css) so
+ * Tailwind can still apply opacity modifiers — `bg-canvas/80`, `text-danger`,
+ * `border-hairline` all work, and each resolves differently under `.dark`.
+ */
+const token = (name: string) => `rgb(var(--color-${name}) / <alpha-value>)`;
+
 const config: Config = {
+  darkMode: "class",
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -22,6 +32,34 @@ const config: Config = {
           900: "#0c4a6e",
         },
         usdc: "#2775ca",
+
+        // ── Theme-aware tokens ───────────────────────────────────────────
+        // Surfaces, ordered from the page background upwards.
+        canvas:   token("canvas"),
+        surface: {
+          DEFAULT: token("surface"),
+          strong:  token("surface-strong"),
+        },
+        hairline: {
+          DEFAULT: token("hairline"),
+          strong:  token("hairline-strong"),
+        },
+        // Text, ordered from most to least prominent.
+        fg: {
+          DEFAULT: token("fg"),
+          muted:   token("fg-muted"),
+          subtle:  token("fg-subtle"),
+          faint:   token("fg-faint"),
+          dim:     token("fg-dim"),
+        },
+        // Brand accent for text/icons — darker on light, lighter on dark.
+        accent: {
+          DEFAULT: token("accent"),
+          strong:  token("accent-strong"),
+        },
+        success: token("success"),
+        warning: token("warning"),
+        danger:  token("danger"),
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],

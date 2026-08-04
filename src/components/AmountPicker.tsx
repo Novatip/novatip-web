@@ -61,7 +61,7 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-gray-300">Amount (USDC)</p>
+      <p className="text-sm font-medium text-fg-muted">Amount (USDC)</p>
 
       {/* Preset buttons */}
       <div className="grid grid-cols-5 gap-2">
@@ -77,7 +77,7 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
               "disabled:opacity-50 disabled:cursor-not-allowed",
               !isCustom && value === preset
                 ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30"
-                : "bg-white/5 border-white/10 text-gray-300 hover:bg-white/10 hover:text-white",
+                : "bg-surface-strong border-hairline text-fg-muted hover:bg-hairline hover:text-fg",
             )}
             aria-pressed={!isCustom && value === preset}
             aria-label={`Tip $${preset} USDC`}
@@ -89,7 +89,7 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
 
       {/* Custom input */}
       <div className="relative">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium pointer-events-none">
+        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-subtle text-sm font-medium pointer-events-none">
           $
         </span>
         <input
@@ -101,34 +101,34 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
           onFocus={handleCustomFocus}
           onChange={handleCustomChange}
           className={cn(
-            "w-full rounded-xl bg-white/5 border pl-8 pr-16 py-3 text-sm text-white",
-            "placeholder:text-gray-600 focus:outline-none focus:ring-2 transition-all duration-200",
+            "w-full rounded-xl bg-surface-strong border pl-8 pr-16 py-3 text-sm text-fg",
+            "placeholder:text-fg-dim focus:outline-none focus:ring-2 transition-all duration-200",
             "disabled:opacity-50 disabled:cursor-not-allowed",
             isCustom && value
               ? amountValid
                 ? "border-brand-500/50 focus:ring-brand-500/40"
-                : "border-red-500/50 focus:ring-red-500/30"
-              : "border-white/10 focus:ring-brand-500/40",
+                : "border-danger/50 focus:ring-danger/30"
+              : "border-hairline focus:ring-brand-500/40",
           )}
           aria-label="Enter custom tip amount"
         />
-        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
+        <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-fg-faint pointer-events-none">
           USDC
         </span>
       </div>
 
       {/* Validation feedback */}
       {isCustom && value && !amountValid && (
-        <p className="text-xs text-red-400">
+        <p className="text-xs text-danger">
           Enter a valid amount greater than 0
         </p>
       )}
 
       {/* Selected amount summary */}
       {amountValid && (
-        <p className="text-xs text-gray-500 text-right">
+        <p className="text-xs text-fg-faint text-right">
           Sending{" "}
-          <span className="text-brand-400 font-semibold">${value} USDC</span>
+          <span className="text-accent font-semibold">${value} USDC</span>
         </p>
       )}
     </div>

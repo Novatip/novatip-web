@@ -27,8 +27,8 @@ export function SplitsStep({ slug, onNext }: SplitsStepProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-bold text-white mb-1">Set up splits</h2>
-        <p className="text-sm text-gray-400">
+        <h2 className="text-xl font-bold text-fg mb-1">Set up splits</h2>
+        <p className="text-sm text-fg-subtle">
           Optionally add collaborators. By default 100% goes to you.
         </p>
       </div>

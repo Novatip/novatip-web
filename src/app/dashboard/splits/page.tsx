@@ -66,16 +66,16 @@ export default function SplitsPage() {
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-white">Collaborator Splits</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-fg">Collaborator Splits</h1>
+        <p className="text-sm text-fg-subtle mt-1">
           Define how each incoming tip is split between you and your collaborators.
           All basis points must total exactly 10,000 (100%).
         </p>
       </div>
 
       {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+          <p className="text-sm text-danger">{error}</p>
         </div>
       )}
 
@@ -88,9 +88,9 @@ export default function SplitsPage() {
           <div className="space-y-3 animate-pulse">
             {[1, 2].map((i) => (
               <div key={i} className="flex gap-3">
-                <div className="flex-1 h-10 rounded-xl bg-white/10" />
-                <div className="w-28 h-10 rounded-xl bg-white/10" />
-                <div className="w-6 h-10 rounded bg-white/10" />
+                <div className="flex-1 h-10 rounded-xl bg-hairline" />
+                <div className="w-28 h-10 rounded-xl bg-hairline" />
+                <div className="w-6 h-10 rounded bg-hairline" />
               </div>
             ))}
           </div>
@@ -102,10 +102,10 @@ export default function SplitsPage() {
         )}
       </Card>
 
-      <div className="rounded-xl bg-white/5 border border-white/10 px-4 py-3">
-        <p className="text-xs text-gray-500">
+      <div className="rounded-xl bg-surface-strong border border-hairline px-4 py-3">
+        <p className="text-xs text-fg-faint">
           Changes are saved to the backend immediately. To update your on-chain splits,
-          call <code className="text-brand-400">update_splits</code> on the tip_splitter
+          call <code className="text-accent">update_splits</code> on the tip_splitter
           contract using the Novatip SDK or the Stellar CLI.
         </p>
       </div>

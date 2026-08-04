@@ -10,7 +10,7 @@ export function Card({ glass = true, className, children, ...props }: CardProps)
     <div
       className={cn(
         "rounded-2xl p-6",
-        glass ? "glass" : "bg-gray-900 border border-gray-800",
+        glass ? "glass" : "bg-surface border border-hairline",
         className,
       )}
       {...props}
@@ -30,7 +30,7 @@ export function CardHeader({ className, children, ...props }: HTMLAttributes<HTM
 
 export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
   return (
-    <h3 className={cn("text-lg font-semibold text-white", className)} {...props}>
+    <h3 className={cn("text-lg font-semibold text-fg", className)} {...props}>
       {children}
     </h3>
   );

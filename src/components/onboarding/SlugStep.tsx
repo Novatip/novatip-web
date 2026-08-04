@@ -67,16 +67,16 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <h2 className="text-xl font-bold text-white mb-1">Claim your slug</h2>
-        <p className="text-sm text-gray-400">
+        <h2 className="text-xl font-bold text-fg mb-1">Claim your slug</h2>
+        <p className="text-sm text-fg-subtle">
           Your tip page will live at{" "}
-          <span className="text-brand-400 font-mono">novatip.xyz/@{slug || "you"}</span>
+          <span className="text-accent font-mono">novatip.xyz/@{slug || "you"}</span>
         </p>
       </div>
 
       <div className="flex flex-col gap-2">
         <div className="relative">
-          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm pointer-events-none">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-fg-faint text-sm pointer-events-none">
             @
           </span>
           <input
@@ -86,15 +86,15 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
             placeholder="yourname"
             maxLength={32}
             disabled={saving}
-            className="w-full rounded-xl bg-white/5 border border-white/10 pl-8 pr-4 py-3
-                       text-white text-sm placeholder:text-gray-600 focus:outline-none
+            className="w-full rounded-xl bg-surface-strong border border-hairline pl-8 pr-4 py-3
+                       text-fg text-sm placeholder:text-fg-dim focus:outline-none
                        focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50"
             aria-label="Choose your slug"
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-xs text-gray-600">3–32 chars: lowercase, numbers, hyphens, underscores</p>
+          <p className="text-xs text-fg-faint">3–32 chars: lowercase, numbers, hyphens, underscores</p>
           {slugValid && (
             checking
               ? <Badge variant="default">Checking…</Badge>
@@ -107,7 +107,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
         </div>
       </div>
 
-      {error && <p className="text-sm text-red-400">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
 
       <Button
         size="lg"

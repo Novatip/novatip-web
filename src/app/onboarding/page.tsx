@@ -17,6 +17,7 @@ import { StepIndicator } from "@/components/onboarding/StepIndicator";
 import { SlugStep }      from "@/components/onboarding/SlugStep";
 import { SplitsStep }    from "@/components/onboarding/SplitsStep";
 import { ShareStep }     from "@/components/onboarding/ShareStep";
+import { ThemeToggle }   from "@/components/ThemeToggle";
 import { Card }          from "@/components/ui/Card";
 import Link from "next/link";
 
@@ -31,10 +32,11 @@ export default function OnboardingPage() {
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
 
       {/* Back link */}
-      <div className="w-full max-w-md mb-6">
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+      <div className="w-full max-w-md mb-6 flex items-center justify-between">
+        <Link href="/" className="text-sm text-fg-faint hover:text-fg-muted transition-colors">
           ← Back
         </Link>
+        <ThemeToggle />
       </div>
 
       <div className="w-full max-w-md flex flex-col gap-6 animate-slide-up">
@@ -42,15 +44,15 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center">
           <span className="text-4xl mb-3 block" role="img" aria-label="tip jar">💸</span>
-          <h1 className="text-2xl font-bold text-white">Create your tip jar</h1>
-          <p className="text-sm text-gray-400 mt-1">Takes less than a minute</p>
+          <h1 className="text-2xl font-bold text-fg">Create your tip jar</h1>
+          <p className="text-sm text-fg-subtle mt-1">Takes less than a minute</p>
         </div>
 
         {/* Wallet gate */}
         {!isConnected ? (
           <Card>
             <div className="flex flex-col items-center gap-4 py-4">
-              <p className="text-sm text-gray-400 text-center">
+              <p className="text-sm text-fg-subtle text-center">
                 Connect your Stellar wallet to get started
               </p>
               <WalletConnectButton size="lg" className="w-full" />

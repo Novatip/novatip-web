@@ -28,8 +28,8 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
                   state === "done"
                     ? "bg-brand-500 border-brand-500 text-white"
                     : state === "active"
-                    ? "border-brand-500 text-brand-400 bg-brand-500/10"
-                    : "border-white/20 text-gray-600 bg-white/5",
+                    ? "border-brand-500 text-accent bg-brand-500/10"
+                    : "border-hairline-strong text-fg-dim bg-surface-strong",
                 )}
                 aria-current={state === "active" ? "step" : undefined}
               >
@@ -37,7 +37,7 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
               </div>
               <span className={cn(
                 "text-xs hidden sm:block",
-                state === "active" ? "text-brand-400 font-medium" : "text-gray-600",
+                state === "active" ? "text-accent font-medium" : "text-fg-dim",
               )}>
                 {labels[i]}
               </span>
@@ -45,7 +45,7 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
             {i < totalSteps - 1 && (
               <div className={cn(
                 "flex-1 h-0.5 rounded-full transition-all",
-                i < currentStep ? "bg-brand-500" : "bg-white/10",
+                i < currentStep ? "bg-brand-500" : "bg-hairline",
               )} />
             )}
           </div>
