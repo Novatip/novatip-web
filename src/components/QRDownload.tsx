@@ -61,9 +61,9 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
 
-      {/* QR preview */}
+      {/* QR preview — always on white so scanners keep their contrast */}
       <div
-        className="rounded-2xl bg-white p-4 shadow-xl shadow-black/30"
+        className="rounded-2xl bg-white p-4 shadow-xl shadow-black/10 dark:shadow-black/30"
         aria-label={`QR code for @${slug} tip page`}
       >
         <QRCodeSVG
@@ -77,14 +77,14 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
       </div>
 
       {/* Tip URL display */}
-      <div className="flex items-center gap-2 rounded-xl bg-white/5 border border-white/10 px-4 py-2.5 w-full max-w-xs">
-        <span className="flex-1 text-xs text-gray-400 font-mono truncate">
+      <div className="flex items-center gap-2 rounded-xl bg-surface-strong border border-hairline px-4 py-2.5 w-full max-w-xs">
+        <span className="flex-1 text-xs text-fg-subtle font-mono truncate">
           {tipUrl}
         </span>
         <button
           type="button"
           onClick={handleCopy}
-          className="text-xs text-brand-400 hover:text-brand-300 transition-colors shrink-0 font-medium"
+          className="text-xs text-accent hover:text-accent-strong transition-colors shrink-0 font-medium"
           aria-label="Copy tip URL"
         >
           {copied ? "Copied!" : "Copy"}
@@ -114,7 +114,7 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
         </Button>
       </div>
 
-      <p className="text-xs text-gray-600 text-center">
+      <p className="text-xs text-fg-faint text-center">
         Print or share your QR code so anyone can tap to tip you
       </p>
     </div>

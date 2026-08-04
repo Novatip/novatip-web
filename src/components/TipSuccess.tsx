@@ -31,7 +31,8 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
       particleCount: 120,
       spread:        80,
       origin:        { y: 0.55 },
-      colors:        ["#38bdf8", "#0ea5e9", "#7dd3fc", "#ffffff", "#2775ca"],
+      // No pure white — it disappears against the light theme's canvas.
+      colors:        ["#38bdf8", "#0ea5e9", "#7dd3fc", "#22d3ee", "#2775ca"],
     });
 
     // Second burst after a short delay for extra flair
@@ -73,7 +74,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
           className={cn(
             "flex items-center justify-center",
             "h-20 w-20 rounded-full",
-            "bg-green-500/15 ring-4 ring-green-500/20",
+            "bg-success/15 ring-4 ring-success/20",
           )}
           role="img"
           aria-label="Success"
@@ -83,21 +84,21 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
 
         {/* Headline */}
         <div>
-          <h2 className="text-2xl font-bold text-white mb-1">
+          <h2 className="text-2xl font-bold text-fg mb-1">
             Tip sent!
           </h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-fg-subtle text-sm">
             Your{" "}
-            <span className="text-brand-400 font-semibold">${amount} USDC</span>{" "}
+            <span className="text-accent font-semibold">${amount} USDC</span>{" "}
             tip landed in{" "}
-            <span className="text-white font-medium">@{slug}</span>'s jar.
+            <span className="text-fg font-medium">@{slug}</span>'s jar.
           </p>
         </div>
 
         {/* On-chain note */}
-        <div className="w-full rounded-xl bg-green-500/10 border border-green-500/20 px-4 py-3">
-          <p className="text-xs text-green-400 flex items-center justify-center gap-1.5">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+        <div className="w-full rounded-xl bg-success/10 border border-success/20 px-4 py-3">
+          <p className="text-xs text-success flex items-center justify-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
             Settled on Stellar — no middlemen, no platform fees
           </p>
         </div>

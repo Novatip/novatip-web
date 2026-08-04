@@ -59,16 +59,16 @@ export default function QRPage() {
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-md">
       <div>
-        <h1 className="text-2xl font-bold text-white">QR Code & Link</h1>
-        <p className="text-sm text-gray-400 mt-1">
+        <h1 className="text-2xl font-bold text-fg">QR Code & Link</h1>
+        <p className="text-sm text-fg-subtle mt-1">
           Share or print your QR code so anyone can tap to tip you instantly.
         </p>
       </div>
 
       {loading && (
         <div className="flex flex-col items-center gap-4 animate-pulse">
-          <div className="h-52 w-52 rounded-2xl bg-white/10" />
-          <div className="h-10 w-64 rounded-xl bg-white/10" />
+          <div className="h-52 w-52 rounded-2xl bg-hairline" />
+          <div className="h-10 w-64 rounded-xl bg-hairline" />
         </div>
       )}
 
@@ -77,7 +77,7 @@ export default function QRPage() {
       )}
 
       {!loading && !slug && (
-        <p className="text-sm text-gray-500">
+        <p className="text-sm text-fg-faint">
           Complete onboarding to generate your QR code.
         </p>
       )}

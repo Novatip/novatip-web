@@ -209,8 +209,8 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Recent Tips</CardTitle>
-          <span className="flex items-center gap-1.5 text-xs text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse-slow" />
+          <span className="flex items-center gap-1.5 text-xs text-fg-faint">
+            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow" />
             Live
           </span>
         </div>
@@ -220,23 +220,23 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex items-start gap-3 animate-pulse">
-              <div className="h-8 w-8 rounded-full bg-white/10 shrink-0" />
+              <div className="h-8 w-8 rounded-full bg-hairline shrink-0" />
               <div className="flex-1 space-y-1.5">
-                <div className="h-3.5 w-32 rounded bg-white/10" />
-                <div className="h-3 w-48 rounded bg-white/5" />
+                <div className="h-3.5 w-32 rounded bg-hairline" />
+                <div className="h-3 w-48 rounded bg-hairline/50" />
               </div>
-              <div className="h-4 w-12 rounded bg-white/10" />
+              <div className="h-4 w-12 rounded bg-hairline" />
             </div>
           ))}
         </div>
       )}
 
       {error && (
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-danger">{error}</p>
       )}
 
       {!loading && !error && feed.length === 0 && (
-        <p className="text-sm text-gray-500 py-4 text-center">
+        <p className="text-sm text-fg-faint py-4 text-center">
           No tips yet — share your link to get started!
         </p>
       )}
@@ -265,22 +265,22 @@ function IndexedTipRow({ tip }: { tip: IndexedTip }) {
         <span className="text-xs">💸</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white">
-          <span className="font-mono text-gray-400">
+        <p className="text-sm text-fg">
+          <span className="font-mono text-fg-subtle">
             {shortAddress(tip.fromAddress)}
           </span>
           {" "}tipped{" "}
-          <span className="font-semibold text-brand-400">
+          <span className="font-semibold text-accent">
             ${formatUsdc(BigInt(tip.amount), 2)} USDC
           </span>
         </p>
         {tip.message && (
-          <p className="text-xs text-gray-500 mt-0.5 truncate">
+          <p className="text-xs text-fg-faint mt-0.5 truncate">
             "{tip.message}"
           </p>
         )}
       </div>
-      <span className="text-xs text-gray-600 shrink-0 mt-0.5">
+      <span className="text-xs text-fg-dim shrink-0 mt-0.5">
         {timeAgo(tip.ledgerAt)}
       </span>
     </li>
@@ -295,27 +295,27 @@ function PendingTipRow({ tip }: { tip: PendingTip }) {
         <span className="text-xs">💸</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-white">
-          <span className="font-mono text-gray-400">
+        <p className="text-sm text-fg">
+          <span className="font-mono text-fg-subtle">
             {shortAddress(tip.fromAddress)}
           </span>
           {" "}tipped{" "}
-          <span className="font-semibold text-brand-400">
+          <span className="font-semibold text-accent">
             ${tip.displayAmount} USDC
           </span>
         </p>
         {tip.message && (
-          <p className="text-xs text-gray-500 mt-0.5 truncate">
+          <p className="text-xs text-fg-faint mt-0.5 truncate">
             "{tip.message}"
           </p>
         )}
       </div>
       {/* Confirming badge instead of a timestamp */}
       <span
-        className="text-xs text-yellow-400 shrink-0 mt-0.5 flex items-center gap-1"
+        className="text-xs text-warning shrink-0 mt-0.5 flex items-center gap-1"
         aria-label="Tip is being confirmed on-chain"
       >
-        <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+        <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse shrink-0" />
         confirming…
       </span>
     </li>

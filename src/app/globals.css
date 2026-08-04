@@ -3,9 +3,65 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+   * Theme tokens.
+   *
+   * Values are space-separated RGB channels so Tailwind's opacity modifiers
+   * keep working (`bg-canvas/80`, `border-success/30`, …) — see the `token()`
+   * helper in tailwind.config.ts.
+   *
+   * :root carries the light theme and `.dark` overrides it.  The `dark` class
+   * is put on <html> before the first paint by THEME_INIT_SCRIPT
+   * (src/lib/theme.ts), so there is never a frame with the wrong theme.
+   */
   :root {
     --font-inter: "Inter", system-ui, sans-serif;
     --font-mono:  "JetBrains Mono", monospace;
+
+    color-scheme: light;
+
+    /* Surfaces — canvas is the page, each step up sits on top of the last. */
+    --color-canvas:          248 250 252; /* slate-50  */
+    --color-surface:         255 255 255; /* white     */
+    --color-surface-strong:  241 245 249; /* slate-100 */
+    --color-hairline:        226 232 240; /* slate-200 */
+    --color-hairline-strong: 203 213 225; /* slate-300 */
+
+    /* Text — most to least prominent. */
+    --color-fg:        15 23 42;    /* slate-900 */
+    --color-fg-muted:  51 65 85;    /* slate-700 */
+    --color-fg-subtle: 71 85 105;   /* slate-600 */
+    --color-fg-faint:  100 116 139; /* slate-500 */
+    --color-fg-dim:    148 163 184; /* slate-400 */
+
+    /* Accent + status — deepened so they stay readable on light surfaces. */
+    --color-accent:        2 132 199; /* brand-600  */
+    --color-accent-strong: 3 105 161; /* brand-700  */
+    --color-success:      22 163 74;  /* green-600  */
+    --color-warning:     202 138 4;   /* yellow-600 */
+    --color-danger:      220 38 38;   /* red-600    */
+  }
+
+  .dark {
+    color-scheme: dark;
+
+    --color-canvas:            3 7 18;  /* gray-950 */
+    --color-surface:         17 24 39;  /* gray-900 */
+    --color-surface-strong:  31 41 55;  /* gray-800 */
+    --color-hairline:        38 47 62;
+    --color-hairline-strong: 55 65 81;  /* gray-700 */
+
+    --color-fg:        243 244 246; /* gray-100 */
+    --color-fg-muted:  209 213 219; /* gray-300 */
+    --color-fg-subtle: 156 163 175; /* gray-400 */
+    --color-fg-faint:  107 114 128; /* gray-500 */
+    --color-fg-dim:     75 85 99;   /* gray-600 */
+
+    --color-accent:         56 189 248; /* brand-400  */
+    --color-accent-strong: 125 211 252; /* brand-300  */
+    --color-success:        74 222 128; /* green-400  */
+    --color-warning:       250 204 21;  /* yellow-400 */
+    --color-danger:        248 113 113; /* red-400    */
   }
 
   html {
@@ -13,7 +69,7 @@
   }
 
   body {
-    @apply bg-gray-950 text-gray-100 font-sans min-h-screen;
+    @apply bg-canvas text-fg font-sans min-h-screen;
   }
 
   * {
@@ -23,11 +79,11 @@
 
 @layer utilities {
   .text-gradient {
-    @apply bg-gradient-to-r from-brand-400 to-brand-600 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-accent to-accent-strong bg-clip-text text-transparent;
   }
 
   .glass {
-    @apply bg-white/5 backdrop-blur-md border border-white/10;
+    @apply bg-surface/70 backdrop-blur-md border border-hairline;
   }
 
   .truncate-address {

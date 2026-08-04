@@ -34,9 +34,9 @@ function StatCard({
 }) {
   return (
     <Card className="flex flex-col gap-1">
-      <p className="text-xs text-gray-500 uppercase tracking-wider">{label}</p>
-      <p className="text-3xl font-bold text-white">{value}</p>
-      {sub && <p className="text-xs text-gray-500">{sub}</p>}
+      <p className="text-xs text-fg-faint uppercase tracking-wider">{label}</p>
+      <p className="text-3xl font-bold text-fg">{value}</p>
+      {sub && <p className="text-xs text-fg-faint">{sub}</p>}
     </Card>
   );
 }
@@ -89,14 +89,14 @@ export default function DashboardPage() {
 
       {/* Page title */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Overview</h1>
-        <p className="text-sm text-gray-400 mt-1">Your earnings and supporter activity</p>
+        <h1 className="text-2xl font-bold text-fg">Overview</h1>
+        <p className="text-sm text-fg-subtle mt-1">Your earnings and supporter activity</p>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+          <p className="text-sm text-danger">{error}</p>
         </div>
       )}
 

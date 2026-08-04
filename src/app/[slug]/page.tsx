@@ -71,11 +71,11 @@ export default async function TipPage({ params }: Props) {
               />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white">{displayName}</h1>
-              <p className="text-sm text-brand-400 font-mono">@{slug}</p>
+              <h1 className="text-2xl font-bold text-fg">{displayName}</h1>
+              <p className="text-sm text-accent font-mono">@{slug}</p>
             </div>
             {creator.bio && (
-              <p className="text-sm text-gray-400 max-w-xs">{creator.bio}</p>
+              <p className="text-sm text-fg-subtle max-w-xs">{creator.bio}</p>
             )}
             <div className="flex gap-2 flex-wrap justify-center">
               <Badge variant="usdc">USDC tips</Badge>

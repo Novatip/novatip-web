@@ -32,7 +32,7 @@ export default function OnboardingPage() {
 
       {/* Back link */}
       <div className="w-full max-w-md mb-6">
-        <Link href="/" className="text-sm text-gray-500 hover:text-gray-300 transition-colors">
+        <Link href="/" className="text-sm text-fg-faint hover:text-fg-muted transition-colors">
           ← Back
         </Link>
       </div>
@@ -42,15 +42,15 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="text-center">
           <span className="text-4xl mb-3 block" role="img" aria-label="tip jar">💸</span>
-          <h1 className="text-2xl font-bold text-white">Create your tip jar</h1>
-          <p className="text-sm text-gray-400 mt-1">Takes less than a minute</p>
+          <h1 className="text-2xl font-bold text-fg">Create your tip jar</h1>
+          <p className="text-sm text-fg-subtle mt-1">Takes less than a minute</p>
         </div>
 
         {/* Wallet gate */}
         {!isConnected ? (
           <Card>
             <div className="flex flex-col items-center gap-4 py-4">
-              <p className="text-sm text-gray-400 text-center">
+              <p className="text-sm text-fg-subtle text-center">
                 Connect your Stellar wallet to get started
               </p>
               <WalletConnectButton size="lg" className="w-full" />

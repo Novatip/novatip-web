@@ -109,17 +109,17 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
                   placeholder="bps"
                   aria-label={`Recipient ${i + 1} basis points`}
                   className={cn(
-                    "w-full rounded-xl bg-white/5 border border-white/10",
-                    "px-3 pr-10 py-2.5 text-sm text-white text-right",
+                    "w-full rounded-xl bg-surface-strong border border-hairline",
+                    "px-3 pr-10 py-2.5 text-sm text-fg text-right",
                     "focus:outline-none focus:ring-2 focus:ring-brand-500/50",
                     "disabled:opacity-50 transition-all duration-200",
                   )}
                 />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500 pointer-events-none">
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-fg-faint pointer-events-none">
                   bps
                 </span>
               </div>
-              <p className="text-right text-xs text-gray-600 mt-1">
+              <p className="text-right text-xs text-fg-dim mt-1">
                 {row.bps ? `${(row.bps / 100).toFixed(1)}%` : "0%"}
               </p>
             </div>
@@ -129,7 +129,7 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
               type="button"
               onClick={() => removeRow(i)}
               disabled={rows.length === 1 || saving || disabled}
-              className="mt-2 text-gray-600 hover:text-red-400 disabled:opacity-30 transition-colors"
+              className="mt-2 text-fg-dim hover:text-danger disabled:opacity-30 transition-colors"
               aria-label={`Remove recipient ${i + 1}`}
             >
               ✕
@@ -154,12 +154,12 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
       )}
 
       {/* BPS total indicator */}
-      <div className="flex items-center justify-between rounded-xl bg-white/5 border border-white/10 px-4 py-3">
-        <span className="text-sm text-gray-400">Total allocation</span>
+      <div className="flex items-center justify-between rounded-xl bg-surface-strong border border-hairline px-4 py-3">
+        <span className="text-sm text-fg-subtle">Total allocation</span>
         <div className="flex items-center gap-2">
           <span className={cn(
             "text-sm font-semibold font-mono",
-            bpsValid ? "text-green-400" : totalBps > 10000 ? "text-red-400" : "text-yellow-400",
+            bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
           )}>
             {totalBps.toLocaleString()} / 10,000 bps
           </span>
@@ -171,7 +171,7 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
 
       {/* Validation hint */}
       {!bpsValid && (
-        <p className="text-xs text-yellow-400">
+        <p className="text-xs text-warning">
           Splits must sum to exactly 10,000 bps (100%).
           {totalBps < 10000
             ? ` Add ${(10000 - totalBps).toLocaleString()} more bps.`
@@ -181,10 +181,10 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
 
       {/* Error / success */}
       {error && (
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-danger">{error}</p>
       )}
       {success && (
-        <p className="text-sm text-green-400">Splits saved successfully!</p>
+        <p className="text-sm text-success">Splits saved successfully!</p>
       )}
 
       {/* Save */}

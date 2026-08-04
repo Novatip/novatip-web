@@ -36,7 +36,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!isConnected) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-6 px-4">
-        <p className="text-gray-400 text-sm">Connect your wallet to access the dashboard</p>
+        <p className="text-fg-subtle text-sm">Connect your wallet to access the dashboard</p>
         <WalletConnectButton size="lg" />
       </div>
     );
@@ -46,14 +46,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex flex-col">
 
       {/* Top bar */}
-      <header className="sticky top-0 z-50 border-b border-white/5 bg-gray-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
             <span className="text-xl">💸</span>
-            <span className="font-semibold text-white group-hover:text-brand-400 transition-colors">
+            <span className="font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>
-            <span className="text-gray-600 text-sm hidden sm:block">/ Dashboard</span>
+            <span className="text-fg-dim text-sm hidden sm:block">/ Dashboard</span>
           </Link>
           <WalletConnectButton size="sm" />
         </div>
@@ -70,8 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                 pathname === item.href
-                  ? "bg-brand-500/20 text-brand-300 border border-brand-500/20"
-                  : "text-gray-400 hover:text-white hover:bg-white/5",
+                  ? "bg-brand-500/20 text-accent border border-brand-500/20"
+                  : "text-fg-subtle hover:text-fg hover:bg-surface-strong",
               )}
               aria-current={pathname === item.href ? "page" : undefined}
             >

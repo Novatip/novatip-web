@@ -26,8 +26,8 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
   if (isConnected && publicKey) {
     return (
       <div className="flex items-center gap-2">
-        <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-mono">
-          <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse-slow" />
+        <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-mono">
+          <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow" />
           {shortAddress(publicKey)}
         </span>
         <Button
@@ -56,7 +56,7 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
         {isConnecting ? "Connecting…" : "Connect Wallet"}
       </Button>
       {error && (
-        <p className="text-xs text-red-400 max-w-xs text-right">{error}</p>
+        <p className="text-xs text-danger max-w-xs text-right">{error}</p>
       )}
     </div>
   );
