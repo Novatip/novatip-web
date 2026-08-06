@@ -11,6 +11,8 @@ import { useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { CopyFallback } from "@/components/CopyFallback";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 
 interface TipSuccessProps {
@@ -19,8 +21,14 @@ interface TipSuccessProps {
   onReset:  () => void;
 }
 
+/** A share the user backed out of — not something to report as a failure. */
+function isUserCancellation(error: unknown): boolean {
+  return (error as { name?: string } | null)?.name === "AbortError";
+}
+
 export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
   const firedRef = useRef(false);
+  const { copied, failed, copy, reset } = useCopyToClipboard();
 
   // Fire confetti once on mount
   useEffect(() => {
@@ -48,21 +56,33 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  const shareText = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
-  const shareUrl  = typeof window !== "undefined"
+  const shareText    = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
+  const shareUrl     = typeof window !== "undefined"
     ? `${window.location.origin}/${slug}`
     : `https://novatip.xyz/${slug}`;
+  const shareMessage = `${shareText} ${shareUrl}`;
 
+  /**
+   * Native share sheet when there is one, clipboard otherwise.
+   *
+   * Both of those can be missing — navigator.share and navigator.clipboard are
+   * secure-context only — so the copy result is surfaced either way instead of
+   * leaving the button looking inert.
+   */
   async function handleShare() {
-    if (navigator.share) {
+    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
       try {
         await navigator.share({ title: "Novatip", text: shareText, url: shareUrl });
-      } catch {
-        // User cancelled share — ignore
+        return;
+      } catch (error) {
+        // Backing out of the sheet is a decision, not a problem — say nothing.
+        if (isUserCancellation(error)) return;
+        // Anything else means the share never happened, so fall through and
+        // give the user the clipboard rather than nothing at all.
       }
-    } else {
-      await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
     }
+
+    await copy(shareMessage);
   }
 
   return (
@@ -107,13 +127,18 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
         <div className="flex flex-col w-full gap-3">
           <Button
             size="lg"
-            variant="secondary"
+            variant={failed ? "danger" : "secondary"}
             className="w-full"
             onClick={handleShare}
             aria-label="Share this tip"
           >
-            Share 🔗
+            {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Share 🔗"}
           </Button>
+
+          {failed && (
+            <CopyFallback text={shareMessage} onDismiss={reset} noun="message" />
+          )}
+
           <Button
             size="lg"
             variant="ghost"
