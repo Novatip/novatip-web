@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { config } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 const inter = Inter({
@@ -11,6 +12,17 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
+  /*
+    Every relative URL in metadata — Open Graph images most of all — is
+    resolved against this.  Without it Next falls back to localhost:3000, so a
+    tip link pasted into Twitter, WhatsApp or Discord would advertise a preview
+    image no scraper outside the developer's machine can fetch.
+
+    Driven by NEXT_PUBLIC_SITE_URL so preview deployments describe themselves
+    rather than production; see resolveSiteUrl in lib/config.ts.
+  */
+  metadataBase: new URL(config.siteUrl),
+
   title:       "Novatip — Tap to tip any creator",
   description: "Cross-border micro-tipping for creators, streamers, and street musicians. Powered by Stellar.",
   openGraph: {
