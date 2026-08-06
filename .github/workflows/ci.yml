@@ -38,6 +38,7 @@ jobs:
         env:
           # Provide stub values so config.ts doesn't throw during build
           NEXT_PUBLIC_API_URL: http://localhost:3001/api/v1
+          NEXT_PUBLIC_SITE_URL: https://novatip.xyz
           NEXT_PUBLIC_STELLAR_NETWORK: testnet
           NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID: CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM
           NEXT_PUBLIC_USDC_CONTRACT_ID: CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA

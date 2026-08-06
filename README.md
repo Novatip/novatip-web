@@ -17,9 +17,27 @@ App available at http://localhost:3000
 ## Environment Variables
 
 NEXT_PUBLIC_API_URL                  - Backend API base URL (default: http://localhost:3001/api/v1)
+NEXT_PUBLIC_SITE_URL                 - Public origin this deployment is served from (default: http://localhost:3000)
 NEXT_PUBLIC_STELLAR_NETWORK          - testnet or mainnet (default: testnet)
 NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID - Deployed tip_splitter contract ID (required)
 NEXT_PUBLIC_USDC_CONTRACT_ID         - USDC Stellar Asset Contract ID
+
+### NEXT_PUBLIC_SITE_URL
+
+This one has to be set per deployment rather than once in the repo — production
+gets the real domain, each preview deployment gets its own host.
+
+It backs `metadataBase` in `src/app/layout.tsx`, which is what every relative
+metadata URL is resolved against. Open Graph images are the reason it matters:
+tip links spread by being pasted into Twitter, WhatsApp and Discord, and a
+preview image still pointing at `localhost:3000` is one no scraper can fetch.
+
+It must be an absolute `http` or `https` URL — `https://novatip.xyz`, not
+`novatip.xyz`. A malformed value fails the build with a message naming it,
+rather than falling back to localhost and shipping broken previews; see
+`resolveSiteUrl` in `src/lib/config.ts`. Trailing slashes, whitespace, and any
+query or fragment are normalised away, so `https://novatip.xyz` and
+`https://novatip.xyz/` are equivalent.
 
 ## Key Pages
 
