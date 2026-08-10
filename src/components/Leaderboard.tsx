@@ -9,7 +9,7 @@
 
 import { useEffect, useState } from "react";
 import { analyticsApi } from "@/lib/api";
-import { formatUsdc } from "@novatip/sdk";
+import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +17,6 @@ interface Supporter {
   fromAddress:    string;
   tipCount:       number;
   totalAmountRaw: string;
-}
-
-function shortAddress(addr: string): string {
-  return `${addr.slice(0, 5)}...${addr.slice(-4)}`;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
@@ -88,7 +84,7 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
 
               {/* Address */}
               <span className="flex-1 font-mono text-sm text-gray-300 truncate">
-                {shortAddress(s.fromAddress)}
+                {shortenAddress(s.fromAddress)}
               </span>
 
               {/* Tip count */}

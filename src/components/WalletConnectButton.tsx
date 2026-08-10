@@ -9,11 +9,7 @@
 
 import { useWallet } from "@/contexts/WalletContext";
 import { Button } from "@/components/ui/Button";
-
-/** Shorten a Stellar address for display: GABCD...WXYZ */
-function shortAddress(address: string): string {
-  return `${address.slice(0, 5)}...${address.slice(-4)}`;
-}
+import { shortenAddress } from "@novatip/sdk";
 
 interface WalletConnectButtonProps {
   size?: "sm" | "md" | "lg";
@@ -28,7 +24,7 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
       <div className="flex items-center gap-2">
         <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-mono">
           <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse-slow" />
-          {shortAddress(publicKey)}
+          {shortenAddress(publicKey)}
         </span>
         <Button
           variant="ghost"

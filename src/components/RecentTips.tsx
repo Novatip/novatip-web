@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { analyticsApi } from "@/lib/api";
-import { formatUsdc } from "@novatip/sdk";
+import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 
@@ -19,10 +19,6 @@ interface Tip {
   amount:      string;
   message:     string;
   ledgerAt:    string;
-}
-
-function shortAddress(addr: string): string {
-  return `${addr.slice(0, 5)}...${addr.slice(-4)}`;
 }
 
 function timeAgo(iso: string): string {
@@ -110,7 +106,7 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm text-white">
                   <span className="font-mono text-gray-400">
-                    {shortAddress(tip.fromAddress)}
+                    {shortenAddress(tip.fromAddress)}
                   </span>
                   {" "}tipped{" "}
                   <span className="font-semibold text-brand-400">
