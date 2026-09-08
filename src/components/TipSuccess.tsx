@@ -30,10 +30,15 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
   const firedRef = useRef(false);
   const { copied, failed, copy, reset } = useCopyToClipboard();
 
-  // Fire confetti once on mount
+  const successRef = useRef<HTMLDivElement>(null);
+
+  // Fire confetti once on mount and move focus for screen readers
   useEffect(() => {
     if (firedRef.current) return;
     firedRef.current = true;
+    // Move focus to the success content so screen reader users
+    // hear the announcement and tab lands somewhere sensible.
+    successRef.current?.focus();
 
     void confetti({
       particleCount: 120,
@@ -86,7 +91,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
   }
 
   return (
-    <Card className="text-center animate-slide-up">
+    <Card className="text-center animate-slide-up" ref={successRef} tabIndex={-1} role="status" aria-live="polite">
       <div className="flex flex-col items-center gap-5 py-4">
 
         {/* Success icon */}

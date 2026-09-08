@@ -43,9 +43,15 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
     const raw = e.target.value.replace(/[^0-9.]/g, "");
     // Prevent more than one decimal point
     const parts = raw.split(".");
-    const clean  = parts.length > 2
+    let clean  = parts.length > 2
       ? `${parts[0]}.${parts.slice(1).join("")}`
       : raw;
+    // USDC on Stellar supports 7 decimal places — anything finer
+    // cannot be represented, so prevent excess precision as the user types.
+    if (clean.includes(".")) {
+      const [whole, frac] = clean.split(".");
+      clean = `${whole}.${frac.slice(0, 7)}`;
+    }
     onChange(clean);
   }
 

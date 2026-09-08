@@ -7,7 +7,7 @@
  * renders the sidebar nav, and wraps all dashboard pages.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
@@ -23,9 +23,21 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isConnected, isConnecting } = useWallet();
+  const { isConnected, isConnecting, publicKey } = useWallet();
   const router   = useRouter();
   const pathname = usePathname();
+  const [sessionKey, setSessionKey] = useState(0);
+
+  // When the wallet disconnects (or a different wallet connects), increment
+  // sessionKey to force every dashboard child to remount and re-fetch. This
+  // ensures creator-specific data is never visible after a disconnect — on a
+  // shared machine, the previous creator's figures would otherwise linger until
+  // a navigation happens to remount the components.
+  useEffect(() => {
+    if (isConnected) {
+      setSessionKey((k) => k + 1);
+    }
+  }, [publicKey]);
 
   // Redirect unauthenticated users to home
   useEffect(() => {
@@ -89,7 +101,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </aside>
 
         {/* Page content */}
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0" key={sessionKey}>
           {children}
         </main>
 
