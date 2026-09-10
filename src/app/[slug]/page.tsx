@@ -16,7 +16,8 @@ import { Badge } from "@/components/ui/Badge";
 import { QRDownload } from "@/components/QRDownload";
 
 interface Props {
-  params: { slug: string };
+  // Next 15 resolves route params asynchronously, so this is a Promise.
+  params: Promise<{ slug: string }>;
 }
 
 // Strip leading @ if the user typed /@alice in the URL
@@ -48,7 +49,7 @@ async function resolveCreator(slug: string): Promise<ResolvedPage> {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const slug = normalizeSlug(params.slug);
+  const slug = normalizeSlug((await params).slug);
 
   try {
     const { creator, tipUrl } = await resolverApi.resolve(slug);
@@ -92,7 +93,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TipPage({ params }: Props) {
-  const slug = normalizeSlug(params.slug);
+  const slug = normalizeSlug((await params).slug);
 
   const { creator, qrPngUrl } = await resolveCreator(slug);
   const displayName = creator.displayName ?? `@${slug}`;

@@ -17,11 +17,12 @@ export const size    = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 interface Props {
-  params: { slug: string };
+  // Next 15 resolves route params asynchronously, so this is a Promise.
+  params: Promise<{ slug: string }>;
 }
 
 export default async function OgImage({ params }: Props) {
-  const slug = decodeURIComponent(params.slug).replace(/^@/, "");
+  const slug = decodeURIComponent((await params).slug).replace(/^@/, "");
 
   let displayName = `@${slug}`;
   let bio         = "Send a USDC tip in seconds on Stellar.";
@@ -75,7 +76,11 @@ export default async function OgImage({ params }: Props) {
             marginBottom: 24,
           }}
         >
-          @{slug}
+          {/* One interpolation, not `@{slug}`: that is two child nodes, and
+              Satori refuses any div with multiple children unless it declares
+              display:flex. It threw on every render, so no preview image was
+              ever produced. */}
+          {`@${slug}`}
         </div>
 
         {/* Bio */}

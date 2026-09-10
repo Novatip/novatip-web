@@ -105,34 +105,34 @@ describe("app/[slug]/page – choosing a boundary", () => {
   it("bails out to the 404 boundary when the slug is unclaimed", async () => {
     resolve.mockRejectedValue(new ApiError(404, "NOT_FOUND", "No such creator"));
 
-    await expect(TipPage({ params: { slug: "nobody" } })).rejects.toBe(NOT_FOUND);
+    await expect(TipPage({ params: Promise.resolve({ slug: "nobody" }) })).rejects.toBe(NOT_FOUND);
   });
 
   it("rethrows a backend fault so the error boundary handles it", async () => {
     const fault = new ApiError(500, "INTERNAL", "backend on fire");
     resolve.mockRejectedValue(fault);
 
-    await expect(TipPage({ params: { slug: "alice" } })).rejects.toBe(fault);
+    await expect(TipPage({ params: Promise.resolve({ slug: "alice" }) })).rejects.toBe(fault);
   });
 
   it("rethrows a timeout rather than calling the creator missing", async () => {
     const timeout = new ApiError(408, "TIMEOUT", "Request timed out");
     resolve.mockRejectedValue(timeout);
 
-    await expect(TipPage({ params: { slug: "alice" } })).rejects.toBe(timeout);
+    await expect(TipPage({ params: Promise.resolve({ slug: "alice" }) })).rejects.toBe(timeout);
   });
 
   it("rethrows a plain network error too", async () => {
     const offline = new TypeError("fetch failed");
     resolve.mockRejectedValue(offline);
 
-    await expect(TipPage({ params: { slug: "alice" } })).rejects.toBe(offline);
+    await expect(TipPage({ params: Promise.resolve({ slug: "alice" }) })).rejects.toBe(offline);
   });
 
   it("strips a leading @ before looking the creator up", async () => {
     resolve.mockResolvedValue(creatorPayload());
 
-    await TipPage({ params: { slug: "%40alice" } });
+    await TipPage({ params: Promise.resolve({ slug: "%40alice" }) });
 
     expect(resolve).toHaveBeenCalledWith("alice");
   });
@@ -146,7 +146,7 @@ describe("app/[slug]/page – metadata", () => {
 
     // No `images` in either block — opengraph-image.tsx supplies those via the
     // Next file convention, so generateMetadata must not set them itself.
-    await expect(generateMetadata({ params: { slug: "alice" } })).resolves.toEqual({
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
       title:       "Tip Alice on Novatip",
       description: "Street violinist",
       openGraph: {
@@ -168,14 +168,14 @@ describe("app/[slug]/page – metadata", () => {
     resolve.mockRejectedValue(new ApiError(404, "NOT_FOUND", "No such creator"));
 
     await expect(
-      generateMetadata({ params: { slug: "nobody" } }),
+      generateMetadata({ params: Promise.resolve({ slug: "nobody" }) }),
     ).rejects.toBe(NOT_FOUND);
   });
 
   it("stays generic — and does not 404 — on a backend fault", async () => {
     resolve.mockRejectedValue(new ApiError(500, "INTERNAL", "backend on fire"));
 
-    await expect(generateMetadata({ params: { slug: "alice" } })).resolves.toEqual({
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
       title: "Novatip",
     });
   });
