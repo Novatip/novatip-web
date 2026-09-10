@@ -50,7 +50,7 @@ describe("SplitsManager – initial render", () => {
 
   it("defaults to one empty row when initial is empty", () => {
     setup([]);
-    const addressInputs = screen.getAllByRole("textbox");
+    const addressInputs = screen.getAllByRole("textbox", { name: /address$/i });
     // One address input rendered (bps input is type=number, not textbox)
     expect(addressInputs).toHaveLength(1);
   });
@@ -107,9 +107,9 @@ describe("SplitsManager – add and remove rows", () => {
   it("adds a new empty row when '+ Add collaborator' is clicked", async () => {
     const user = userEvent.setup();
     setup();
-    const addressInputsBefore = screen.getAllByRole("textbox");
+    const addressInputsBefore = screen.getAllByRole("textbox", { name: /address$/i });
     await user.click(screen.getByRole("button", { name: /add collaborator/i }));
-    const addressInputsAfter = screen.getAllByRole("textbox");
+    const addressInputsAfter = screen.getAllByRole("textbox", { name: /address$/i });
     expect(addressInputsAfter.length).toBe(addressInputsBefore.length + 1);
   });
 
@@ -119,13 +119,13 @@ describe("SplitsManager – add and remove rows", () => {
       { to: VALID_ADDR_1, bps: 5_000 },
       { to: VALID_ADDR_2, bps: 5_000 },
     ]);
-    expect(screen.getAllByRole("textbox")).toHaveLength(2);
+    expect(screen.getAllByRole("textbox", { name: /address$/i })).toHaveLength(2);
 
     // Click the first remove button
     const removeButtons = screen.getAllByRole("button", { name: /remove recipient/i });
     await user.click(removeButtons[0]);
 
-    expect(screen.getAllByRole("textbox")).toHaveLength(1);
+    expect(screen.getAllByRole("textbox", { name: /address$/i })).toHaveLength(1);
     // The remaining address should be the second one
     expect(screen.getByDisplayValue(VALID_ADDR_2)).toBeInTheDocument();
   });
@@ -186,7 +186,7 @@ describe("SplitsManager – save", () => {
 describe("SplitsManager – field editing", () => {
   it("updates bps display percentage as the user types", async () => {
     setup([{ to: VALID_ADDR_1, bps: 10_000 }]);
-    const bpsInput = screen.getByRole("spinbutton", { name: /recipient 1 basis points/i });
+    const bpsInput = screen.getByRole("textbox", { name: /recipient 1 basis points/i });
     fireEvent.change(bpsInput, { target: { value: "5000" } });
     // 5,000 bps renders as 50.0% twice — once on the row, once as the total.
     expect(screen.getAllByText("50.0%")).toHaveLength(2);
