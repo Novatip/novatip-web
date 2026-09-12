@@ -12,53 +12,30 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # @novatip/sdk is resolved as `file:../novatip-sdk`, so the SDK has to sit
-      # beside this repo in the workspace and be built before npm can link it.
-      - name: Checkout web
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          path: novatip-web
-
-      - name: Checkout sdk
-        uses: actions/checkout@v4
-        with:
-          repository: Novatip/novatip-sdk
-          ref: main
-          path: novatip-sdk
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: |
-            novatip-web/package-lock.json
-            novatip-sdk/package-lock.json
 
-      - name: Build sdk
-        working-directory: novatip-sdk
-        run: |
-          npm ci
-          npm run build
-
+      # @novatip/sdk installs straight from GitHub and builds itself through its
+      # prepare script, so no sibling checkout is needed.
       - name: Install dependencies
-        working-directory: novatip-web
         run: npm ci
 
       - name: Lint
-        working-directory: novatip-web
         run: npm run lint
 
       - name: Typecheck
-        working-directory: novatip-web
         run: npm run typecheck
 
       - name: Test
-        working-directory: novatip-web
         run: npm test
 
       - name: Build
-        working-directory: novatip-web
         run: npm run build
         env:
           # Stub values so lib/config.ts's fail-fast validation passes. The
