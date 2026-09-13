@@ -5,17 +5,19 @@
  *
  * Dashboard page for managing collaborator splits.
  * Loads the creator's current splits from the backend, renders
- * SplitsManager, and saves changes to the backend on submit.
+ * SplitsManager, and on submit writes the new splits to the contract and
+ * then to the backend.
  */
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { creatorApi, authApi, type CreatorProfile } from "@/lib/api";
+import { syncJarToChain } from "@/lib/jar";
 import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 
 export default function SplitsPage() {
-  const { jwt } = useWallet();
+  const { jwt, publicKey } = useWallet();
   const [creator, setCreator] = useState<CreatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
@@ -57,8 +59,23 @@ export default function SplitsPage() {
     };
   }, [jwt]);
 
+  /**
+   * Splits are written to the contract before the backend, because the
+   * contract is what actually divides an incoming tip — a backend row the
+   * chain disagrees with sends money to the wrong people, and one pointing at
+   * a jar that does not exist sends it nowhere at all.
+   *
+   * syncJarToChain registers the jar when it is missing, which is what makes
+   * this page work for creators who claimed a slug before on-chain
+   * registration existed. Their first save here creates the jar.
+   */
   async function handleSave(splits: SplitRow[]) {
-    if (!jwt) return;
+    if (!jwt || !creator || !publicKey) return;
+    await syncJarToChain({
+      owner:  publicKey,
+      jarId:  creator.jarId,
+      splits,
+    });
     const result = await creatorApi.updateSplits(jwt, splits);
     setCreator(result.creator);
   }

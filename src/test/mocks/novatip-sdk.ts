@@ -10,6 +10,9 @@
  *   - isValidTipAmount: amount must be > 0 and <= 1_000 USDC in stroops
  *   - formatUsdc: divide by 10^7, format to `decimals` places
  *   - validateSplitsBps: array must sum to exactly 10_000
+ *   - ContractErrorCode / NovatipContractError: the numbers are the contract's
+ *     public interface, so they are mirrored from contracts/tip-splitter's
+ *     Error enum rather than invented here
  */
 
 export function usdcToStroops(usd: string): bigint {
@@ -35,4 +38,41 @@ export function formatUsdc(stroops: bigint, decimals = 2): string {
 export function validateSplitsBps(bpsArray: number[]): boolean {
   const total = bpsArray.reduce((sum, v) => sum + v, 0);
   return total === 10_000;
+}
+
+/** Mirrors the `Error` enum in contracts/tip-splitter/src/lib.rs. */
+export enum ContractErrorCode {
+  NotInitialized     = 1,
+  JarExists          = 2,
+  JarNotFound        = 3,
+  InvalidSplits      = 4,
+  InvalidAmount      = 5,
+  TooManyRecipients  = 6,
+  DuplicateRecipient = 7,
+  MessageTooLong     = 8,
+  InvalidJarId       = 9,
+  SplitsEmpty        = 10,
+  SplitOutOfRange    = 11,
+  SplitSumNot100Pct  = 12,
+}
+
+/** SDK-level error wrapping a contract error code. */
+export class NovatipContractError extends Error {
+  readonly code: ContractErrorCode;
+
+  constructor(code: ContractErrorCode) {
+    super(`Contract error ${code}`);
+    this.name = "NovatipContractError";
+    this.code = code;
+  }
+}
+
+export interface Split {
+  to:  string;
+  bps: number;
+}
+
+export interface Jar {
+  owner:  string;
+  splits: Split[];
 }
