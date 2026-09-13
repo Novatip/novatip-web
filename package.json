@@ -16,7 +16,7 @@
   "dependencies": {
     "@novatip/sdk": "git+https://github.com/Novatip/novatip-sdk.git",
     "@stellar/freighter-api": "^6.0.1",
-    "@stellar/stellar-sdk": "^12.3.0",
+    "@stellar/stellar-sdk": "^14.2.0",
     "canvas-confetti": "^1.9.3",
     "clsx": "^2.1.1",
     "next": "15.5.25",
