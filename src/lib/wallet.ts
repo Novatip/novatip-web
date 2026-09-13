@@ -20,7 +20,7 @@ import {
 import {
   isConnected,
   requestAccess,
-  signBlob,
+  signMessage,
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { config } from "./config";
@@ -73,11 +73,12 @@ export function getTipSplitterClient(): TipSplitterClient {
 export function makeSignTransaction() {
   const network = getNetworkConfig();
   return async (txXdr: string): Promise<string> => {
-    const signed = await freighterSignTransaction(txXdr, {
+    const { signedTxXdr, error } = await freighterSignTransaction(txXdr, {
       networkPassphrase: network.passphrase,
     });
-    if (!signed) throw new Error("Wallet did not return a signed transaction.");
-    return signed;
+    if (error) throw new Error(freighterMessage(error, "Transaction signing failed."));
+    if (!signedTxXdr) throw new Error("Wallet did not return a signed transaction.");
+    return signedTxXdr;
   };
 }
 
@@ -89,11 +90,12 @@ export function makeSignTransaction() {
  * first connect and a reconnect.
  */
 export async function connectFreighter(): Promise<string> {
-  const publicKey = await requestAccess();
-  if (!publicKey) {
+  const { address, error } = await requestAccess();
+  if (error) throw new Error(freighterMessage(error, "Freighter rejected the connection."));
+  if (!address) {
     throw new Error("Freighter did not return an account. Approve the connection and try again.");
   }
-  return publicKey;
+  return address;
 }
 
 // ── Amount helper (re-export for convenience) ─────────────────────────────────
@@ -108,11 +110,25 @@ export { usdcToStroops };
  * transaction envelope.
  */
 export async function signNonce(nonce: string, accountToSign: string): Promise<string> {
-  const signedBlob = await signBlob(nonce, { accountToSign });
-  if (!signedBlob) {
-    throw new Error("Wallet did not return a signature.");
+  // signBlob was removed in freighter-api v4; signMessage replaces it. The
+  // signature comes back base64 on v4+ and as a Buffer on v3, so normalise
+  // both to the hex the backend's verifyEd25519 expects.
+  const { signedMessage, error } = await signMessage(nonce, { address: accountToSign });
+  if (error) throw new Error(freighterMessage(error, "Message signing failed."));
+  if (!signedMessage) throw new Error("Wallet did not return a signature.");
+
+  if (typeof signedMessage === "string") return base64ToHex(signedMessage);
+  return Buffer.from(signedMessage).toString("hex");
+}
+
+/** Freighter errors are objects; pull out something readable. */
+function freighterMessage(error: unknown, fallback: string): string {
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object" && "message" in error) {
+    const m = (error as { message?: unknown }).message;
+    if (typeof m === "string" && m) return m;
   }
-  return base64ToHex(signedBlob);
+  return fallback;
 }
 
 function base64ToHex(base64: string): string {
