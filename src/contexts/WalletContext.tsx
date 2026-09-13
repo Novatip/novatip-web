@@ -21,7 +21,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { freighter, isFreighterInstalled, signNonce } from "@/lib/wallet";
+import { connectFreighter, isFreighterInstalled, signNonce } from "@/lib/wallet";
 import { authApi } from "@/lib/api";
 import { onUnauthorized } from "@/lib/authEvents";
 import { isJwtExpired } from "@/lib/jwt";
@@ -125,7 +125,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // Connecting means one thing: we know which account the user is. That is
       // everything the tip flow requires, so it is committed immediately and
       // nothing after this point can un-connect the wallet.
-      const pk = await freighter.getPublicKey();
+      const pk = await connectFreighter();
       localStorage.setItem(PK_STORAGE_KEY, pk);
       setPublicKey(pk);
 

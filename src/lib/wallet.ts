@@ -2,23 +2,28 @@
  * lib/wallet.ts
  *
  * Wallet utilities for novatip-web.
- * Wraps @novatip/sdk FreighterAdapter and exposes helpers used by
- * the WalletContext and TipForm.
+ * Talks to Freighter through @stellar/freighter-api directly rather than the
+ * SDK's FreighterAdapter. The adapter loads the package with
+ * `new Function("return import(specifier)")` to keep tsup's DTS step from
+ * resolving an optional peer dependency — but a runtime import of a bare
+ * specifier has no meaning in a bundled browser app, so it always throws
+ * "Freighter API not found". The direct import is resolved at build time and
+ * simply works.
  */
 
 import {
-  FreighterAdapter,
   getNetwork,
   TipSplitterClient,
   usdcToStroops,
   type NetworkConfig,
 } from "@novatip/sdk";
-import { isConnected, signBlob } from "@stellar/freighter-api";
+import {
+  isConnected,
+  requestAccess,
+  signBlob,
+  signTransaction as freighterSignTransaction,
+} from "@stellar/freighter-api";
 import { config } from "./config";
-
-// ── Singleton instances ───────────────────────────────────────────────────────
-
-export const freighter = new FreighterAdapter();
 
 // ── Extension detection ───────────────────────────────────────────────────────
 
@@ -67,7 +72,28 @@ export function getTipSplitterClient(): TipSplitterClient {
  */
 export function makeSignTransaction() {
   const network = getNetworkConfig();
-  return (txXdr: string) => freighter.signTransaction(txXdr, network.passphrase);
+  return async (txXdr: string): Promise<string> => {
+    const signed = await freighterSignTransaction(txXdr, {
+      networkPassphrase: network.passphrase,
+    });
+    if (!signed) throw new Error("Wallet did not return a signed transaction.");
+    return signed;
+  };
+}
+
+/**
+ * Prompt for access and return the connected account.
+ *
+ * requestAccess() shows Freighter's approval dialog the first time and
+ * resolves to the public key on subsequent calls, so it covers both the
+ * first connect and a reconnect.
+ */
+export async function connectFreighter(): Promise<string> {
+  const publicKey = await requestAccess();
+  if (!publicKey) {
+    throw new Error("Freighter did not return an account. Approve the connection and try again.");
+  }
+  return publicKey;
 }
 
 // ── Amount helper (re-export for convenience) ─────────────────────────────────
