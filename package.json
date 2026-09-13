@@ -14,7 +14,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@novatip/sdk": "git+https://github.com/Novatip/novatip-sdk.git",
+    "@novatip/sdk": "github:Novatip/novatip-sdk",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^14.2.0",
     "canvas-confetti": "^1.9.3",
