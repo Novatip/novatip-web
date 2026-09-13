@@ -24,7 +24,7 @@ export default function HomePage() {
           <Link href="/onboarding">
             <Button size="lg">Create your tip jar</Button>
           </Link>
-          <Link href="/alice">
+          <Link href="/demo">
             <Button size="lg" variant="secondary">See a demo page</Button>
           </Link>
         </div>

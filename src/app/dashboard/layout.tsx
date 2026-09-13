@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
@@ -65,7 +66,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-xl">💸</span>
+            <Image
+              src="/logo.svg"
+              alt=""
+              width={24}
+              height={24}
+              className="rounded"
+              unoptimized
+            />
             <span className="font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>

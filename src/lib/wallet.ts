@@ -13,12 +13,40 @@ import {
   usdcToStroops,
   type NetworkConfig,
 } from "@novatip/sdk";
-import { signBlob } from "@stellar/freighter-api";
+import { isConnected, signBlob } from "@stellar/freighter-api";
 import { config } from "./config";
 
 // ── Singleton instances ───────────────────────────────────────────────────────
 
 export const freighter = new FreighterAdapter();
+
+// ── Extension detection ───────────────────────────────────────────────────────
+
+/**
+ * Whether the Freighter extension is present.
+ *
+ * Must be async, and must go through Freighter's own `isConnected()`. The SDK
+ * adapter's `isAvailable()` does a synchronous `window.freighter` check, which
+ * is wrong twice over: the extension injects asynchronously, so a check during
+ * render can run before it lands, and that is not the object it injects.
+ *
+ * freighter-api v2 resolves to a bare boolean; v3+ resolves to an
+ * `{ isConnected }` object. Accept either so upgrading cannot silently break
+ * detection. Never throws — a missing extension is an ordinary state, not an
+ * error.
+ */
+export async function isFreighterInstalled(): Promise<boolean> {
+  try {
+    const result: unknown = await isConnected();
+    if (typeof result === "boolean") return result;
+    if (result && typeof result === "object" && "isConnected" in result) {
+      return Boolean((result as { isConnected: unknown }).isConnected);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 export function getNetworkConfig(): NetworkConfig {
   return getNetwork(config.stellar.network);

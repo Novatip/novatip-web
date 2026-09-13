@@ -8,6 +8,7 @@
  */
 
 import Link from "next/link";
+import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "./WalletConnectButton";
 import { ThemeToggle } from "./ThemeToggle";
@@ -26,7 +27,17 @@ export function Header() {
             className="flex items-center gap-2 group"
             aria-label="Novatip home"
           >
-            <span className="text-2xl" role="img" aria-hidden="true">💸</span>
+            {/* unoptimized: the optimizer refuses SVG unless dangerouslyAllowSVG
+                is enabled, and this is our own asset, not user input. */}
+            <Image
+              src="/logo.svg"
+              alt=""
+              width={28}
+              height={28}
+              className="rounded-md"
+              unoptimized
+              priority
+            />
             <span className="font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>

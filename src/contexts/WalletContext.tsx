@@ -21,7 +21,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { freighter, signNonce } from "@/lib/wallet";
+import { freighter, isFreighterInstalled, signNonce } from "@/lib/wallet";
 import { authApi } from "@/lib/api";
 import { onUnauthorized } from "@/lib/authEvents";
 import { isJwtExpired } from "@/lib/jwt";
@@ -116,7 +116,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(null);
 
     try {
-      if (!freighter.isAvailable()) {
+      if (!(await isFreighterInstalled())) {
         throw new Error(
           "Freighter wallet extension not found. Install it from freighter.app, then reload this page.",
         );
