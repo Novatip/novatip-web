@@ -18,7 +18,12 @@ import { TipSuccess } from "@/components/TipSuccess";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { getTipSplitterClient, makeSignTransaction, usdcToStroops } from "@/lib/wallet";
+import {
+  assertActiveAccount,
+  getTipSplitterClient,
+  makeSignTransaction,
+  usdcToStroops,
+} from "@/lib/wallet";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 
@@ -67,7 +72,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
           amount:  stroops,
           message: message.trim(),
         },
-        { signTransaction: makeSignTransaction() },
+        { signTransaction: makeSignTransaction(publicKey) },
       );
 
       setTxAmount(amount);

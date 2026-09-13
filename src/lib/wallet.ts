@@ -18,6 +18,7 @@ import {
   type NetworkConfig,
 } from "@novatip/sdk";
 import {
+  getAddress,
   isConnected,
   requestAccess,
   signMessage,
@@ -70,16 +71,51 @@ export function getTipSplitterClient(): TipSplitterClient {
  * Returns a signTransaction callback bound to the Freighter adapter
  * and the current network passphrase. Passed directly into SDK client methods.
  */
-export function makeSignTransaction() {
+export function makeSignTransaction(address: string) {
   const network = getNetworkConfig();
   return async (txXdr: string): Promise<string> => {
     const { signedTxXdr, error } = await freighterSignTransaction(txXdr, {
       networkPassphrase: network.passphrase,
+      address,
     });
     if (error) throw new Error(freighterMessage(error, "Transaction signing failed."));
     if (!signedTxXdr) throw new Error("Wallet did not return a signed transaction.");
     return signedTxXdr;
   };
+}
+
+/**
+ * The account Freighter currently has selected, or null if it will not say.
+ */
+export async function getActiveAddress(): Promise<string | null> {
+  const { address, error } = await getAddress();
+  if (error || !address) return null;
+  return address;
+}
+
+/**
+ * Fail before signing when the extension has a different account selected than
+ * the one the transaction is built for.
+ *
+ * Without this the mismatch is only discovered by the network, which rejects
+ * the submission as txBAD_AUTH and reports it as base64 XDR — accurate, and
+ * unreadable. The signature is genuine; it is just from the wrong key, because
+ * the source account comes from the address stored at connect time while
+ * Freighter signs with whatever account is active now.
+ */
+export async function assertActiveAccount(expected: string): Promise<void> {
+  const active = await getActiveAddress();
+  if (active && active !== expected) {
+    throw new Error(
+      `Freighter is currently on ${shorten(active)} but this action is for ` +
+        `${shorten(expected)}. Switch accounts in Freighter, or reconnect your ` +
+        `wallet to use the active one.`,
+    );
+  }
+}
+
+function shorten(address: string): string {
+  return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
 /**

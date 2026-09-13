@@ -18,7 +18,9 @@ import {
   type Jar,
   type Split,
 } from "@novatip/sdk";
-import { getTipSplitterClient, makeSignTransaction } from "./wallet";
+import { assertActiveAccount, getTipSplitterClient, makeSignTransaction } from "./wallet";
+import { describeSubmissionError } from "./txerror";
+import { assertRecipientsCanReceive } from "./trustline";
 
 /**
  * The on-chain jar ID for a slug. Mirrors `jarIdForSlug` in the backend — the
@@ -79,14 +81,26 @@ export async function syncJarToChain(opts: {
   jarId:  string;
   splits: Split[];
 }): Promise<JarSyncResult> {
+  // Checked before anything is built or signed: the contract authorises
+  // create_jar and update_splits against the owner, so a transaction signed by
+  // a different active account is rejected by the network, not by the wallet.
+  await assertActiveAccount(opts.owner);
+
+  // Checked before the jar is written, not when a tip arrives. The contract
+  // pays every recipient atomically, so one untrusted account breaks every
+  // tip to this jar — and it breaks it for the tipper, who cannot fix it.
+  await assertRecipientsCanReceive(opts.splits.map((s) => s.to));
+
   const client          = getTipSplitterClient();
-  const signTransaction = makeSignTransaction();
+  const signTransaction = makeSignTransaction(opts.owner);
   const existing        = await readJar(opts.jarId);
 
   if (!existing) {
-    await client.createJar(
-      { owner: opts.owner, jarId: opts.jarId, splits: opts.splits },
-      { signTransaction },
+    await describeSubmissionError(
+      client.createJar(
+        { owner: opts.owner, jarId: opts.jarId, splits: opts.splits },
+        { signTransaction },
+      ),
     );
     return "created";
   }
@@ -102,9 +116,11 @@ export async function syncJarToChain(opts: {
 
   if (sameSplits(existing.splits, opts.splits)) return "unchanged";
 
-  await client.updateSplits(
-    { jarId: opts.jarId, splits: opts.splits },
-    { signTransaction, owner: opts.owner },
+  await describeSubmissionError(
+    client.updateSplits(
+      { jarId: opts.jarId, splits: opts.splits },
+      { signTransaction, owner: opts.owner },
+    ),
   );
   return "updated";
 }

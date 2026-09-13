@@ -14,9 +14,12 @@ const getJar       = vi.fn();
 const createJar    = vi.fn();
 const updateSplits = vi.fn();
 
+const assertActiveAccount = vi.fn(async (_expected: string) => {});
+
 vi.mock("./wallet", () => ({
   getTipSplitterClient: () => ({ getJar, createJar, updateSplits }),
   makeSignTransaction:  () => async (xdr: string) => xdr,
+  assertActiveAccount:  (expected: string) => assertActiveAccount(expected),
 }));
 
 const { jarIdForSlug, readJar, syncJarToChain } = await import("./jar");
@@ -26,6 +29,8 @@ const OTHER = "GBASZB2BGT6WYIQ57PSXBNLK5PUH5W3ASRUS4DZHHHJW3YQ5ZWGASJJ5";
 const SPLITS = [{ to: OWNER, bps: 10000 }];
 
 beforeEach(() => {
+  assertActiveAccount.mockReset();
+  assertActiveAccount.mockResolvedValue(undefined);
   getJar.mockReset();
   createJar.mockReset();
   updateSplits.mockReset();
@@ -105,6 +110,31 @@ describe("syncJarToChain", () => {
       syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS }),
     ).rejects.toThrow(/already registered to a different wallet/);
 
+    expect(createJar).not.toHaveBeenCalled();
+    expect(updateSplits).not.toHaveBeenCalled();
+  });
+});
+
+describe("syncJarToChain account guard", () => {
+  it("checks the active wallet account before touching the chain", async () => {
+    getJar.mockRejectedValue(
+      new NovatipContractError(ContractErrorCode.JarNotFound),
+    );
+    createJar.mockResolvedValue(undefined);
+
+    await syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS });
+
+    expect(assertActiveAccount).toHaveBeenCalledWith(OWNER);
+  });
+
+  it("does not build or sign anything when the wrong account is active", async () => {
+    assertActiveAccount.mockRejectedValue(new Error("Freighter is currently on GBBB…"));
+
+    await expect(
+      syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS }),
+    ).rejects.toThrow(/Freighter is currently on/);
+
+    expect(getJar).not.toHaveBeenCalled();
     expect(createJar).not.toHaveBeenCalled();
     expect(updateSplits).not.toHaveBeenCalled();
   });
