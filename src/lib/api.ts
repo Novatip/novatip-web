@@ -11,6 +11,15 @@ import { emitUnauthorized } from "./authEvents";
 export interface RequestOptions extends Omit<RequestInit, "signal"> {
   timeout?: number;
   signal?: AbortSignal | null;
+  /**
+   * Skip the global "session expired" broadcast on a 401.
+   *
+   * Set for the sign-in endpoints. A 401 from /auth/challenge or /auth/verify
+   * means the login attempt failed, not that an existing session died — and
+   * broadcasting it tears down the wallet connection the user just made,
+   * bouncing them back to "Connect wallet".
+   */
+  skipUnauthorizedBroadcast?: boolean;
 }
 
 // ── Error ─────────────────────────────────────────────────────────────────────
@@ -97,7 +106,7 @@ async function request<T>(
     // A 401 from any endpoint means the session is no longer valid, whether
     // it expired or was never valid to begin with. Handle it in one place
     // rather than leaving every caller to notice its own 401.
-    if (res.status === 401) emitUnauthorized();
+    if (res.status === 401 && !init.skipUnauthorizedBroadcast) emitUnauthorized();
 
     throw new ApiError(
       res.status,
@@ -118,6 +127,7 @@ export const authApi = {
   challenge: (walletAddress: string, options?: RequestOptions) =>
     request<{ nonce: string }>("/auth/challenge", {
       ...options,
+      skipUnauthorizedBroadcast: true,
       method: "POST",
       body: JSON.stringify({ walletAddress }),
     }),
@@ -125,6 +135,7 @@ export const authApi = {
   verify: (walletAddress: string, signatureHex: string, options?: RequestOptions) =>
     request<{ jwt: string; isNewUser: boolean }>("/auth/verify", {
       ...options,
+      skipUnauthorizedBroadcast: true,
       method: "POST",
       body: JSON.stringify({ walletAddress, signatureHex }),
     }),

@@ -13,6 +13,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ApiError, analyticsApi, authApi } from "./api";
+import { onUnauthorized } from "./authEvents";
 
 // ── ApiError ──────────────────────────────────────────────────────────────────
 
@@ -135,5 +136,54 @@ describe("request() error handling", () => {
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect((init.headers as Record<string, string>)["Authorization"]).toBeUndefined();
+  });
+});
+
+
+// ── Session-expiry broadcast ──────────────────────────────────────────────────
+
+/**
+ * A 401 normally means the session died, and the wallet context listens for it
+ * so every widget drops back to disconnected at once. The sign-in endpoints are
+ * the exception: a 401 there means the login attempt failed, and broadcasting
+ * it tore down the wallet connection the user had just made, bouncing them
+ * straight back to "Connect wallet".
+ */
+describe("401 handling", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("broadcasts session expiry for an ordinary endpoint", async () => {
+    const seen = vi.fn();
+    const off = onUnauthorized(seen);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeFetchResponse(401, {})));
+
+    await expect(analyticsApi.totals("stale-jwt")).rejects.toBeInstanceOf(ApiError);
+
+    expect(seen).toHaveBeenCalledTimes(1);
+    off();
+  });
+
+  it("stays quiet when sign-in itself is rejected", async () => {
+    const seen = vi.fn();
+    const off = onUnauthorized(seen);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeFetchResponse(401, {})));
+
+    await expect(authApi.verify("GABC", "deadbeef")).rejects.toBeInstanceOf(ApiError);
+
+    expect(seen).not.toHaveBeenCalled();
+    off();
+  });
+
+  it("stays quiet when the challenge is rejected", async () => {
+    const seen = vi.fn();
+    const off = onUnauthorized(seen);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(makeFetchResponse(401, {})));
+
+    await expect(authApi.challenge("GABC")).rejects.toBeInstanceOf(ApiError);
+
+    expect(seen).not.toHaveBeenCalled();
+    off();
   });
 });
