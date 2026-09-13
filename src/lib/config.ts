@@ -19,8 +19,7 @@
  * Throws at module evaluation time (build or server start) if the variable
  * is absent or empty, naming it explicitly so the error is actionable.
  */
-function requirePublic(key: string): string {
-  const val = process.env[key];
+function requirePublic(key: string, val: string | undefined): string {
   if (!val) {
     throw new Error(
       `Missing required environment variable: ${key}\n` +
@@ -34,8 +33,8 @@ function requirePublic(key: string): string {
  * Return the value of an optional NEXT_PUBLIC_ variable, falling back to
  * `fallback` when absent or empty.
  */
-function optionalPublic(key: string, fallback: string): string {
-  return process.env[key] || fallback;
+function optionalPublic(val: string | undefined, fallback: string): string {
+  return val || fallback;
 }
 
 /**
@@ -45,8 +44,8 @@ function optionalPublic(key: string, fallback: string): string {
  * Throws at build/boot so a mis-configured contract ID surfaces immediately
  * rather than at the moment a supporter presses the Tip button.
  */
-function requireContractId(key: string): string {
-  const val = requirePublic(key);
+function requireContractId(key: string, raw: string | undefined): string {
+  const val = requirePublic(key, raw);
   if (!/^C[A-Z2-7]{55}$/.test(val)) {
     throw new Error(
       `Invalid value for ${key}: ${JSON.stringify(val)}\n` +
@@ -113,7 +112,10 @@ export const config = {
    * Defaults to localhost in development; set NEXT_PUBLIC_API_URL in
    * production deployments.
    */
-  apiUrl: optionalPublic("NEXT_PUBLIC_API_URL", "http://localhost:3001/api/v1"),
+  apiUrl: optionalPublic(
+    process.env.NEXT_PUBLIC_API_URL,
+    "http://localhost:3001/api/v1",
+  ),
 
   /**
    * Public origin of this deployment — see resolveSiteUrl above.
@@ -131,7 +133,7 @@ export const config = {
      * Defaults to "testnet"; set to "mainnet" for production.
      */
     network: optionalPublic(
-      "NEXT_PUBLIC_STELLAR_NETWORK",
+      process.env.NEXT_PUBLIC_STELLAR_NETWORK,
       "testnet",
     ) as "testnet" | "mainnet" | "local",
 
@@ -142,6 +144,7 @@ export const config = {
      */
     tipSplitterContractId: requireContractId(
       "NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID",
+      process.env.NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID,
     ),
 
     /**
@@ -149,7 +152,7 @@ export const config = {
      * Defaults to the well-known testnet/mainnet USDC SAC address.
      */
     usdcContractId: optionalPublic(
-      "NEXT_PUBLIC_USDC_CONTRACT_ID",
+      process.env.NEXT_PUBLIC_USDC_CONTRACT_ID,
       "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
     ),
   },
