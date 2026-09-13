@@ -125,8 +125,10 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             </button>
             {/*
               A plain anchor, not next/link — the router lives in the tree that
-              failed, so a full document load is the reliable way out.
+              failed, so a full document load is the reliable way out. next/link
+              would try to navigate through the very router that just crashed.
             */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="novatip-fatal__button novatip-fatal__button--ghost">
               Back to home
             </a>
