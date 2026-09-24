@@ -204,11 +204,20 @@ export const creatorApi = {
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
+export interface PublicTip {
+  id:          string;
+  fromAddress: string;
+  amount:      string;
+  message:     string;
+  ledgerAt:    string;
+}
+
 export interface ResolvedPage {
-  creator:   CreatorProfile;
-  tipUrl:    string;
-  qrSvgUrl:  string;
-  qrPngUrl:  string;
+  creator:    CreatorProfile;
+  tipUrl:     string;
+  qrSvgUrl:   string;
+  qrPngUrl:   string;
+  recentTips: PublicTip[];
 }
 
 export const resolverApi = {
