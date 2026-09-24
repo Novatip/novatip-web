@@ -39,6 +39,12 @@ function isValidAddress(address: string): boolean {
   return StrKey.isValidEd25519PublicKey(address);
 }
 
+// Addresses are compared trimmed and upper-cased so stray whitespace or a
+// lower-cased paste can't hide a duplicate.
+function normalizeAddress(address: string): string {
+  return address.trim().toUpperCase();
+}
+
 function withId(row: SplitRow): SplitRowState {
   return { id: crypto.randomUUID(), to: row.to, bps: String(row.bps) };
 }
@@ -69,7 +75,16 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
   const totalBps    = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
   const bpsValid    = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
   const addressesOk = rows.every((r) => isValidAddress(r.to));
-  const canSave     = bpsValid && addressesOk && !saving && !disabled;
+  // The contract rejects a jar that lists the same recipient twice
+  // (DuplicateRecipient), so duplicates block saving rather than just warn.
+  const addressCounts = rows.reduce<Map<string, number>>((counts, r) => {
+    const key = normalizeAddress(r.to);
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    return counts;
+  }, new Map());
+  const isDuplicate   = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
+  const hasDuplicates = isDuplicate.some(Boolean);
+  const canSave       = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
 
   function updateRow(index: number, field: keyof SplitRow, value: string) {
     setSuccess(false);
@@ -124,7 +139,9 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
                 error={
                   row.to && !isValidAddress(row.to)
                     ? "Invalid Stellar address"
-                    : undefined
+                    : isDuplicate[i]
+                      ? "Duplicate recipient — this address is already listed"
+                      : undefined
                 }
               />
             </div>
@@ -220,6 +237,13 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
           {totalBps < 10000
             ? ` Add ${(10000 - totalBps).toLocaleString()} more bps.`
             : ` Remove ${(totalBps - 10000).toLocaleString()} bps.`}
+        </p>
+      )}
+
+      {hasDuplicates && (
+        <p className="text-xs text-warning">
+          Each recipient can only appear once. Merge duplicate rows into a single
+          share before saving.
         </p>
       )}
 

@@ -158,6 +158,36 @@ describe("SplitsManager – save", () => {
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
   });
 
+  it("flags duplicate recipients and disables Save", () => {
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: VALID_ADDR_1, bps: 5_000 },
+    ]);
+    expect(screen.getAllByText(/duplicate recipient/i)).toHaveLength(2);
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+  });
+
+  it("detects duplicates regardless of surrounding whitespace or case", () => {
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: `  ${VALID_ADDR_1.toLowerCase()} `, bps: 5_000 },
+    ]);
+    const second = screen.getByLabelText(/recipient 2 address/i);
+    expect(second).toHaveValue(`  ${VALID_ADDR_1.toLowerCase()} `);
+    // Row 1 is valid, so its only complaint can be the duplicate.
+    expect(screen.getAllByText(/duplicate recipient/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+  });
+
+  it("does not flag distinct recipients as duplicates", () => {
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: VALID_ADDR_2, bps: 5_000 },
+    ]);
+    expect(screen.queryByText(/duplicate recipient/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeEnabled();
+  });
+
   it("enables Save when bps is 10 000 and all addresses are valid", () => {
     setup();
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeEnabled();
