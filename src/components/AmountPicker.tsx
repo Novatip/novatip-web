@@ -14,6 +14,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/Input";
 import { isValidTipAmount, usdcToStroops } from "@novatip/sdk";
+import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
 
 const PRESETS = ["1", "2", "5", "10", "25"];
 
@@ -55,15 +56,17 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
     onChange(clean);
   }
 
-  // Validate amount using SDK helper
+  // Validate amount using the SDK helper, plus our own ceiling — the SDK
+  // alone has no upper bound, and this is the one path a typo reaches.
   const amountValid = (() => {
     if (!value) return false;
     try {
-      return isValidTipAmount(usdcToStroops(value));
+      return isValidTipAmount(usdcToStroops(value)) && isWithinTipCeiling(value);
     } catch {
       return false;
     }
   })();
+  const exceedsCeiling = isCustom && !!value && Number(value) > MAX_CUSTOM_TIP_USDC;
 
   return (
     <div className="flex flex-col gap-3">
@@ -126,7 +129,9 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
       {/* Validation feedback */}
       {isCustom && value && !amountValid && (
         <p className="text-xs text-danger">
-          Enter a valid amount greater than 0
+          {exceedsCeiling
+            ? `Custom tips are capped at $${MAX_CUSTOM_TIP_USDC}`
+            : "Enter a valid amount greater than 0"}
         </p>
       )}
 
