@@ -10,6 +10,8 @@
  *   - After a successful tip is emitted by TipForm, switch to a fast
  *     polling window (every 3 seconds for up to 30 seconds) so the
  *     indexed entry appears as quickly as possible, then fall back.
+ *   - Paused while the tab is hidden (any in-flight request is aborted) and
+ *     refreshed immediately on return — see hooks/usePolling.
  *
  * Optimistic updates:
  *   - On tip success an optimistic "confirming…" entry is prepended
@@ -21,6 +23,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { analyticsApi } from "@/lib/api";
 import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
+import { usePolling } from "@/hooks/usePolling";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
@@ -100,9 +103,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   const [pendingTips, setPendingTips] = useState<PendingTip[]>([]);
   const [loading,     setLoading]     = useState(true);
   const [error,       setError]       = useState<string | null>(null);
+  const [intervalMs,  setIntervalMs]  = useState(NORMAL_INTERVAL);
 
   const fastUntilRef = useRef<number | null>(null);
-  const intervalRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -143,34 +146,24 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
       });
   }, [jwt, limit]);
 
-  const startPolling = useCallback(
-    (intervalMs: number) => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        fetchTips();
-        if (
-          fastUntilRef.current !== null &&
-          Date.now() > fastUntilRef.current
-        ) {
-          fastUntilRef.current = null;
-          startPolling(NORMAL_INTERVAL);
-        }
-      }, intervalMs);
-    },
-    [fetchTips],
-  );
+  const abortInFlight = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+  }, []);
 
-  // Initial fetch + normal polling
-  useEffect(() => {
+  const poll = useCallback(() => {
     fetchTips();
-    startPolling(NORMAL_INTERVAL);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchTips, startPolling]);
+    if (fastUntilRef.current !== null && Date.now() > fastUntilRef.current) {
+      fastUntilRef.current = null;
+      setIntervalMs(NORMAL_INTERVAL);
+    }
+  }, [fetchTips]);
+
+  // Initial fetch + polling, paused while the tab is hidden
+  usePolling(poll, intervalMs, { onHidden: abortInFlight });
+
+  // Abort any in-flight request on unmount
+  useEffect(() => abortInFlight, [abortInFlight]);
 
   // On tip success: add optimistic entry + kick off fast polling
   useEffect(() => {
@@ -187,15 +180,10 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
       fastUntilRef.current = Date.now() + FAST_WINDOW_MS;
       fetchTips();
-      startPolling(FAST_INTERVAL);
+      setIntervalMs(FAST_INTERVAL);
     });
-    return () => {
-      unsub();
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [fetchTips, startPolling]);
+    return unsub;
+  }, [fetchTips]);
 
   // Combine for rendering
   const feed: FeedEntry[] = mergeWithPending(indexedTips, pendingTips);
