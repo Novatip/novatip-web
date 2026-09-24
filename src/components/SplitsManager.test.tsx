@@ -23,9 +23,9 @@ import { render, screen, fireEvent, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { SplitsManager } from "./SplitsManager";
 
-// A valid Stellar G-address (56 chars: G + 55 A-Z2-7)
+// Valid Stellar G-addresses (correct version byte and CRC16 checksum)
 const VALID_ADDR_1 = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
-const VALID_ADDR_2 = "GBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBVNFKR";
+const VALID_ADDR_2 = "GAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBAEAQCAIBBKGO";
 
 const SOLO_SPLIT = [{ to: VALID_ADDR_1, bps: 10_000 }];
 
@@ -147,6 +147,14 @@ describe("SplitsManager – save", () => {
 
   it("disables Save when an address is invalid", () => {
     setup([{ to: "INVALID_ADDRESS", bps: 10_000 }]);
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+  });
+
+  it("rejects a well-formed address with a corrupted checksum", () => {
+    // Same shape as VALID_ADDR_1 (G + 55 base-32 chars) but the last char is
+    // flipped, so only the CRC16 check can catch it.
+    setup([{ to: VALID_ADDR_1.slice(0, -1) + "G", bps: 10_000 }]);
+    expect(screen.getByText(/invalid stellar address/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
   });
 

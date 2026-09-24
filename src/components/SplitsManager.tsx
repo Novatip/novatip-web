@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { validateSplitsBps } from "@novatip/sdk";
+import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
 
 export interface SplitRow {
@@ -29,6 +30,13 @@ interface SplitRowState {
   id:  string;
   to:  string;
   bps: string;
+}
+
+// StrKey checks the version byte and CRC16 checksum, not just the alphabet, so
+// a typo'd address that merely looks right is rejected before it reaches a jar.
+// (The SDK's isValidAccountId is still a shape-only regex.)
+function isValidAddress(address: string): boolean {
+  return StrKey.isValidEd25519PublicKey(address);
 }
 
 function withId(row: SplitRow): SplitRowState {
@@ -60,7 +68,7 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
   const parsedBps   = rows.map((r) => parseBpsInput(r.bps));
   const totalBps    = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
   const bpsValid    = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
-  const addressesOk = rows.every((r) => /^G[A-Z2-7]{55}$/.test(r.to));
+  const addressesOk = rows.every((r) => isValidAddress(r.to));
   const canSave     = bpsValid && addressesOk && !saving && !disabled;
 
   function updateRow(index: number, field: keyof SplitRow, value: string) {
@@ -114,7 +122,7 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
                 disabled={saving || disabled}
                 aria-label={`Recipient ${i + 1} address`}
                 error={
-                  row.to && !/^G[A-Z2-7]{55}$/.test(row.to)
+                  row.to && !isValidAddress(row.to)
                     ? "Invalid Stellar address"
                     : undefined
                 }
