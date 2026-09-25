@@ -252,6 +252,35 @@ export const analyticsApi = {
     }>(`/analytics/recent?limit=${limit}`, options, jwt),
 };
 
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export interface NotificationPreferences {
+  /** Receive an email after each indexed tip. */
+  emailEnabled:   boolean;
+  /** Receive a webhook POST after each indexed tip. */
+  webhookEnabled: boolean;
+}
+
+export const notificationsApi = {
+  getPreferences: (jwt: string, options?: RequestOptions) =>
+    request<{ preferences: NotificationPreferences }>(
+      "/notifications/preferences",
+      options,
+      jwt,
+    ),
+
+  updatePreferences: (
+    jwt: string,
+    prefs: Partial<NotificationPreferences>,
+    options?: RequestOptions,
+  ) =>
+    request<{ preferences: NotificationPreferences }>(
+      "/notifications/preferences",
+      { ...options, method: "PATCH", body: JSON.stringify(prefs) },
+      jwt,
+    ),
+};
+
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
 export const webhookApi = {
