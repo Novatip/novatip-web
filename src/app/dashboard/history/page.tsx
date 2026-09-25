@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { analyticsApi } from "@/lib/api";
+import { analyticsApi, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { shortenAddress } from "@novatip/sdk";
 import { Card } from "@/components/ui/Card";
@@ -26,7 +26,9 @@ interface Tip {
   ledgerAt:    string;
 }
 
-const PAGE_SIZE = 20;
+// Every request asks for one page, never the running total, so it stays
+// within the backend's cap however far back the creator scrolls.
+const PAGE_SIZE = Math.min(20, RECENT_TIPS_MAX_LIMIT);
 
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -46,6 +48,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   // Each call fetches one page starting after the rows already shown and
   // appends it, so a load more costs one page rather than the whole history,
@@ -64,14 +67,21 @@ export default function HistoryPage() {
         });
         setHasMore(r.tips.length === PAGE_SIZE);
         setError(null);
+        setPageError(null);
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => {
+        // A failed later page must not replace the rows already shown with
+        // a page-level error — report it beside the button so it can retry.
+        if (offset === 0) setError(e.message);
+        else setPageError("Couldn't load more tips. Try again.");
+      })
       .finally(() => setLoading(false));
   }, [jwt]);
 
   useEffect(() => {
     setTips([]);
     setHasMore(true);
+    setPageError(null);
     fetchPage(0);
   }, [fetchPage]);
 
@@ -165,16 +175,23 @@ export default function HistoryPage() {
         )}
 
         {hasMore && tips.length > 0 && (
-          <div className="pt-4 flex justify-center">
+          <div className="pt-4 flex flex-col items-center gap-2">
+            {pageError && <p className="text-xs text-red-400">{pageError}</p>}
             <Button
               variant="ghost"
               size="sm"
               loading={loading}
               onClick={loadMore}
             >
-              Load more
+              {pageError ? "Retry" : "Load more"}
             </Button>
           </div>
+        )}
+
+        {!hasMore && tips.length > 0 && (
+          <p className="pt-4 text-center text-xs text-gray-500">
+            That&apos;s all your tips.
+          </p>
         )}
       </Card>
 
