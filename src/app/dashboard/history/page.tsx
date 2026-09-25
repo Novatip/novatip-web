@@ -45,22 +45,24 @@ export default function HistoryPage() {
   const [tips,    setTips]    = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
-  const [limit,   setLimit]   = useState(PAGE_SIZE);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchTips = useCallback((currentLimit: number) => {
+  // Each call fetches one page starting after the rows already shown and
+  // appends it, so a load more costs one page rather than the whole history,
+  // and existing rows are never replaced.
+  const fetchPage = useCallback((offset: number) => {
     if (!jwt) return;
     setLoading(true);
     analyticsApi
-      .recent(jwt, currentLimit)
+      .recent(jwt, PAGE_SIZE, undefined, offset)
       .then((r) => {
-        // Append only new items — avoids re-downloading every page and
-        // preserves scroll position.
+        // A tip indexed between pages shifts the offset by one, which would
+        // repeat the last row of the previous page — skip ids already shown.
         setTips((prev) => {
-          const newItems = r.tips.slice(prev.length);
-          return [...prev, ...newItems];
+          const seen = new Set(prev.map((t) => t.id));
+          return [...prev, ...r.tips.filter((t) => !seen.has(t.id))];
         });
-        setHasMore(r.tips.length === currentLimit);
+        setHasMore(r.tips.length === PAGE_SIZE);
         setError(null);
       })
       .catch((e: Error) => setError(e.message))
@@ -68,18 +70,14 @@ export default function HistoryPage() {
   }, [jwt]);
 
   useEffect(() => {
-    fetchTips(limit);
-  }, [fetchTips, limit]);
-
-  // Backend caps limit at 100 — cap on the client side so we never send
-  // an invalid request. Disable the button once we hit the cap.
-  const BACKEND_MAX = 100;
-  const atLimit = limit >= BACKEND_MAX;
+    setTips([]);
+    setHasMore(true);
+    fetchPage(0);
+  }, [fetchPage]);
 
   function loadMore() {
-    if (atLimit) return;
-    const next = Math.min(limit + PAGE_SIZE, BACKEND_MAX);
-    setLimit(next);
+    if (loading) return;
+    fetchPage(tips.length);
   }
 
   return (
@@ -166,14 +164,13 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {/* {atLimit ? "Showing all tips (100 max)" : "Load more"} */}
         {hasMore && tips.length > 0 && (
           <div className="pt-4 flex justify-center">
             <Button
               variant="ghost"
               size="sm"
               loading={loading}
-              onClick={loadMore} disabled={atLimit}
+              onClick={loadMore}
             >
               Load more
             </Button>

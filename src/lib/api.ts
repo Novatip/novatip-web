@@ -249,7 +249,7 @@ export const analyticsApi = {
       jwt,
     ),
 
-  recent: (jwt: string, limit = 20, options?: RequestOptions) =>
+  recent: (jwt: string, limit = 20, options?: RequestOptions, offset = 0) =>
     request<{
       tips: Array<{
         id: string;
@@ -258,7 +258,7 @@ export const analyticsApi = {
         message: string;
         ledgerAt: string;
       }>;
-    }>(`/analytics/recent?limit=${limit}`, options, jwt),
+    }>(`/analytics/recent?limit=${limit}&offset=${offset}`, options, jwt),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
