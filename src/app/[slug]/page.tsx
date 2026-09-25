@@ -14,6 +14,7 @@ import { Header } from "@/components/Header";
 import { TipForm } from "@/components/TipForm";
 import { Badge } from "@/components/ui/Badge";
 import { QRDownload } from "@/components/QRDownload";
+import { SplitBreakdown } from "@/components/SplitBreakdown";
 
 interface Props {
   // Next 15 resolves route params asynchronously, so this is a Promise.
@@ -133,6 +134,11 @@ export default async function TipPage({ params }: Props) {
                   : "Solo creator"}
               </Badge>
             </div>
+          </div>
+
+          {/* Split breakdown — who gets paid and how much, before the supporter signs */}
+          <div className="mb-6">
+            <SplitBreakdown splits={creator.splits} />
           </div>
 
           {/* Tip form — client component */}
