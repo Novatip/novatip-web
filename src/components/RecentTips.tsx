@@ -31,79 +31,127 @@ import { Badge } from "@/components/ui/Badge";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface IndexedTip {
-  kind:        "indexed";
-  id:          string;
+  kind: "indexed";
+  id: string;
   fromAddress: string;
-  amount:      string; // raw stroops string from API
-  message:     string;
-  ledgerAt:    string;
+  amount: string; // raw stroops string from API
+  message: string;
+  ledgerAt: string;
 }
 
 interface PendingTip {
-  kind:        "pending";
+  kind: "pending";
   /** Unique client-side id — never collides with real indexed ids. */
-  id:          string;
+  id: string;
   fromAddress: string;
   /** Dollar amount string from TipForm, e.g. "2" */
   displayAmount: string;
-  message:     string;
+  message: string;
+  /**
+   * Unix timestamp (ms) after which this entry is considered unconfirmed.
+   * Set to Date.now() + FAST_WINDOW_MS when the optimistic entry is created.
+   */
+  expiresAt: number;
 }
 
-type FeedEntry = IndexedTip | PendingTip;
+interface UnconfirmedTip extends Omit<PendingTip, "kind"> {
+  kind: "unconfirmed";
+}
+
+type FeedEntry = IndexedTip | PendingTip | UnconfirmedTip;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60)   return `${diff}s ago`;
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
+}
+
+/**
+ * Convert a dollar display string (e.g. "5" or "2.50") to raw stroops
+ * (1 USDC = 10_000_000 stroops) using integer arithmetic to avoid
+ * floating-point drift.
+ */
+function displayAmountToStroops(display: string): bigint {
+  const [integer = "0", fraction = ""] = display.split(".");
+  const paddedFraction = fraction.padEnd(7, "0").slice(0, 7);
+  return BigInt(integer) * 10_000_000n + BigInt(paddedFraction);
+}
+
+/**
+ * Return true when an indexed tip is the on-chain counterpart of a pending
+ * optimistic entry — same sender AND the raw amount corresponds to the dollar
+ * value the user submitted (≥ to survive rounding and split scenarios).
+ */
+function isMatch(indexed: IndexedTip, pending: PendingTip): boolean {
+  if (indexed.fromAddress !== pending.fromAddress) return false;
+  try {
+    return BigInt(indexed.amount) >= displayAmountToStroops(pending.displayAmount);
+  } catch {
+    return false;
+  }
 }
 
 /**
  * Merge a fresh list of indexed tips with any still-pending optimistic entries.
  *
  * An optimistic entry is considered "confirmed" (and therefore removed) when
- * the indexed list contains a tip from the same address where the raw amount
- * corresponds to the same dollar value the user sent.  We use a loose match
- * (same address, amount ≥ optimistic) to survive rounding and split scenarios.
+ * the indexed list contains a tip from the same sender where the raw amount
+ * corresponds to the same dollar value the user submitted.  We use a loose
+ * match (same address, amount ≥ optimistic) to survive rounding and split
+ * scenarios, but we always require both fields so a returning supporter's
+ * earlier tip never clears their new pending entry.
+ *
+ * If the fast-polling window has elapsed without a match, the entry is
+ * downgraded to "unconfirmed" so the UI can signal that something may have
+ * gone wrong — rather than leaving a pulsing "confirming…" row indefinitely.
  */
 function mergeWithPending(
   indexed: IndexedTip[],
   pending: PendingTip[],
+  now = Date.now(),
 ): FeedEntry[] {
-  // Build a set of fromAddresses that now appear in the indexed list so we
-  // can drop any pending entry whose on-chain confirmation arrived.
-  const confirmedAddresses = new Set(indexed.map((t) => t.fromAddress));
+  const unconfirmed: UnconfirmedTip[] = [];
+  const stillPending: PendingTip[] = [];
 
-  const stillPending = pending.filter(
-    (p) => !confirmedAddresses.has(p.fromAddress),
-  );
+  for (const p of pending) {
+    // confirmed — an indexed tip matches both address AND amount
+    if (indexed.some((t) => isMatch(t, p))) continue;
+    if (now > p.expiresAt) {
+      // Window elapsed without a match — downgrade to unconfirmed
+      unconfirmed.push({ ...p, kind: "unconfirmed" });
+    } else {
+      stillPending.push(p);
+    }
+  }
 
-  // Pending entries go at the top (they are always the newest)
-  return [...stillPending, ...indexed];
+  // Pending (still-confirming) entries go at the top, followed by unconfirmed,
+  // then the indexed list.
+  return [...stillPending, ...unconfirmed, ...indexed];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const NORMAL_INTERVAL = 15_000; // 15 s — steady-state
-const FAST_INTERVAL   =  3_000; // 3 s  — right after a tip
-const FAST_WINDOW_MS  = 30_000; // stay fast for 30 s
+const FAST_INTERVAL = 3_000; // 3 s  — right after a tip
+const FAST_WINDOW_MS = 30_000; // stay fast for 30 s
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface RecentTipsProps {
-  jwt:    string;
+  jwt: string;
   limit?: number;
 }
 
 export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   const [indexedTips, setIndexedTips] = useState<IndexedTip[]>([]);
   const [pendingTips, setPendingTips] = useState<PendingTip[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
-  const [intervalMs,  setIntervalMs]  = useState(NORMAL_INTERVAL);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [intervalMs, setIntervalMs] = useState(NORMAL_INTERVAL);
 
   const fastUntilRef = useRef<number | null>(null);
 
@@ -128,10 +176,10 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         setIndexedTips(fresh);
         setError(null);
 
-        // Drop optimistic entries that have now been indexed
-        const confirmedAddresses = new Set(fresh.map((t) => t.fromAddress));
+        // Drop optimistic entries whose indexed counterpart has arrived,
+        // matched by both address AND amount — not just address alone.
         setPendingTips((prev) =>
-          prev.filter((p) => !confirmedAddresses.has(p.fromAddress)),
+          prev.filter((p) => !fresh.some((t) => isMatch(t, p))),
         );
       })
       .catch((e: any) => {
@@ -153,6 +201,10 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
   const poll = useCallback(() => {
     fetchTips();
+    // Prune entries that have outlived their confirmation window from state so
+    // the mergeWithPending render path doesn't keep downgrading them on every
+    // paint — they've already moved to "unconfirmed" in the UI.
+    setPendingTips((prev) => prev.filter((p) => Date.now() <= p.expiresAt));
     if (fastUntilRef.current !== null && Date.now() > fastUntilRef.current) {
       fastUntilRef.current = null;
       setIntervalMs(NORMAL_INTERVAL);
@@ -168,17 +220,19 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   // On tip success: add optimistic entry + kick off fast polling
   useEffect(() => {
     const unsub = tipEvents.subscribe((payload: TipSuccessPayload) => {
+      const expiresAt = Date.now() + FAST_WINDOW_MS;
       const optimistic: PendingTip = {
-        kind:          "pending",
-        id:            `pending-${Date.now()}`,
-        fromAddress:   payload.fromAddress,
+        kind: "pending",
+        id: `pending-${Date.now()}`,
+        fromAddress: payload.fromAddress,
         displayAmount: payload.amount,
-        message:       payload.message,
+        message: payload.message,
+        expiresAt,
       };
 
       setPendingTips((prev) => [optimistic, ...prev]);
 
-      fastUntilRef.current = Date.now() + FAST_WINDOW_MS;
+      fastUntilRef.current = expiresAt;
       fetchTips();
       setIntervalMs(FAST_INTERVAL);
     });
@@ -230,6 +284,8 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
           {feed.map((entry) =>
             entry.kind === "pending" ? (
               <PendingTipRow key={entry.id} tip={entry} />
+            ) : entry.kind === "unconfirmed" ? (
+              <UnconfirmedTipRow key={entry.id} tip={entry} />
             ) : (
               <IndexedTipRow key={entry.id} tip={entry} />
             ),
@@ -301,6 +357,45 @@ function PendingTipRow({ tip }: { tip: PendingTip }) {
       >
         <span className="h-1.5 w-1.5 rounded-full bg-warning animate-pulse shrink-0" />
         confirming…
+      </span>
+    </li>
+  );
+}
+
+/**
+ * Shown when the fast-polling window has elapsed without an indexed match.
+ * Signals to the creator that the tip may not have landed rather than
+ * showing a forever-pulsing "confirming…" row.
+ */
+function UnconfirmedTipRow({ tip }: { tip: UnconfirmedTip }) {
+  return (
+    <li className="flex items-start gap-3 opacity-50">
+      <div className="h-8 w-8 rounded-full bg-fg-faint/20 flex items-center justify-center shrink-0">
+        <span className="text-xs">💸</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-fg">
+          <span className="font-mono text-fg-subtle">
+            {shortenAddress(tip.fromAddress)}
+          </span>
+          {" "}tipped{" "}
+          <span className="font-semibold text-accent">
+            ${tip.displayAmount} USDC
+          </span>
+        </p>
+        {tip.message && (
+          <p className="text-xs text-fg-faint mt-0.5 truncate">
+            &ldquo;{tip.message}&rdquo;
+          </p>
+        )}
+      </div>
+      {/* Unconfirmed badge — no pulse, dimmer colour */}
+      <span
+        className="text-xs text-fg-faint shrink-0 mt-0.5 flex items-center gap-1"
+        aria-label="Tip could not be confirmed on-chain"
+      >
+        <span className="h-1.5 w-1.5 rounded-full bg-fg-faint shrink-0" />
+        unconfirmed
       </span>
     </li>
   );
