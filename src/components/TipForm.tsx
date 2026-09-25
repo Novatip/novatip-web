@@ -26,6 +26,7 @@ import {
 } from "@/lib/wallet";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
+import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 
 // FRONTEND MESSAGE LENGTH LIMIT
 // TODO: Once the contract-side limit lands and is exported by the SDK,
@@ -37,7 +38,7 @@ interface TipFormProps {
   slug:  string;
 }
 
-type FormStep = "input" | "signing" | "success" | "error";
+type FormStep = "input" | "confirm" | "signing" | "success" | "error";
 
 export function TipForm({ jarId, slug }: TipFormProps) {
   const { publicKey, isConnected } = useWallet();
@@ -52,7 +53,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
   const stroops    = (() => {
     try { return usdcToStroops(amount); } catch { return BigInt(0); }
   })();
-  const amountValid = isValidTipAmount(stroops);
+  const amountValid = isValidTipAmount(stroops) && isWithinTipCeiling(amount);
   const trimmedMessage = message.trim();
   const canSubmit   = isConnected && amountValid && trimmedMessage.length <= MAX_MESSAGE_LENGTH && step === "input";
 
@@ -96,6 +97,16 @@ export function TipForm({ jarId, slug }: TipFormProps) {
     setError(null);
   }
 
+  // Presets top out at $25, so this only ever gates the custom field — the
+  // one path a typo (5 → 500) can slip through before the wallet opens.
+  function handleCtaClick() {
+    if (isLargeTip(amount)) {
+      setStep("confirm");
+    } else {
+      void handleTip();
+    }
+  }
+
   // ── Success state ──────────────────────────────────────────────────────────
   if (step === "success") {
     return (
@@ -120,7 +131,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
         <AmountPicker
           value={amount}
           onChange={setAmount}
-          disabled={step === "signing"}
+          disabled={step === "signing" || step === "confirm"}
         />
 
         {/* Message input */}
@@ -132,7 +143,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            disabled={step === "signing"}
+            disabled={step === "signing" || step === "confirm"}
             placeholder="Say something nice… 🎉"
             maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
@@ -156,20 +167,47 @@ export function TipForm({ jarId, slug }: TipFormProps) {
 
         {/* CTA */}
         {isConnected ? (
-          <Button
-            size="lg"
-            className="w-full"
-            disabled={!canSubmit}
-            loading={step === "signing"}
-            onClick={step === "error" ? handleRetry : handleTip}
-            aria-label={step === "signing" ? "Sending tip…" : `Send $${amount} USDC tip`}
-          >
-            {step === "signing"
-              ? "Waiting for signature…"
-              : step === "error"
-              ? "Retry"
-              : `Send $${amountValid ? amount : "—"} USDC tip 💸`}
-          </Button>
+          step === "confirm" ? (
+            <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3 flex flex-col gap-3">
+              <p className="text-sm text-fg">
+                That&rsquo;s <span className="font-semibold text-accent">${amount} USDC</span> —
+                unusually large for a tip. Once signed, it can&rsquo;t be undone.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="md"
+                  className="flex-1"
+                  onClick={() => setStep("input")}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="md"
+                  className="flex-1"
+                  onClick={() => void handleTip()}
+                  aria-label={`Confirm sending $${amount} USDC tip`}
+                >
+                  Confirm ${amount} tip
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              size="lg"
+              className="w-full"
+              disabled={!canSubmit}
+              loading={step === "signing"}
+              onClick={step === "error" ? handleRetry : handleCtaClick}
+              aria-label={step === "signing" ? "Sending tip…" : `Send $${amount} USDC tip`}
+            >
+              {step === "signing"
+                ? "Waiting for signature…"
+                : step === "error"
+                ? "Retry"
+                : `Send $${amountValid ? amount : "—"} USDC tip 💸`}
+            </Button>
+          )
         ) : (
           <div className="flex flex-col gap-2 items-center">
             <p className="text-sm text-fg-subtle">Connect your wallet to send a tip</p>

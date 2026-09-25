@@ -10,7 +10,7 @@
  *   Step 3 — Share link + QR
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
@@ -19,6 +19,8 @@ import { SplitsStep }    from "@/components/onboarding/SplitsStep";
 import { ShareStep }     from "@/components/onboarding/ShareStep";
 import { ThemeToggle }   from "@/components/ThemeToggle";
 import { Card }          from "@/components/ui/Card";
+import { authApi, creatorApi } from "@/lib/api";
+import { isTempSlug } from "@/lib/onboarding";
 import Link from "next/link";
 
 const STEP_LABELS = ["Claim slug", "Set splits", "Share"];
@@ -27,6 +29,35 @@ export default function OnboardingPage() {
   const { isConnected, jwt } = useWallet();
   const [step, setStep] = useState(0);
   const [slug, setSlug] = useState("");
+  const [resuming, setResuming] = useState(false);
+
+  // A returning creator who already claimed a slug should not be dropped
+  // back at step one. A temporary slug (the backend's default for every new
+  // sign-in) means there is nothing to resume; a real one means picking up
+  // at splits, or share if splits were saved too.
+  useEffect(() => {
+    if (!jwt) return;
+    let cancelled = false;
+    setResuming(true);
+
+    (async () => {
+      try {
+        const { user } = await authApi.me(jwt);
+        if (cancelled || isTempSlug(user.slug)) return;
+
+        setSlug(user.slug);
+        const { creator } = await creatorApi.getBySlug(user.slug);
+        if (cancelled) return;
+        setStep(creator.splits.length > 0 ? 2 : 1);
+      } catch {
+        // Not resumable — fall back to starting fresh.
+      } finally {
+        if (!cancelled) setResuming(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [jwt]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
@@ -69,20 +100,28 @@ export default function OnboardingPage() {
 
             {/* Step content */}
             <Card>
-              {step === 0 && jwt && (
-                <SlugStep
-                  jwt={jwt}
-                  onNext={(s) => { setSlug(s); setStep(1); }}
-                />
-              )}
-              {step === 1 && (
-                <SplitsStep
-                  slug={slug}
-                  onNext={() => setStep(2)}
-                />
-              )}
-              {step === 2 && (
-                <ShareStep slug={slug} />
+              {resuming ? (
+                <p className="text-sm text-fg-subtle text-center py-8">
+                  Checking your progress…
+                </p>
+              ) : (
+                <>
+                  {step === 0 && jwt && (
+                    <SlugStep
+                      jwt={jwt}
+                      onNext={(s) => { setSlug(s); setStep(1); }}
+                    />
+                  )}
+                  {step === 1 && (
+                    <SplitsStep
+                      slug={slug}
+                      onNext={() => setStep(2)}
+                    />
+                  )}
+                  {step === 2 && (
+                    <ShareStep slug={slug} />
+                  )}
+                </>
               )}
             </Card>
           </>
