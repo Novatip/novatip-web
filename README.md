@@ -146,6 +146,172 @@ If a test depends on `@novatip/sdk`, the stub at `src/test/mocks/novatip-sdk.ts`
 
 `npm test` runs as part of the GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`, alongside lint, typecheck, and build steps.
 
+## Client-side architecture
+
+### State layers
+
+There are three places state can live. Use the right one for the job.
+
+**`WalletContext` (`src/contexts/WalletContext.tsx`)**
+
+The single source of truth for identity. It holds:
+
+| Field | What it is |
+|-------|-----------|
+| `publicKey` | The connected Stellar address, or `null` |
+| `jwt` | The creator session JWT issued by the backend, or `null` |
+| `isConnected` | Convenience boolean — `!!publicKey` |
+| `isConnecting` | True while the Freighter + SIWS round trip is in flight |
+| `error` | The last connection or sign-in error message, or `null` |
+
+`publicKey` and `jwt` are persisted to `localStorage` and rehydrated on mount.
+They are separate because a visitor who only wants to tip needs a wallet
+connection but never needs a creator JWT.
+
+Put state here only if it must survive navigation or must be visible to
+unrelated parts of the tree at the same time. Everything else belongs closer to
+the component that uses it.
+
+**Per-component fetching**
+
+Dashboard pages and widgets fetch their own data with `useEffect` + `AbortController`.
+Each component is responsible for its own loading, error, and data states.
+This is intentional: the pages are independent, they load in parallel, and an
+error in one should never block the others.
+
+The pattern every dashboard page follows:
+
+```ts
+const abortControllerRef = useRef<AbortController | null>(null);
+
+useEffect(() => {
+  if (!jwt) return;
+  // cancel any in-flight request for this component
+  abortControllerRef.current?.abort();
+  const controller = new AbortController();
+  abortControllerRef.current = controller;
+
+  setLoading(true);
+  someApi.someMethod(jwt, { signal: controller.signal })
+    .then(setData)
+    .catch((e) => { if (e.code !== "ABORTED") setError(e.message); })
+    .finally(() => {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setLoading(false);
+      }
+    });
+
+  return () => { abortControllerRef.current?.abort(); };
+}, [jwt]);
+```
+
+The `sessionKey` on the dashboard layout's `<main>` remounts all children
+whenever the connected wallet changes, so stale data from a previous creator
+session is never shown.
+
+**Local component state**
+
+Ephemeral UI state (open/closed, form values, hover, copy status) lives in
+`useState` inside the component that owns it. It is never promoted unless two
+unrelated components genuinely need to react to the same change.
+
+---
+
+### Event buses
+
+Two tiny pub/sub buses in `src/lib/` decouple things that cannot share a React
+ancestor without prop-drilling or an unnecessary shared context.
+
+**`tipEvents` (`src/lib/tipEvents.ts`)**
+
+Carries a `TipSuccessPayload` (`fromAddress`, `amount`, `message`) after a tip
+transaction is confirmed on-chain.
+
+- **Emitter:** `TipForm` — after the Soroban transaction is confirmed.
+- **Subscribers:** `RecentTips` and `Leaderboard` — they prepend the new tip
+  optimistically rather than waiting for the backend indexer (~6 s).
+
+Without this bus, `TipForm` would have to lift its success state up to a common
+ancestor of `RecentTips` and `Leaderboard`, which are on a completely different
+page (`/dashboard`). The bus is the right scope for a one-way broadcast with no
+shared ancestor.
+
+**`authEvents` (`src/lib/authEvents.ts`)**
+
+Carries a single signal: `emitUnauthorized()`.
+
+- **Emitter:** `lib/api.ts` — on any HTTP 401 from any endpoint.
+- **Subscriber:** `WalletContext` — clears the JWT and public key so every
+  dashboard widget drops its auth state at once.
+
+This bus exists because `lib/api.ts` is a plain TypeScript module with no React
+dependency. It cannot call `useWallet()` directly. The bus keeps the API client
+framework-agnostic while still letting one 401 tear down the whole session.
+
+> **Before adding a new event bus:** check whether `WalletContext` or a
+> lifted state in the nearest common ancestor already covers the need.
+> The buses exist to solve a specific structural problem, not as a general
+> state-sharing mechanism. Duplicating them for convenience will make the
+> data flow harder to follow.
+
+---
+
+### How a tip landing propagates
+
+1. `TipForm` calls `TipSplitterClient.submit()` and awaits on-chain confirmation.
+2. On success, `TipForm` calls `tipEvents.emit(payload)`.
+3. `RecentTips` and `Leaderboard` are subscribed via `tipEvents.subscribe()` in
+   their own `useEffect`s. They prepend / update their local state immediately.
+4. Separately, the backend indexer picks up the `TipReceived` Soroban event
+   within ~6 seconds and writes it to the database.
+5. The next time the dashboard loads (or the wallet reconnects), components
+   re-fetch from the API and reflect the persisted record.
+
+Steps 3 and 5 are independent. The optimistic update in step 3 means the creator
+sees the tip immediately; the re-fetch in step 5 is the source of truth.
+
+---
+
+### Worked example — adding a feature that needs shared state
+
+**Scenario:** you want to show a "New tip!" badge in the dashboard sidebar
+whenever a tip arrives, without polling.
+
+**Step 1 — subscribe to the existing bus.**
+The tip already flows through `tipEvents`. Add a subscriber in the dashboard
+layout (or a new hook) — do not create a second bus.
+
+```ts
+// src/hooks/useNewTipBadge.ts
+import { useEffect, useState } from "react";
+import { tipEvents } from "@/lib/tipEvents";
+
+export function useNewTipBadge() {
+  const [hasNew, setHasNew] = useState(false);
+
+  useEffect(() => {
+    return tipEvents.subscribe(() => setHasNew(true));
+  }, []);
+
+  return { hasNew, clear: () => setHasNew(false) };
+}
+```
+
+**Step 2 — consume the hook where the UI lives.**
+Call it in the dashboard layout and pass `hasNew` down to the sidebar nav item.
+Clear it when the user visits the page that shows recent tips.
+
+**Step 3 — ask: does this need to outlive the component?**
+If the badge should survive a client-side navigation (e.g. the user goes to
+Splits and back), lift the `useState` into the dashboard layout where the
+sidebar already lives. It does not belong in `WalletContext` because it is
+dashboard-local UI state, not identity state.
+
+If it needed to survive a full page reload, you would persist it in
+`localStorage` yourself — but that is almost never the right call for a
+transient UI indicator.
+
 ## Accessibility
 
 Novatip is used on mobile, with keyboard navigation, and by screen-reader users.
