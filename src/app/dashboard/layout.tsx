@@ -30,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/qr",        label: "QR & Link", icon: "🔗" },
   { href: "/dashboard/settings",  label: "Settings",  icon: "⚙️"  },
 ];
+import { NAV_ITEMS } from "./nav";
 
 // ── Tip-link copy control ─────────────────────────────────────────────────────
 
