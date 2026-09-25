@@ -11,7 +11,7 @@
  *   5. Error → inline error message with retry
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { AmountPicker } from "@/components/AmountPicker";
 import { TipSuccess } from "@/components/TipSuccess";
@@ -24,6 +24,7 @@ import {
   makeSignTransaction,
   usdcToStroops,
 } from "@/lib/wallet";
+import { getUsdcBalance } from "@/lib/balance";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 
@@ -47,14 +48,36 @@ export function TipForm({ jarId, slug }: TipFormProps) {
   const [step,    setStep]    = useState<FormStep>("input");
   const [error,   setError]   = useState<string | null>(null);
   const [txAmount, setTxAmount] = useState("");
+  const [balance, setBalance] = useState<bigint | null>(null);
+
+  // Read the supporter's USDC balance once connected, so an unaffordable
+  // amount can be caught here instead of surfacing as an opaque wallet/chain
+  // rejection after they've already signed.
+  useEffect(() => {
+    if (!publicKey) {
+      setBalance(null);
+      return;
+    }
+    let cancelled = false;
+    getUsdcBalance(publicKey)
+      .then((b) => { if (!cancelled) setBalance(b); })
+      .catch(() => { if (!cancelled) setBalance(null); });
+    return () => { cancelled = true; };
+  }, [publicKey]);
 
   // ── Validation ─────────────────────────────────────────────────────────────
   const stroops    = (() => {
     try { return usdcToStroops(amount); } catch { return BigInt(0); }
   })();
   const amountValid = isValidTipAmount(stroops);
+  const insufficientBalance = balance !== null && amountValid && stroops > balance;
   const trimmedMessage = message.trim();
-  const canSubmit   = isConnected && amountValid && trimmedMessage.length <= MAX_MESSAGE_LENGTH && step === "input";
+  const canSubmit   =
+    isConnected &&
+    amountValid &&
+    !insufficientBalance &&
+    trimmedMessage.length <= MAX_MESSAGE_LENGTH &&
+    step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleTip() {
@@ -121,6 +144,7 @@ export function TipForm({ jarId, slug }: TipFormProps) {
           value={amount}
           onChange={setAmount}
           disabled={step === "signing"}
+          balance={balance}
         />
 
         {/* Message input */}
