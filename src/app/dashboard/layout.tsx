@@ -22,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/splits",    label: "Splits",    icon: "✂️"  },
   { href: "/dashboard/qr",        label: "QR & Link", icon: "🔗" },
   { href: "/dashboard/webhooks",  label: "Webhooks",  icon: "🪝" },
+  { href: "/dashboard/settings",  label: "Settings",  icon: "⚙️" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
