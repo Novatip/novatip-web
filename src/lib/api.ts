@@ -204,11 +204,20 @@ export const creatorApi = {
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
+export interface PublicTip {
+  id:          string;
+  fromAddress: string;
+  amount:      string;
+  message:     string;
+  ledgerAt:    string;
+}
+
 export interface ResolvedPage {
-  creator:   CreatorProfile;
-  tipUrl:    string;
-  qrSvgUrl:  string;
-  qrPngUrl:  string;
+  creator:    CreatorProfile;
+  tipUrl:     string;
+  qrSvgUrl:   string;
+  qrPngUrl:   string;
+  recentTips: PublicTip[];
 }
 
 export const resolverApi = {
@@ -250,6 +259,35 @@ export const analyticsApi = {
         ledgerAt: string;
       }>;
     }>(`/analytics/recent?limit=${limit}`, options, jwt),
+};
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+
+export interface NotificationPreferences {
+  /** Receive an email after each indexed tip. */
+  emailEnabled:   boolean;
+  /** Receive a webhook POST after each indexed tip. */
+  webhookEnabled: boolean;
+}
+
+export const notificationsApi = {
+  getPreferences: (jwt: string, options?: RequestOptions) =>
+    request<{ preferences: NotificationPreferences }>(
+      "/notifications/preferences",
+      options,
+      jwt,
+    ),
+
+  updatePreferences: (
+    jwt: string,
+    prefs: Partial<NotificationPreferences>,
+    options?: RequestOptions,
+  ) =>
+    request<{ preferences: NotificationPreferences }>(
+      "/notifications/preferences",
+      { ...options, method: "PATCH", body: JSON.stringify(prefs) },
+      jwt,
+    ),
 };
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────

@@ -12,6 +12,8 @@
  *   optionalPublic — safe to omit; falls back to a documented default
  */
 
+import { StrKey } from "@stellar/stellar-sdk";
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
@@ -39,18 +41,18 @@ function optionalPublic(val: string | undefined, fallback: string): string {
 
 /**
  * Validate that `value` looks like a Stellar/Soroban contract ID:
- * a 56-character base-32 string beginning with "C".
+ * a 56-character base-32 strkey beginning with "C" with a valid checksum.
  *
  * Throws at build/boot so a mis-configured contract ID surfaces immediately
  * rather than at the moment a supporter presses the Tip button.
  */
 function requireContractId(key: string, raw: string | undefined): string {
   const val = requirePublic(key, raw);
-  if (!/^C[A-Z2-7]{55}$/.test(val)) {
+  if (!StrKey.isValidContract(val)) {
     throw new Error(
       `Invalid value for ${key}: ${JSON.stringify(val)}\n` +
       `Expected a 56-character Soroban contract ID starting with "C" ` +
-      `(e.g. CAAAA…AAAA).`,
+      `(e.g. CAAAA…BSC4).`,
     );
   }
   return val;

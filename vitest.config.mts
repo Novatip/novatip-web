@@ -21,7 +21,7 @@ export default defineConfig({
     // which is the point of it — but that means importing anything that reaches
     // config needs a syntactically valid id present. Placeholder, never dialled.
     env: {
-      NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID: "C" + "A".repeat(55),
+      NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID: "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABSC4",
     },
     alias: {
       // Resolve the uninstalled workspace package to our hand-written stub

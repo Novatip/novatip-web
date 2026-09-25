@@ -27,6 +27,16 @@ npm install
 cp .env.example .env.local   # NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID is required
 ```
 
+## Accessibility
+
+Before opening a pull request, work through the [accessibility checklist in the README](./README.md#accessibility).
+Reviewers will use it as a rubric, so saving it for after review costs more than checking once before.
+
+The short version: every interactive element needs an accessible name, tab
+order must follow visual order, focus rings must be visible, colours must meet
+WCAG AA contrast, and dynamic changes (loading, errors, confirmations) must be
+announced to screen readers.
+
 ## Before you push
 
 CI runs exactly these, so run them locally first:

@@ -14,6 +14,7 @@ import { Header } from "@/components/Header";
 import { TipForm } from "@/components/TipForm";
 import { Badge } from "@/components/ui/Badge";
 import { QRDownload } from "@/components/QRDownload";
+import { PublicSupportersFeed } from "@/components/PublicSupportersFeed";
 
 interface Props {
   // Next 15 resolves route params asynchronously, so this is a Promise.
@@ -95,7 +96,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function TipPage({ params }: Props) {
   const slug = normalizeSlug((await params).slug);
 
-  const { creator, qrPngUrl } = await resolveCreator(slug);
+  const { creator, qrPngUrl, recentTips } = await resolveCreator(slug);
   const displayName = creator.displayName ?? `@${slug}`;
   const avatarUrl   =
     creator.avatarUrl ??
@@ -141,6 +142,11 @@ export default async function TipPage({ params }: Props) {
           {/* QR download */}
           <div className="mt-6 flex justify-center">
             <QRDownload slug={slug} pngUrl={qrPngUrl} />
+          </div>
+
+          {/* Social proof — recent tips */}
+          <div className="mt-6">
+            <PublicSupportersFeed tips={recentTips} />
           </div>
 
         </div>
