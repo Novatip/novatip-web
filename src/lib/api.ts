@@ -200,6 +200,21 @@ export const creatorApi = {
       method: "PATCH",
       body: JSON.stringify({ splits }),
     }, jwt),
+
+  // Renames the creator's public slug. Does not touch jarId — the on-chain
+  // jar stays registered under the id it was created with, so a rename only
+  // ever changes where the tip page and links resolve, never the contract
+  // state splits are paid through.
+  updateSlug: (
+    jwt: string,
+    slug: string,
+    options?: RequestOptions,
+  ) =>
+    request<{ creator: CreatorProfile }>("/creators/me/slug", {
+      ...options,
+      method: "PATCH",
+      body: JSON.stringify({ slug }),
+    }, jwt),
 };
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
