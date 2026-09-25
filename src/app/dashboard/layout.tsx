@@ -17,10 +17,11 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { href: "/dashboard",          label: "Overview",  icon: "📊" },
-  { href: "/dashboard/history",  label: "History",   icon: "📜" },
-  { href: "/dashboard/splits",   label: "Splits",    icon: "✂️"  },
-  { href: "/dashboard/qr",       label: "QR & Link", icon: "🔗" },
+  { href: "/dashboard",           label: "Overview",  icon: "📊" },
+  { href: "/dashboard/history",   label: "History",   icon: "📜" },
+  { href: "/dashboard/splits",    label: "Splits",    icon: "✂️"  },
+  { href: "/dashboard/qr",        label: "QR & Link", icon: "🔗" },
+  { href: "/dashboard/webhooks",  label: "Webhooks",  icon: "🪝" },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
