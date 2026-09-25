@@ -31,79 +31,87 @@ import { Badge } from "@/components/ui/Badge";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface IndexedTip {
-  kind:        "indexed";
-  id:          string;
+  kind: "indexed";
+  id: string;
   fromAddress: string;
-  amount:      string; // raw stroops string from API
-  message:     string;
-  ledgerAt:    string;
+  amount: string; // raw stroops string from API
+  message: string;
+  ledgerAt: string;
 }
 
 interface PendingTip {
-  kind:        "pending";
+  kind: "pending";
   /** Unique client-side id — never collides with real indexed ids. */
-  id:          string;
+  id: string;
   fromAddress: string;
   /** Dollar amount string from TipForm, e.g. "2" */
   displayAmount: string;
-  message:     string;
+  message: string;
 }
 
 type FeedEntry = IndexedTip | PendingTip;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function timeAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60)   return `${diff}s ago`;
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+export function timeAgo(iso: string): string {
+  // Clamp to 0 so a client clock slightly behind the ledger reads "just now"
+  // rather than producing a negative value like "-4s ago".
+  const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (diff < 5) return "just now";
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
 /**
- * Merge a fresh list of indexed tips with any still-pending optimistic entries.
+ * Returns true when a pending optimistic tip has been confirmed by the indexed
+ * feed — i.e. the indexed list contains a tip from the same address.
  *
- * An optimistic entry is considered "confirmed" (and therefore removed) when
- * the indexed list contains a tip from the same address where the raw amount
- * corresponds to the same dollar value the user sent.  We use a loose match
- * (same address, amount ≥ optimistic) to survive rounding and split scenarios.
+ * This is the single source of truth for the confirmation rule.
+ * `fetchTips` calls it to prune `pendingTips` state after every successful
+ * fetch; `mergeWithPending` relies on that cleaned state and does no
+ * additional filtering.
+ */
+export function isPendingConfirmed(
+  pending: Pick<PendingTip, "fromAddress">,
+  indexed: Pick<IndexedTip, "fromAddress">[],
+): boolean {
+  return indexed.some((t) => t.fromAddress === pending.fromAddress);
+}
+
+/**
+ * Combine the already-filtered pending entries with the indexed list.
+ * Confirmation filtering is handled exclusively by `fetchTips` via
+ * `isPendingConfirmed`; this function only concatenates.
  */
 function mergeWithPending(
   indexed: IndexedTip[],
   pending: PendingTip[],
 ): FeedEntry[] {
-  // Build a set of fromAddresses that now appear in the indexed list so we
-  // can drop any pending entry whose on-chain confirmation arrived.
-  const confirmedAddresses = new Set(indexed.map((t) => t.fromAddress));
-
-  const stillPending = pending.filter(
-    (p) => !confirmedAddresses.has(p.fromAddress),
-  );
-
   // Pending entries go at the top (they are always the newest)
-  return [...stillPending, ...indexed];
+  return [...pending, ...indexed];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const NORMAL_INTERVAL = 15_000; // 15 s — steady-state
-const FAST_INTERVAL   =  3_000; // 3 s  — right after a tip
-const FAST_WINDOW_MS  = 30_000; // stay fast for 30 s
+const FAST_INTERVAL = 3_000; // 3 s  — right after a tip
+const FAST_WINDOW_MS = 30_000; // stay fast for 30 s
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface RecentTipsProps {
-  jwt:    string;
+  jwt: string;
   limit?: number;
 }
 
 export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   const [indexedTips, setIndexedTips] = useState<IndexedTip[]>([]);
   const [pendingTips, setPendingTips] = useState<PendingTip[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState<string | null>(null);
-  const [intervalMs,  setIntervalMs]  = useState(NORMAL_INTERVAL);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [intervalMs, setIntervalMs] = useState(NORMAL_INTERVAL);
 
   const fastUntilRef = useRef<number | null>(null);
 
@@ -128,10 +136,10 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         setIndexedTips(fresh);
         setError(null);
 
-        // Drop optimistic entries that have now been indexed
-        const confirmedAddresses = new Set(fresh.map((t) => t.fromAddress));
+        // Drop optimistic entries that have now been indexed.
+        // Uses the shared isPendingConfirmed rule — the only place this logic lives.
         setPendingTips((prev) =>
-          prev.filter((p) => !confirmedAddresses.has(p.fromAddress)),
+          prev.filter((p) => !isPendingConfirmed(p, fresh)),
         );
       })
       .catch((e: any) => {
@@ -169,11 +177,11 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   useEffect(() => {
     const unsub = tipEvents.subscribe((payload: TipSuccessPayload) => {
       const optimistic: PendingTip = {
-        kind:          "pending",
-        id:            `pending-${Date.now()}`,
-        fromAddress:   payload.fromAddress,
+        kind: "pending",
+        id: `pending-${Date.now()}`,
+        fromAddress: payload.fromAddress,
         displayAmount: payload.amount,
-        message:       payload.message,
+        message: payload.message,
       };
 
       setPendingTips((prev) => [optimistic, ...prev]);
@@ -215,17 +223,18 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         </div>
       )}
 
+      {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
       )}
 
-      {!loading && !error && feed.length === 0 && (
+      {!loading && feed.length === 0 && (
         <p className="text-sm text-fg-faint py-4 text-center">
           No tips yet — share your link to get started!
         </p>
       )}
 
-      {!loading && !error && feed.length > 0 && (
+      {!loading && feed.length > 0 && (
         <ul className="space-y-3" aria-label="Recent tips feed">
           {feed.map((entry) =>
             entry.kind === "pending" ? (
