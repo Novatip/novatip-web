@@ -14,11 +14,12 @@ import { Card } from "@/components/ui/Card";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
+import { getTipUrl } from "@/lib/tipUrl";
 
 interface TipSuccessProps {
-  amount:   string;
-  slug:     string;
-  onReset:  () => void;
+  amount: string;
+  slug: string;
+  onReset: () => void;
 }
 
 /** A share the user backed out of — not something to report as a failure. */
@@ -42,29 +43,27 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
 
     void confetti({
       particleCount: 120,
-      spread:        80,
-      origin:        { y: 0.55 },
+      spread: 80,
+      origin: { y: 0.55 },
       // No pure white — it disappears against the light theme's canvas.
-      colors:        ["#38bdf8", "#0ea5e9", "#7dd3fc", "#22d3ee", "#2775ca"],
+      colors: ["#38bdf8", "#0ea5e9", "#7dd3fc", "#22d3ee", "#2775ca"],
     });
 
     // Second burst after a short delay for extra flair
     const timer = setTimeout(() => {
       void confetti({
         particleCount: 60,
-        spread:        120,
-        origin:        { y: 0.5 },
-        scalar:        0.8,
+        spread: 120,
+        origin: { y: 0.5 },
+        scalar: 0.8,
       });
     }, 400);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const shareText    = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
-  const shareUrl     = typeof window !== "undefined"
-    ? `${window.location.origin}/${slug}`
-    : `https://novatip.xyz/${slug}`;
+  const shareText = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
+  const shareUrl = getTipUrl(slug);
   const shareMessage = `${shareText} ${shareUrl}`;
 
   /**
