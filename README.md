@@ -146,5 +146,65 @@ If a test depends on `@novatip/sdk`, the stub at `src/test/mocks/novatip-sdk.ts`
 
 `npm test` runs as part of the GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`, alongside lint, typecheck, and build steps.
 
+## Accessibility
+
+Novatip is used on mobile, with keyboard navigation, and by screen-reader users.
+Every contributor is expected to apply the following checklist before opening a
+pull request. Reviewers should use it as a concrete rubric.
+
+### Checklist
+
+**Labels**
+- Every interactive element has an accessible name: a visible label, an
+  `aria-label`, or an `aria-labelledby` pointing at a visible element.
+- Icon-only buttons always have `aria-label` (search the codebase for existing
+  examples in `WalletConnectButton` and `ThemeToggle`).
+- Form inputs are associated with a `<label>` via `htmlFor`/`id`, or have
+  `aria-label` when a visible label is impractical.
+
+**Focus order**
+- Tab order follows the visual reading order. Do not use `tabindex` values
+  greater than `0`.
+- Dialogs, drawers, and popovers trap focus while open and return it to the
+  trigger on close.
+- No interactive element is reachable only via pointer (hover menus, etc.).
+
+**Visible focus states**
+- The focused element is clearly visible at all times. Do not suppress the
+  default outline without providing a custom one.
+- Use the `focus:ring-2 focus:ring-brand-500/50` utility pattern already used
+  in `CopyFallback` and `Input` rather than `outline-none` alone.
+
+**Colour contrast**
+- Body text meets WCAG AA (4.5 : 1 against its background).
+- Large text and UI components meet AA (3 : 1).
+- Use the semantic colour tokens (`text-fg`, `text-fg-subtle`, `text-accent`,
+  etc.) rather than raw Tailwind colours — they are already contrast-checked for
+  both light and dark themes.
+- Never rely on colour alone to convey state: pair it with an icon, label, or
+  pattern.
+
+**Announcing dynamic changes**
+- Loading states that replace content use `aria-live="polite"` or a visually
+  hidden status message so screen readers announce the update.
+- Error messages use `role="alert"` (see `CopyFallback` for an example).
+- Toast-style confirmations ("Copied!") should also carry `role="status"` or
+  `aria-live="polite"`.
+- After a form submission, focus moves to the confirmation or error message so
+  keyboard users know what happened.
+
+### Local tooling
+
+| Tool | How to run | What it catches |
+|------|-----------|----------------|
+| **axe DevTools** (browser extension) | Open DevTools → axe tab → Analyze | Missing labels, contrast failures, ARIA misuse |
+| **Lighthouse** | DevTools → Lighthouse → Accessibility | WCAG automated audit, score and issue list |
+| **Keyboard-only walkthrough** | Unplug/ignore the mouse, Tab through the page | Focus traps, focus order, missing focus rings |
+| **Screen reader** | macOS VoiceOver (`⌘ F5`), Windows NVDA (free), or Android TalkBack | Label quality, live-region announcements, interactive element names |
+| **`eslint-plugin-jsx-a11y`** | `npm run lint` (already included via `eslint-config-next`) | Common JSX accessibility mistakes at author time |
+
+Full WCAG 2.1 AA compliance requires manual testing with assistive technologies
+in addition to automated tools — automated tools catch roughly 30–40 % of issues.
+
 ## License
 MIT
