@@ -15,13 +15,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { href: "/dashboard",          label: "Overview",  icon: "📊" },
-  { href: "/dashboard/history",  label: "History",   icon: "📜" },
-  { href: "/dashboard/splits",   label: "Splits",    icon: "✂️"  },
-  { href: "/dashboard/qr",       label: "QR & Link", icon: "🔗" },
-];
+import { NAV_ITEMS } from "./nav";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isConnected, isConnecting, publicKey } = useWallet();

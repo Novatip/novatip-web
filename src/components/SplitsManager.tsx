@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { validateSplitsBps } from "@novatip/sdk";
+import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
 
 export interface SplitRow {
@@ -29,6 +30,19 @@ interface SplitRowState {
   id:  string;
   to:  string;
   bps: string;
+}
+
+// StrKey checks the version byte and CRC16 checksum, not just the alphabet, so
+// a typo'd address that merely looks right is rejected before it reaches a jar.
+// (The SDK's isValidAccountId is still a shape-only regex.)
+function isValidAddress(address: string): boolean {
+  return StrKey.isValidEd25519PublicKey(address);
+}
+
+// Addresses are compared trimmed and upper-cased so stray whitespace or a
+// lower-cased paste can't hide a duplicate.
+function normalizeAddress(address: string): string {
+  return address.trim().toUpperCase();
 }
 
 function withId(row: SplitRow): SplitRowState {
@@ -60,8 +74,17 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
   const parsedBps   = rows.map((r) => parseBpsInput(r.bps));
   const totalBps    = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
   const bpsValid    = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
-  const addressesOk = rows.every((r) => /^G[A-Z2-7]{55}$/.test(r.to));
-  const canSave     = bpsValid && addressesOk && !saving && !disabled;
+  const addressesOk = rows.every((r) => isValidAddress(r.to));
+  // The contract rejects a jar that lists the same recipient twice
+  // (DuplicateRecipient), so duplicates block saving rather than just warn.
+  const addressCounts = rows.reduce<Map<string, number>>((counts, r) => {
+    const key = normalizeAddress(r.to);
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
+    return counts;
+  }, new Map());
+  const isDuplicate   = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
+  const hasDuplicates = isDuplicate.some(Boolean);
+  const canSave       = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
 
   function updateRow(index: number, field: keyof SplitRow, value: string) {
     setSuccess(false);
@@ -114,9 +137,11 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
                 disabled={saving || disabled}
                 aria-label={`Recipient ${i + 1} address`}
                 error={
-                  row.to && !/^G[A-Z2-7]{55}$/.test(row.to)
+                  row.to && !isValidAddress(row.to)
                     ? "Invalid Stellar address"
-                    : undefined
+                    : isDuplicate[i]
+                      ? "Duplicate recipient — this address is already listed"
+                      : undefined
                 }
               />
             </div>
@@ -212,6 +237,13 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
           {totalBps < 10000
             ? ` Add ${(10000 - totalBps).toLocaleString()} more bps.`
             : ` Remove ${(totalBps - 10000).toLocaleString()} bps.`}
+        </p>
+      )}
+
+      {hasDuplicates && (
+        <p className="text-xs text-warning">
+          Each recipient can only appear once. Merge duplicate rows into a single
+          share before saving.
         </p>
       )}
 
