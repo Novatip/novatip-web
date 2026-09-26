@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -24,18 +25,25 @@ const sizes: Record<Size, string> = {
   lg: "px-7 py-3.5 text-base rounded-xl",
 };
 
-export function Button({
-  variant = "primary",
-  size    = "md",
-  loading = false,
-  disabled,
-  className,
-  children,
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "primary",
+    size    = "md",
+    loading = false,
+    disabled,
+    className,
+    children,
+    type = "button",
+    ...props
+  },
+  ref,
+) {
   return (
     <button
+      ref={ref}
+      type={type}
       disabled={disabled ?? loading}
+      aria-busy={loading || undefined}
       className={cn(
         "inline-flex items-center justify-center gap-2 font-medium",
         "transition-all duration-200 focus:outline-none focus:ring-2",
@@ -47,9 +55,12 @@ export function Button({
       {...props}
     >
       {loading && (
-        <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin"
+        />
       )}
       {children}
     </button>
   );
-}
+});
