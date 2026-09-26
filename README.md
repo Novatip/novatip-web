@@ -14,6 +14,105 @@ Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser ex
 
 App available at http://localhost:3000
 
+## Full-stack local setup
+
+The quick-start above assumes a backend already running at port 3001. This
+section covers the full path from a clean checkout to a working tip page —
+including PostgreSQL, Redis, a database migration, a deployed contract, and the
+SDK build.
+
+### 1. Clone all repositories
+
+The three services are separate repositories. Check them out as siblings in the
+same parent directory so the relative path `../novatip-sdk` resolves correctly:
+
+    parent/
+    ├── novatip-web/      ← this repo
+    ├── novatip-backend/  ← https://github.com/Novatip/novatip-backend
+    └── novatip-sdk/      ← https://github.com/Novatip/novatip-sdk
+
+    git clone https://github.com/Novatip/novatip-backend ../novatip-backend
+    git clone https://github.com/Novatip/novatip-sdk     ../novatip-sdk
+
+### 2. Start infrastructure services
+
+The backend requires PostgreSQL (for the database) and Redis (for job queues and
+session state). The simplest way to run them locally is Docker Compose, but any
+running instances work:
+
+    docker run -d --name novatip-pg    -p 5432:5432 -e POSTGRES_PASSWORD=postgres postgres:16
+    docker run -d --name novatip-redis -p 6379:6379 redis:7
+
+### 3. Set up and start the backend
+
+    cd ../novatip-backend
+    npm install
+    cp .env.example .env
+
+Edit `.env` to set `DATABASE_URL` and `REDIS_URL`, then run the database
+migration and start the dev server:
+
+    npm run db:migrate   # applies all Prisma migrations
+    npm run dev          # starts on http://localhost:3001
+
+See the [novatip-backend README](https://github.com/Novatip/novatip-backend) for
+the full list of required environment variables (JWT secret, Stellar RPC URL,
+etc.).
+
+### 4. Build the SDK (for local SDK development only)
+
+When you install this repo's dependencies with `npm install`, the SDK is
+fetched directly from GitHub (see the `@novatip/sdk` entry in `package.json`).
+No separate build step is needed for normal frontend work.
+
+If you want to work on the SDK and see your changes reflected in this app
+without publishing a new commit, switch the dependency to the local checkout:
+
+1. Edit `package.json` and change:
+   ```
+   "@novatip/sdk": "github:Novatip/novatip-sdk#<commit>"
+   ```
+   to:
+   ```
+   "@novatip/sdk": "file:../novatip-sdk"
+   ```
+2. Build the SDK:
+   ```
+   cd ../novatip-sdk
+   npm install
+   npm run build
+   ```
+3. Re-link in this repo:
+   ```
+   cd ../novatip-web
+   npm install
+   ```
+
+Revert the `package.json` change before opening a pull request.
+
+### 5. Deploy the tip_splitter contract
+
+The app cannot process tips without a deployed Soroban contract. Follow the
+[novatip-backend deployment guide](https://github.com/Novatip/novatip-backend)
+to deploy `tip_splitter` to Testnet and copy the returned contract address.
+
+### 6. Configure and start this app
+
+    cd ../novatip-web
+    npm install
+    cp .env.example .env.local
+
+Edit `.env.local` and set `NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID` to the address
+from step 5. The other variables have working defaults for a local Testnet setup.
+
+    npm run dev   # http://localhost:3000
+
+At this point, opening `http://localhost:3000` should show the landing page, and
+navigating to `/onboarding` with a Testnet Freighter wallet should complete the
+full tip flow.
+
+---
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` and fill in the values before running `npm run dev`.
