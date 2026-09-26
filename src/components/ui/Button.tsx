@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { forwardRef } from "react";
 import type { ButtonHTMLAttributes } from "react";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -24,18 +25,22 @@ const sizes: Record<Size, string> = {
   lg: "px-7 py-3.5 text-base rounded-xl",
 };
 
-export function Button({
-  variant = "primary",
-  size    = "md",
-  loading = false,
-  disabled,
-  className,
-  children,
-  type = "button",
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    variant = "primary",
+    size    = "md",
+    loading = false,
+    disabled,
+    className,
+    children,
+    type = "button",
+    ...props
+  },
+  ref,
+) {
   return (
     <button
+      ref={ref}
       type={type}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
@@ -58,4 +63,4 @@ export function Button({
       {children}
     </button>
   );
-}
+});

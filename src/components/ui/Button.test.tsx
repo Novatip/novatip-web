@@ -62,3 +62,20 @@ describe("Button – type attribute", () => {
     );
   });
 });
+
+// ── Ref forwarding ────────────────────────────────────────────────────────────
+
+describe("Button – ref forwarding", () => {
+  it("attaches the ref to the underlying button element", () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<Button ref={ref}>Click</Button>);
+    expect(ref.current).not.toBeNull();
+    expect(ref.current?.tagName).toBe("BUTTON");
+  });
+
+  it("ref points to the same node as the rendered button", () => {
+    const ref = createRef<HTMLButtonElement>();
+    render(<Button ref={ref}>Click</Button>);
+    expect(ref.current).toBe(screen.getByRole("button", { name: "Click" }));
+  });
+});
