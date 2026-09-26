@@ -29,6 +29,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   // Debounced availability check
   useEffect(() => {
     if (!slugValid) { setAvailable(null); return; }
+    setAvailable(null);
     setChecking(true);
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -52,7 +53,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   }, [slug, slugValid]);
 
   async function handleClaim() {
-    if (!slugValid || !available) return;
+    if (!slugValid || checking || !available) return;
     setSaving(true);
     setError(null);
     try {
@@ -66,7 +67,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={(e) => { e.preventDefault(); handleClaim(); }}
+    >
       <div>
         <h2 className="text-xl font-bold text-fg mb-1">Claim your slug</h2>
         <p className="text-sm text-fg-subtle">
@@ -113,14 +117,14 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
       {error && <p className="text-sm text-danger">{error}</p>}
 
       <Button
+        type="submit"
         size="lg"
         className="w-full"
-        disabled={!slugValid || !available || saving}
+        disabled={!slugValid || checking || !available || saving}
         loading={saving}
-        onClick={handleClaim}
       >
         Claim @{slug || "…"}
       </Button>
-    </div>
+    </form>
   );
 }
