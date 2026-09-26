@@ -9,7 +9,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { analyticsApi } from "@/lib/api";
-import { tipEvents } from "@/lib/tipEvents";
+import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
@@ -25,9 +25,15 @@ const MEDALS = ["🥇", "🥈", "🥉"];
 interface LeaderboardProps {
   jwt: string;
   limit?: number;
+  /**
+   * Slug of the creator this leaderboard belongs to. When set, tip events
+   * for other creators on the same page are ignored instead of triggering
+   * a refetch.
+   */
+  slug?: string;
 }
 
-export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
+export function Leaderboard({ jwt, limit = 10, slug }: LeaderboardProps) {
   const [supporters, setSupporters] = useState<Supporter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,9 +76,11 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
   }, [fetchSupporters]);
 
   // Re-fetch whenever a tip succeeds — gives the leaderboard a chance to
-  // update without waiting for a page reload.
+  // update without waiting for a page reload. Ignore tips for other
+  // creators so a shared page session doesn't trigger needless requests.
   useEffect(() => {
-    const unsub = tipEvents.subscribe(() => {
+    const unsub = tipEvents.subscribe((payload: TipSuccessPayload) => {
+      if (slug && payload.slug !== slug) return;
       fetchSupporters();
     });
     return () => {
@@ -81,7 +89,7 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
         abortControllerRef.current.abort();
       }
     };
-  }, [fetchSupporters]);
+  }, [fetchSupporters, slug]);
 
   return (
     <Card>
