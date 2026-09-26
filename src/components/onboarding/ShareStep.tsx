@@ -15,7 +15,7 @@ interface ShareStepProps {
 }
 
 export function ShareStep({ slug }: ShareStepProps) {
-  const pngUrl = `${config.apiUrl.replace("/api/v1", "")}/api/v1/qr/${slug}/png`;
+  const pngUrl = `${config.apiUrl}/qr/${slug}/png`;
 
   return (
     <div className="flex flex-col items-center gap-6">

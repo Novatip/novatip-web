@@ -45,6 +45,10 @@ function normalizeAddress(address: string): string {
   return address.trim().toUpperCase();
 }
 
+// MAX_RECIPIENTS matches the hard cap enforced by the tip_splitter Soroban contract
+// (contracts/tip_splitter — the contract rejects a jar with more than this many recipients).
+const MAX_RECIPIENTS = 20;
+
 function withId(row: SplitRow): SplitRowState {
   return { id: crypto.randomUUID(), to: row.to, bps: String(row.bps) };
 }
@@ -201,7 +205,7 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
       </div>
 
       {/* Add row */}
-      {rows.length < 20 && (
+      {rows.length < MAX_RECIPIENTS && (
         <Button
           type="button"
           variant="ghost"

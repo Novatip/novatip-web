@@ -219,6 +219,22 @@ describe("SplitsManager – save", () => {
   });
 });
 
+// ── Recipient cap ─────────────────────────────────────────────────────────────
+
+describe("SplitsManager – recipient cap (MAX_RECIPIENTS = 20)", () => {
+  it("hides the add button when 20 rows are present", () => {
+    const rows = Array.from({ length: 20 }, () => ({ to: VALID_ADDR_1, bps: 500 }));
+    setup(rows);
+    expect(screen.queryByRole("button", { name: /add collaborator/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the add button when 19 rows are present", () => {
+    const rows = Array.from({ length: 19 }, () => ({ to: VALID_ADDR_1, bps: 500 }));
+    setup(rows);
+    expect(screen.getByRole("button", { name: /add collaborator/i })).toBeInTheDocument();
+  });
+});
+
 // ── Row field updates ─────────────────────────────────────────────────────────
 
 describe("SplitsManager – field editing", () => {

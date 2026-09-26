@@ -54,12 +54,17 @@ async function request<T>(
   const callerSignal = init.signal;
 
   let signal: AbortSignal;
+  let cleanup: (() => void) | undefined;
   if (callerSignal) {
     if (typeof AbortSignal.any === "function") {
       signal = AbortSignal.any([callerSignal, timeoutSignal]);
     } else {
       const controller = new AbortController();
       const onAbort = () => controller.abort();
+      cleanup = () => {
+        callerSignal.removeEventListener("abort", onAbort);
+        timeoutSignal.removeEventListener("abort", onAbort);
+      };
       if (callerSignal.aborted) {
         controller.abort(callerSignal.reason);
       } else {
@@ -83,7 +88,9 @@ async function request<T>(
       headers,
       signal,
     });
+    cleanup?.();
   } catch (err: any) {
+    cleanup?.();
     const isAbort =
       err.name === "AbortError" ||
       err.name === "TimeoutError" ||
