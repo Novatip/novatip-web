@@ -135,6 +135,14 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
         </p>
       )}
 
+      {/* Precision hint — shown whenever the custom field is active so the
+          user understands why extra decimal digits are dropped automatically */}
+      {isCustom && (
+        <p className="text-xs text-fg-dim">
+          USDC supports up to 7 decimal places.
+        </p>
+      )}
+
       {/* Selected amount summary */}
       {amountValid && (
         <p className="text-xs text-fg-faint text-right">
