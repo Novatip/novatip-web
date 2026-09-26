@@ -10,6 +10,7 @@
 
 import { ImageResponse } from "next/og";
 import { resolverApi } from "@/lib/api";
+import { config } from "@/lib/config";
 
 export const runtime = "edge";
 export const alt     = "Tip this creator on Novatip";
@@ -24,6 +25,7 @@ interface Props {
 export default async function OgImage({ params }: Props) {
   const slug = decodeURIComponent((await params).slug).replace(/^@/, "");
 
+  const siteHost   = new URL(config.siteUrl).host;
   let displayName = `@${slug}`;
   let bio         = "Send a USDC tip in seconds on Stellar.";
 
@@ -126,7 +128,7 @@ export default async function OgImage({ params }: Props) {
             color:     "#475569",
           }}
         >
-          novatip.xyz
+          {siteHost}
         </div>
       </div>
     ),
