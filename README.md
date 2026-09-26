@@ -152,6 +152,51 @@ match) in `.env.local`.
 3. Configure collaborator splits (optional)
 4. Download QR code and share tip link
 
+## Browser and wallet support
+
+### Supported wallets
+
+| Wallet | Status | Notes |
+|---|---|---|
+| [Freighter](https://freighter.app) | **Supported** | The only wallet integrated today. Required for connecting, tipping, and creator onboarding. |
+| Other Stellar wallets | Not supported | WalletConnect / SEP-07 integration is planned but not yet implemented. |
+
+Freighter is a browser extension. If it is not installed when a visitor presses
+**Connect**, the app shows:
+
+> Freighter wallet extension not found. Install it from freighter.app, then reload this page.
+
+### Mobile
+
+Freighter is not available on mobile browsers. A visitor on a phone cannot
+connect a wallet, which means:
+
+- **Tipping** requires a desktop browser with the Freighter extension installed.
+- **Viewing** a creator's tip page (the `/@slug` route) works on any device —
+  the page loads, shows the creator's profile, and displays the tip form, but the
+  Connect button will fail if Freighter is absent.
+
+Mobile wallet support (via WalletConnect or a similar deep-link protocol) is on
+the roadmap but not currently implemented.
+
+### Tested browsers
+
+The app is developed and tested against the following desktop browsers:
+
+| Browser | Status |
+|---|---|
+| Chrome / Chromium | Primary development target |
+| Firefox | Tested — Freighter supports it |
+| Edge (Chromium) | Tested — Freighter supports it |
+| Safari | Not tested — Freighter is not available on Safari |
+| Brave | Tested — Freighter supports it |
+
+Any browser that supports the Freighter extension and modern ES2020 features
+(optional chaining, nullish coalescing, `Promise.allSettled`) is expected to
+work. No IE11 or legacy-browser polyfills are included.
+
+---
+
 ## Wallet Auth (SIWS)
 
 1. Request nonce: POST /auth/challenge
