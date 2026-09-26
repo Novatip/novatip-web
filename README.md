@@ -56,6 +56,73 @@ rather than falling back to localhost and shipping broken previews; see
 query or fragment are normalised away, so `https://novatip.xyz` and
 `https://novatip.xyz/` are equivalent.
 
+## Troubleshooting
+
+### `Error: Missing required environment variable: NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID`
+
+**Cause:** The contract ID was not set before starting the dev server. The config
+module is evaluated at server start (and during `next build`), so a missing value
+throws immediately — before any page is served.
+
+**Fix:** Copy `.env.example` to `.env.local` and set `NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID`
+to the 56-character Soroban contract address returned when you deployed the
+`tip_splitter` contract. If you have not deployed it yet, see the
+[novatip-backend](https://github.com/Novatip/novatip-backend) README for the
+`stellar contract deploy` step.
+
+---
+
+### `Cannot find module '@novatip/sdk'` (or its type declarations)
+
+**Cause:** The SDK is declared as a `file:../novatip-sdk` dependency, so it
+resolves to a sibling directory checkout rather than a registry package. The
+package exports from `./dist/index.js` — if that folder does not exist yet
+(a fresh clone has no `dist/`), Node cannot resolve the import and `npm run dev`
+fails before the server starts.
+
+**Fix:**
+
+    # in the sibling SDK checkout
+    cd ../novatip-sdk
+    npm install
+    npm run build
+
+    # back in this repo
+    cd ../novatip-web
+    npm install     # re-links the built package into node_modules
+    npm run dev
+
+---
+
+### Every dashboard panel shows an error immediately on load
+
+**Cause:** The frontend fetches data from `NEXT_PUBLIC_API_URL` (default
+`http://localhost:3001/api/v1`). If the backend is not running, every component
+that calls `lib/api.ts` receives a network error and renders its error state.
+
+**Fix:** Start the backend. See the
+[novatip-backend](https://github.com/Novatip/novatip-backend) README for how to
+bring it up (PostgreSQL, Redis and a database migration are needed first). If
+your backend is on a different port, set `NEXT_PUBLIC_API_URL` in `.env.local`
+before restarting the dev server.
+
+---
+
+### Transaction fails with "wrong network" or Freighter shows a network mismatch warning
+
+**Cause:** Freighter is connected to a different Stellar network than the one
+the app targets (`NEXT_PUBLIC_STELLAR_NETWORK`, default `testnet`). The mismatch
+is detected at signing time, after the transaction has already been built and
+simulated — the error only appears when the user clicks **Tip**.
+
+**Fix:** Open Freighter, go to **Settings → Network**, and switch to the same
+network the app uses. For local development that is almost always **Testnet**. If
+you are running against a private Futurenet node, set
+`NEXT_PUBLIC_STELLAR_NETWORK=futurenet` (and `NEXT_PUBLIC_USDC_CONTRACT_ID` to
+match) in `.env.local`.
+
+---
+
 ## Key Pages
 
 /                   - Home landing page
@@ -113,6 +180,100 @@ Two rules keep it flash-free:
   (`bg-canvas/80`). Reach for a literal colour or a `dark:` variant only when a value is
   genuinely theme-independent — e.g. `text-white` on a brand-coloured button, or the QR
   code's white backing.
+
+## Adding a UI component
+
+This section walks through building a new component so it inherits the active
+theme rather than hardcoding colours that break in one mode.
+
+### Use the semantic tokens, not raw Tailwind colours
+
+Every component in `src/components/ui/` is built with the token classes defined
+in `tailwind.config.ts` and `src/app/globals.css`. They resolve to different CSS
+variable values in light and dark:
+
+| Token class | Light | Dark |
+|---|---|---|
+| `bg-canvas` | slate-50 | gray-950 |
+| `bg-surface` | white | gray-900 |
+| `bg-surface-strong` | slate-100 | gray-800 |
+| `border-hairline` | slate-200 | near-gray-800 |
+| `text-fg` | slate-900 | gray-100 |
+| `text-fg-muted` | slate-700 | gray-300 |
+| `text-fg-subtle` | slate-600 | gray-400 |
+| `text-accent` | brand-600 | brand-400 |
+| `text-success` / `bg-success` | green-600 | green-400 |
+| `text-warning` / `bg-warning` | yellow-600 | yellow-400 |
+| `text-danger` / `bg-danger` | red-600 | red-400 |
+
+**Opacity modifiers work on all of them:** `bg-success/20`, `border-danger/30`,
+`text-fg-muted/80` all resolve correctly in both themes.
+
+### What to avoid
+
+- **Raw slate/gray/zinc colours** such as `text-slate-900`, `bg-gray-100`,
+  `border-zinc-200` — these are fixed values that do not change with the theme.
+  A `text-slate-900` heading is invisible against a dark canvas.
+- **`dark:` variants on literal colours** such as `text-slate-900 dark:text-white` —
+  this pattern works for simple cases but proliferates as the component grows and
+  is impossible to audit at a glance. Use the token instead and remove the
+  `dark:` override entirely.
+- **Hardcoded hex or RGB** in `style={{ color: "#0f172a" }}` or similar — same
+  problem, but even harder to catch in review.
+
+### Worked example — a `StatusBanner` component
+
+```tsx
+// src/components/ui/StatusBanner.tsx
+import { cn } from "@/lib/utils";
+
+type Variant = "info" | "success" | "warning" | "error";
+
+const styles: Record<Variant, string> = {
+  info:    "bg-accent/10    text-accent   border-accent/20",
+  success: "bg-success/10  text-success  border-success/20",
+  warning: "bg-warning/10  text-warning  border-warning/20",
+  error:   "bg-danger/10   text-danger   border-danger/20",
+};
+
+interface StatusBannerProps {
+  variant?: Variant;
+  children: React.ReactNode;
+  className?: string;
+}
+
+export function StatusBanner({ variant = "info", children, className }: StatusBannerProps) {
+  return (
+    <div
+      role="status"
+      className={cn(
+        "rounded-lg border px-4 py-3 text-sm font-medium",
+        styles[variant],
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+```
+
+Notice:
+- Every colour is a token. No `dark:` overrides are needed.
+- Opacity modifiers (`/10`, `/20`) give tinted backgrounds without adding a new
+  CSS variable.
+- The `role="status"` keeps it accessible — see the Accessibility section.
+
+### Verifying in both themes before submitting
+
+1. Run `npm run dev` and open `http://localhost:3000`.
+2. Click the theme toggle to switch to dark mode.
+3. Inspect the component in both modes — look for text that disappears, borders
+   that vanish, or backgrounds that clash.
+4. If you added a `dark:` variant on a raw colour, that is a sign to reach for a
+   token instead.
+
+---
 
 ## Scripts
 
