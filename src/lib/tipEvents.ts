@@ -21,6 +21,8 @@ export interface TipSuccessPayload {
   amount: string;
   /** Optional tip message */
   message: string;
+  /** Slug of the creator who received the tip */
+  slug: string;
 }
 
 type Listener = (payload: TipSuccessPayload) => void;

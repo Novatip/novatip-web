@@ -109,6 +109,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         fromAddress: publicKey,
         amount,
         message: message.trim(),
+        slug,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Transaction failed. Please try again.";
