@@ -42,3 +42,23 @@ describe("Button – loading state", () => {
     expect(spinner).toHaveAttribute("aria-hidden", "true");
   });
 });
+
+// ── Default type ──────────────────────────────────────────────────────────────
+
+describe("Button – type attribute", () => {
+  it('defaults to type="button" to avoid accidental form submission', () => {
+    render(<Button>Click</Button>);
+    expect(screen.getByRole("button", { name: "Click" })).toHaveAttribute(
+      "type",
+      "button",
+    );
+  });
+
+  it('accepts type="submit" when explicitly set', () => {
+    render(<Button type="submit">Submit</Button>);
+    expect(screen.getByRole("button", { name: "Submit" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+  });
+});

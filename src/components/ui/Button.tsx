@@ -31,10 +31,12 @@ export function Button({
   disabled,
   className,
   children,
+  type = "button",
   ...props
 }: ButtonProps) {
   return (
     <button
+      type={type}
       disabled={disabled ?? loading}
       aria-busy={loading || undefined}
       className={cn(
