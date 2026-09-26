@@ -15,22 +15,22 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
 interface Supporter {
-  fromAddress:    string;
-  tipCount:       number;
+  fromAddress: string;
+  tipCount: number;
   totalAmountRaw: string;
 }
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
 interface LeaderboardProps {
-  jwt:    string;
+  jwt: string;
   limit?: number;
 }
 
 export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
   const [supporters, setSupporters] = useState<Supporter[]>([]);
-  const [loading,    setLoading]    = useState(true);
-  const [error,      setError]      = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -101,17 +101,18 @@ export function Leaderboard({ jwt, limit = 10 }: LeaderboardProps) {
         </div>
       )}
 
+      {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
       )}
 
-      {!loading && !error && supporters.length === 0 && (
+      {!loading && supporters.length === 0 && (
         <p className="text-sm text-fg-faint py-4 text-center">
           No supporters yet — share your tip link!
         </p>
       )}
 
-      {!loading && !error && supporters.length > 0 && (
+      {!loading && supporters.length > 0 && (
         <ol className="space-y-2" aria-label="Top supporters leaderboard">
           {supporters.map((s, i) => (
             <li

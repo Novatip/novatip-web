@@ -62,8 +62,11 @@ type FeedEntry = IndexedTip | PendingTip | UnconfirmedTip;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function timeAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+export function timeAgo(iso: string): string {
+  // Clamp to 0 so a client clock slightly behind the ledger reads "just now"
+  // rather than producing a negative value like "-4s ago".
+  const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (diff < 5) return "just now";
   if (diff < 60) return `${diff}s ago`;
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -180,6 +183,10 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         // matched by both address AND amount — not just address alone.
         setPendingTips((prev) =>
           prev.filter((p) => !fresh.some((t) => isMatch(t, p))),
+        // Drop optimistic entries that have now been indexed.
+        // Uses the shared isPendingConfirmed rule — the only place this logic lives.
+        setPendingTips((prev) =>
+          prev.filter((p) => !isPendingConfirmed(p, fresh)),
         );
       })
       .catch((e: any) => {
@@ -269,17 +276,18 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
         </div>
       )}
 
+      {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
       )}
 
-      {!loading && !error && feed.length === 0 && (
+      {!loading && feed.length === 0 && (
         <p className="text-sm text-fg-faint py-4 text-center">
           No tips yet — share your link to get started!
         </p>
       )}
 
-      {!loading && !error && feed.length > 0 && (
+      {!loading && feed.length > 0 && (
         <ul className="space-y-3" aria-label="Recent tips feed">
           {feed.map((entry) =>
             entry.kind === "pending" ? (

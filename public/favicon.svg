@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <style>
+    .bg { fill: #F8F3ED; }
+    .mark { fill: #072A1B; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #072A1B; }
+      .mark { fill: #F8F3ED; }
+    }
+  </style>
+  <!-- Rounded square background -->
+  <rect class="bg" width="64" height="64" rx="14" ry="14"/>
+  <!-- Simplified N letterform from the brand mark -->
+  <path class="mark" d="
+    M14 48 L14 16 L20 16 L42 38 L42 16 L50 16 L50 48 L44 48 L22 26 L22 48 Z
+  "/>
+</svg>

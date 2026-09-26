@@ -54,12 +54,17 @@ async function request<T>(
   const callerSignal = init.signal;
 
   let signal: AbortSignal;
+  let cleanup: (() => void) | undefined;
   if (callerSignal) {
     if (typeof AbortSignal.any === "function") {
       signal = AbortSignal.any([callerSignal, timeoutSignal]);
     } else {
       const controller = new AbortController();
       const onAbort = () => controller.abort();
+      cleanup = () => {
+        callerSignal.removeEventListener("abort", onAbort);
+        timeoutSignal.removeEventListener("abort", onAbort);
+      };
       if (callerSignal.aborted) {
         controller.abort(callerSignal.reason);
       } else {
@@ -83,7 +88,9 @@ async function request<T>(
       headers,
       signal,
     });
+    cleanup?.();
   } catch (err: any) {
+    cleanup?.();
     const isAbort =
       err.name === "AbortError" ||
       err.name === "TimeoutError" ||
@@ -227,6 +234,9 @@ export const resolverApi = {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
+/** The largest `limit` the backend accepts on /analytics/recent. */
+export const RECENT_TIPS_MAX_LIMIT = 100;
+
 export const analyticsApi = {
   totals: (jwt: string, options?: RequestOptions) =>
     request<{
@@ -249,7 +259,7 @@ export const analyticsApi = {
       jwt,
     ),
 
-  recent: (jwt: string, limit = 20, options?: RequestOptions) =>
+  recent: (jwt: string, limit = 20, options?: RequestOptions, offset = 0) =>
     request<{
       tips: Array<{
         id: string;
@@ -258,7 +268,12 @@ export const analyticsApi = {
         message: string;
         ledgerAt: string;
       }>;
-    }>(`/analytics/recent?limit=${limit}`, options, jwt),
+    }>(
+      // Clamped here so no caller can send a limit the backend rejects.
+      `/analytics/recent?limit=${Math.min(Math.max(limit, 1), RECENT_TIPS_MAX_LIMIT)}&offset=${Math.max(offset, 0)}`,
+      options,
+      jwt,
+    ),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
