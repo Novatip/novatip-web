@@ -137,7 +137,7 @@ export default async function TipPage({ params }: Props) {
           </div>
 
           {/* Tip form — client component */}
-          <TipForm jarId={creator.jarId} slug={slug} />
+          <TipForm jarId={creator.jarId} slug={slug} splits={creator.splits} />
 
           {/* QR download */}
           <div className="mt-6 flex justify-center">
