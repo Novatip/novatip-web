@@ -140,6 +140,51 @@ describe("request() error handling", () => {
 });
 
 
+// ── AbortSignal.any fallback ──────────────────────────────────────────────────
+
+describe("AbortSignal.any fallback", () => {
+  let savedAny: (typeof AbortSignal)["any"];
+
+  beforeEach(() => {
+    savedAny = AbortSignal.any;
+    // @ts-expect-error — intentionally removing to exercise the fallback path
+    delete AbortSignal.any;
+  });
+
+  afterEach(() => {
+    AbortSignal.any = savedAny;
+    vi.restoreAllMocks();
+  });
+
+  it("removes the abort listener from the caller signal once the request settles", async () => {
+    const controller = new AbortController();
+    const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ nonce: "abc" }),
+    }));
+
+    await authApi.challenge("GABC", { signal: controller.signal });
+
+    expect(removeSpy).toHaveBeenCalledWith("abort", expect.any(Function));
+  });
+
+  it("still throws ABORTED when the caller signal is pre-aborted", async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(
+      Object.assign(new Error("The operation was aborted"), { name: "AbortError" }),
+    ));
+
+    await expect(
+      authApi.challenge("GABC", { signal: controller.signal }),
+    ).rejects.toMatchObject({ code: "ABORTED" });
+  });
+});
+
 // ── Session-expiry broadcast ──────────────────────────────────────────────────
 
 /**
