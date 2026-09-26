@@ -227,6 +227,9 @@ export const resolverApi = {
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
+/** The largest `limit` the backend accepts on /analytics/recent. */
+export const RECENT_TIPS_MAX_LIMIT = 100;
+
 export const analyticsApi = {
   totals: (jwt: string, options?: RequestOptions) =>
     request<{
@@ -249,7 +252,7 @@ export const analyticsApi = {
       jwt,
     ),
 
-  recent: (jwt: string, limit = 20, options?: RequestOptions) =>
+  recent: (jwt: string, limit = 20, options?: RequestOptions, offset = 0) =>
     request<{
       tips: Array<{
         id: string;
@@ -258,7 +261,12 @@ export const analyticsApi = {
         message: string;
         ledgerAt: string;
       }>;
-    }>(`/analytics/recent?limit=${limit}`, options, jwt),
+    }>(
+      // Clamped here so no caller can send a limit the backend rejects.
+      `/analytics/recent?limit=${Math.min(Math.max(limit, 1), RECENT_TIPS_MAX_LIMIT)}&offset=${Math.max(offset, 0)}`,
+      options,
+      jwt,
+    ),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────

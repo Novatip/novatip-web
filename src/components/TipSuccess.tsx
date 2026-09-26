@@ -7,13 +7,14 @@
  * Fires a confetti burst and gives the user share + reset options.
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
+import { getTipUrl } from "@/lib/tipUrl";
 
 interface TipSuccessProps {
   amount:   string;
@@ -24,6 +25,19 @@ interface TipSuccessProps {
 /** A share the user backed out of — not something to report as a failure. */
 function isUserCancellation(error: unknown): boolean {
   return (error as { name?: string } | null)?.name === "AbortError";
+}
+
+/**
+ * Whether this browser can open the native share sheet for `data`.
+ *
+ * navigator.share is secure-context only and absent on most desktops;
+ * canShare, where present, also rules out payloads the platform won't take.
+ */
+function canNativeShare(data: ShareData): boolean {
+  if (typeof navigator === "undefined" || typeof navigator.share !== "function") {
+    return false;
+  }
+  return typeof navigator.canShare !== "function" || navigator.canShare(data);
 }
 
 export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
@@ -62,10 +76,18 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
   }, []);
 
   const shareText    = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
-  const shareUrl     = typeof window !== "undefined"
-    ? `${window.location.origin}/${slug}`
-    : `https://novatip.xyz/${slug}`;
+  const shareUrl     = getTipUrl(slug);
   const shareMessage = `${shareText} ${shareUrl}`;
+  const shareData: ShareData = { title: `Tip @${slug} on Novatip`, text: shareText, url: shareUrl };
+
+  // Detected after mount, not during render: the server has no navigator, and
+  // guessing there would render a different button than the client hydrates.
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => {
+    setCanShare(canNativeShare(shareData));
+    // shareData is rebuilt every render; its inputs are what matter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slug, amount]);
 
   /**
    * Native share sheet when there is one, clipboard otherwise.
@@ -75,9 +97,9 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
    * leaving the button looking inert.
    */
   async function handleShare() {
-    if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+    if (canShare) {
       try {
-        await navigator.share({ title: "Novatip", text: shareText, url: shareUrl });
+        await navigator.share(shareData);
         return;
       } catch (error) {
         // Backing out of the sheet is a decision, not a problem — say nothing.
@@ -130,15 +152,39 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
 
         {/* Actions */}
         <div className="flex flex-col w-full gap-3">
-          <Button
-            size="lg"
-            variant={failed ? "danger" : "secondary"}
-            className="w-full"
-            onClick={handleShare}
-            aria-label="Share this tip"
-          >
-            {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Share 🔗"}
-          </Button>
+          {canShare ? (
+            <>
+              {/* The share sheet is one tap to whichever app the supporter
+                  uses, so on phones it leads; copy stays for everything else. */}
+              <Button
+                size="lg"
+                className="w-full"
+                onClick={handleShare}
+                aria-label={`Share @${slug}'s tip page`}
+              >
+                Share @{slug}
+              </Button>
+              <Button
+                size="lg"
+                variant={failed ? "danger" : "secondary"}
+                className="w-full"
+                onClick={() => copy(shareMessage)}
+                aria-label="Copy link to clipboard"
+              >
+                {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              size="lg"
+              variant={failed ? "danger" : "secondary"}
+              className="w-full"
+              onClick={handleShare}
+              aria-label="Copy link to clipboard"
+            >
+              {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link 🔗"}
+            </Button>
+          )}
 
           {failed && (
             <CopyFallback text={shareMessage} onDismiss={reset} noun="message" />

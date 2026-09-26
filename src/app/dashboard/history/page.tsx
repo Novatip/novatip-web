@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { analyticsApi } from "@/lib/api";
+import { analyticsApi, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { shortenAddress } from "@novatip/sdk";
 import { Card } from "@/components/ui/Card";
@@ -26,7 +26,9 @@ interface Tip {
   ledgerAt:    string;
 }
 
-const PAGE_SIZE = 20;
+// Every request asks for one page, never the running total, so it stays
+// within the backend's cap however far back the creator scrolls.
+const PAGE_SIZE = Math.min(20, RECENT_TIPS_MAX_LIMIT);
 
 function timeAgo(iso: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
@@ -45,41 +47,47 @@ export default function HistoryPage() {
   const [tips,    setTips]    = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<string | null>(null);
-  const [limit,   setLimit]   = useState(PAGE_SIZE);
   const [hasMore, setHasMore] = useState(true);
+  const [pageError, setPageError] = useState<string | null>(null);
 
-  const fetchTips = useCallback((currentLimit: number) => {
+  // Each call fetches one page starting after the rows already shown and
+  // appends it, so a load more costs one page rather than the whole history,
+  // and existing rows are never replaced.
+  const fetchPage = useCallback((offset: number) => {
     if (!jwt) return;
     setLoading(true);
     analyticsApi
-      .recent(jwt, currentLimit)
+      .recent(jwt, PAGE_SIZE, undefined, offset)
       .then((r) => {
-        // Append only new items — avoids re-downloading every page and
-        // preserves scroll position.
+        // A tip indexed between pages shifts the offset by one, which would
+        // repeat the last row of the previous page — skip ids already shown.
         setTips((prev) => {
-          const newItems = r.tips.slice(prev.length);
-          return [...prev, ...newItems];
+          const seen = new Set(prev.map((t) => t.id));
+          return [...prev, ...r.tips.filter((t) => !seen.has(t.id))];
         });
-        setHasMore(r.tips.length === currentLimit);
+        setHasMore(r.tips.length === PAGE_SIZE);
         setError(null);
+        setPageError(null);
       })
-      .catch((e: Error) => setError(e.message))
+      .catch((e: Error) => {
+        // A failed later page must not replace the rows already shown with
+        // a page-level error — report it beside the button so it can retry.
+        if (offset === 0) setError(e.message);
+        else setPageError("Couldn't load more tips. Try again.");
+      })
       .finally(() => setLoading(false));
   }, [jwt]);
 
   useEffect(() => {
-    fetchTips(limit);
-  }, [fetchTips, limit]);
-
-  // Backend caps limit at 100 — cap on the client side so we never send
-  // an invalid request. Disable the button once we hit the cap.
-  const BACKEND_MAX = 100;
-  const atLimit = limit >= BACKEND_MAX;
+    setTips([]);
+    setHasMore(true);
+    setPageError(null);
+    fetchPage(0);
+  }, [fetchPage]);
 
   function loadMore() {
-    if (atLimit) return;
-    const next = Math.min(limit + PAGE_SIZE, BACKEND_MAX);
-    setLimit(next);
+    if (loading) return;
+    fetchPage(tips.length);
   }
 
   return (
@@ -166,18 +174,24 @@ export default function HistoryPage() {
           </div>
         )}
 
-        {/* {atLimit ? "Showing all tips (100 max)" : "Load more"} */}
         {hasMore && tips.length > 0 && (
-          <div className="pt-4 flex justify-center">
+          <div className="pt-4 flex flex-col items-center gap-2">
+            {pageError && <p className="text-xs text-red-400">{pageError}</p>}
             <Button
               variant="ghost"
               size="sm"
               loading={loading}
-              onClick={loadMore} disabled={atLimit}
+              onClick={loadMore}
             >
-              Load more
+              {pageError ? "Retry" : "Load more"}
             </Button>
           </div>
+        )}
+
+        {!hasMore && tips.length > 0 && (
+          <p className="pt-4 text-center text-xs text-gray-500">
+            That&apos;s all your tips.
+          </p>
         )}
       </Card>
 

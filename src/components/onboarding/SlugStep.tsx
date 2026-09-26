@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { creatorApi } from "@/lib/api";
+import { jarIdForSlug, readJar } from "@/lib/jar";
+import { useWallet } from "@/contexts/WalletContext";
 import { getTipUrl } from "@/lib/tipUrl";
 
 interface SlugStepProps {
@@ -17,9 +19,30 @@ interface SlugStepProps {
   onNext:   (slug: string) => void;
 }
 
+/**
+ * A slug is only free when both the backend and the contract agree. The
+ * backend knows about claimed creator rows; the contract knows about jar ids,
+ * which anyone may register directly. A jar already owned by this wallet is
+ * fine — syncJarToChain adopts it rather than calling create_jar again.
+ */
+async function checkAvailability(
+  slug: string,
+  owner: string | null,
+  signal: AbortSignal,
+): Promise<{ available: boolean; takenOnChain: boolean }> {
+  const [backend, jar] = await Promise.all([
+    creatorApi.checkSlug(slug, { signal }),
+    readJar(jarIdForSlug(slug)),
+  ]);
+  const takenOnChain = jar !== null && jar.owner !== owner;
+  return { available: backend.available && !takenOnChain, takenOnChain };
+}
+
 export function SlugStep({ jwt, onNext }: SlugStepProps) {
+  const { publicKey } = useWallet();
   const [slug,      setSlug]      = useState("");
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [onChain,   setOnChain]   = useState(false);
   const [checking,  setChecking]  = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
@@ -32,11 +55,14 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
     setChecking(true);
     const controller = new AbortController();
     const timer = setTimeout(() => {
-      creatorApi
-        .checkSlug(slug, { signal: controller.signal })
-        .then((r) => setAvailable(r.available))
+      checkAvailability(slug, publicKey, controller.signal)
+        .then((r) => {
+          if (controller.signal.aborted) return;
+          setAvailable(r.available);
+          setOnChain(r.takenOnChain);
+        })
         .catch((e: any) => {
-          if (e.code === "ABORTED") return;
+          if (e.code === "ABORTED" || controller.signal.aborted) return;
           setAvailable(null);
         })
         .finally(() => {
@@ -49,13 +75,22 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [slug, slugValid]);
+  }, [slug, slugValid, publicKey]);
 
   async function handleClaim() {
     if (!slugValid || !available) return;
     setSaving(true);
     setError(null);
     try {
+      // Re-read the contract right before claiming: the debounced check may
+      // be stale, and a jar registered since then would otherwise surface
+      // only later, as a failed create_jar with no context.
+      const jar = await readJar(jarIdForSlug(slug));
+      if (jar && jar.owner !== publicKey) {
+        setAvailable(false);
+        setOnChain(true);
+        return;
+      }
       await creatorApi.claim(jwt, { slug, jarId: `@${slug}` });
       onNext(slug);
     } catch (e) {
@@ -104,7 +139,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
               : available === true
               ? <Badge variant="success">Available ✓</Badge>
               : available === false
-              ? <Badge variant="error">Taken</Badge>
+              ? <Badge variant="error">{onChain ? "Taken on-chain" : "Taken"}</Badge>
               : null
           )}
         </div>
