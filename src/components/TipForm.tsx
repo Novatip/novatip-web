@@ -28,19 +28,32 @@ import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 
-// FRONTEND MESSAGE LENGTH LIMIT
-// TODO: Once the contract-side limit lands and is exported by the SDK,
-// import this value from @novatip/sdk instead of hardcoding here.
-export const MAX_MESSAGE_LENGTH = 200;
+// FRONTEND MESSAGE BYTE LIMIT
+// The contract counts UTF-8 bytes, not JavaScript UTF-16 code units.
+// Clients must use the same unit to avoid accepting messages the contract rejects.
+// TODO: Once the contract-side limit is exported by the SDK, import from @novatip/sdk.
+export const MAX_MESSAGE_BYTES = 280;
+
+/** Count how many UTF-8 bytes a string occupies. */
+function utf8ByteLength(str: string): number {
+  return new TextEncoder().encode(str).byteLength;
+}
+
+export interface Split {
+  to:  string;
+  bps: number;
+}
 
 interface TipFormProps {
-  jarId: string;
-  slug:  string;
+  jarId:   string;
+  slug:    string;
+  /** Collaborator splits for this jar, used to warn when the tip is too small. */
+  splits?: Split[];
 }
 
 type FormStep = "input" | "confirm" | "signing" | "success" | "error";
 
-export function TipForm({ jarId, slug }: TipFormProps) {
+export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   const { publicKey, isConnected } = useWallet();
 
   const [amount,  setAmount]  = useState("2");
@@ -55,7 +68,19 @@ export function TipForm({ jarId, slug }: TipFormProps) {
   })();
   const amountValid = isValidTipAmount(stroops) && isWithinTipCeiling(amount);
   const trimmedMessage = message.trim();
-  const canSubmit   = isConnected && amountValid && trimmedMessage.length <= MAX_MESSAGE_LENGTH && step === "input";
+  const messageBytes   = utf8ByteLength(trimmedMessage);
+  const canSubmit   = isConnected && amountValid && messageBytes <= MAX_MESSAGE_BYTES && step === "input";
+
+  // ── Splits-too-small warning ────────────────────────────────────────────────
+  // The contract computes each non-final collaborator's share as
+  //   floor(amount_stroops * bps / 10_000)
+  // and silently skips any share that rounds down to zero. Warn when at least
+  // one collaborator would receive nothing so the supporter can raise the amount.
+  const zeroPaidCount = splits.length > 1 && stroops > 0n
+    ? splits.slice(0, -1).filter(
+        (s) => (stroops * BigInt(s.bps)) / 10_000n === 0n,
+      ).length
+    : 0;
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleTip() {
@@ -145,7 +170,6 @@ export function TipForm({ jarId, slug }: TipFormProps) {
             onChange={(e) => setMessage(e.target.value)}
             disabled={step === "signing" || step === "confirm"}
             placeholder="Say something nice… 🎉"
-            maxLength={MAX_MESSAGE_LENGTH}
             rows={2}
             className="w-full rounded-xl bg-surface-strong border border-hairline px-4 py-3
                        text-sm text-fg placeholder:text-fg-dim resize-none
@@ -153,10 +177,23 @@ export function TipForm({ jarId, slug }: TipFormProps) {
                        transition-all duration-200 disabled:opacity-50"
             aria-label="Optional tip message"
           />
-          <p className="text-right text-xs text-fg-dim">
-            {trimmedMessage.length}/{MAX_MESSAGE_LENGTH}
+          <p className={`text-right text-xs ${messageBytes > MAX_MESSAGE_BYTES ? "text-danger" : "text-fg-dim"}`}>
+            {messageBytes}/{MAX_MESSAGE_BYTES} bytes
           </p>
         </div>
+
+        {/* Splits-too-small warning */}
+        {zeroPaidCount > 0 && (
+          <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+            <p className="text-sm text-warning">
+              At this amount,{" "}
+              <span className="font-semibold">
+                {zeroPaidCount} of {splits.length} collaborator{zeroPaidCount !== 1 ? "s" : ""}
+              </span>{" "}
+              would receive nothing — their share rounds to zero. Increase the tip amount so everyone is paid.
+            </p>
+          </div>
+        )}
 
         {/* Error banner */}
         {step === "error" && error && (
