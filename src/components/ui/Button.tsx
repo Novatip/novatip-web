@@ -36,6 +36,7 @@ export function Button({
   return (
     <button
       disabled={disabled ?? loading}
+      aria-busy={loading || undefined}
       className={cn(
         "inline-flex items-center justify-center gap-2 font-medium",
         "transition-all duration-200 focus:outline-none focus:ring-2",
@@ -47,7 +48,10 @@ export function Button({
       {...props}
     >
       {loading && (
-        <span className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+        <span
+          aria-hidden="true"
+          className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin"
+        />
       )}
       {children}
     </button>
