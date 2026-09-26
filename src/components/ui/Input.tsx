@@ -21,6 +21,7 @@ export function Input({ label, error, hint, className, id, ...props }: InputProp
       )}
       <input
         id={inputId}
+        aria-invalid={error ? true : undefined}
         className={cn(
           "w-full rounded-xl bg-surface-strong border border-hairline px-4 py-2.5",
           "text-fg placeholder:text-fg-dim text-sm",
