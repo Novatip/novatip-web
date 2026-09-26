@@ -28,7 +28,8 @@ const NAV_ITEMS = [
   { href: "/dashboard/history",   label: "History",   icon: "📜" },
   { href: "/dashboard/splits",    label: "Splits",    icon: "✂️"  },
   { href: "/dashboard/qr",        label: "QR & Link", icon: "🔗" },
-  { href: "/dashboard/settings",  label: "Settings",  icon: "⚙️"  },
+  { href: "/dashboard/webhooks",  label: "Webhooks",  icon: "🪝" },
+  { href: "/dashboard/settings",  label: "Settings",  icon: "⚙️" },
 ];
 import { NAV_ITEMS } from "./nav";
 

@@ -30,6 +30,22 @@ export const metadata: Metadata = {
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
     type:        "website",
   },
+  icons: {
+    /*
+      icon.svg   — picked up automatically by Next.js as the app icon
+      favicon.svg in public/ — referenced explicitly so browsers that support
+                               SVG favicons (Firefox, Chrome 80+) use the
+                               media-query-aware version that adapts to dark
+                               browser chrome.
+      apple-icon.svg — served by Next.js at /apple-icon.svg for iOS home screen.
+    */
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: [
+      { url: "/apple-icon.svg", type: "image/svg+xml" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

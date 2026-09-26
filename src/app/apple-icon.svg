@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180">
+  <!-- Apple touch icons are always displayed on light backgrounds (home screen),
+       so use the brand cream background unconditionally. -->
+  <rect width="180" height="180" rx="40" ry="40" fill="#F8F3ED"/>
+  <!-- Simplified N letterform centred on the 180×180 canvas -->
+  <path fill="#072A1B" d="
+    M38 136 L38 44 L54 44 L118 108 L118 44 L142 44 L142 136 L126 136 L62 72 L62 136 Z
+  "/>
+</svg>

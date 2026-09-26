@@ -16,6 +16,7 @@ import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Leaderboard } from "@/components/Leaderboard";
 import { RecentTips } from "@/components/RecentTips";
+import { TipChart } from "@/components/TipChart";
 
 interface Totals {
   totalTips:        number;
@@ -118,6 +119,9 @@ export default function DashboardPage() {
           sub="unique wallets"
         />
       </div>
+
+      {/* Tip activity chart */}
+      {jwt && <TipChart jwt={jwt} />}
 
       {/* Two-column lower section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
