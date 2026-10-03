@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { creatorApi } from "@/lib/api";
+import { ApiError, creatorApi } from "@/lib/api";
 import { jarIdForSlug, readJar } from "@/lib/jar";
 import { useWallet } from "@/contexts/WalletContext";
 import { getTipUrl } from "@/lib/tipUrl";
@@ -62,8 +62,8 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
           setAvailable(r.available);
           setOnChain(r.takenOnChain);
         })
-        .catch((e: any) => {
-          if (e.code === "ABORTED" || controller.signal.aborted) return;
+        .catch((e: unknown) => {
+          if ((e instanceof ApiError && e.code === "ABORTED") || controller.signal.aborted) return;
           setAvailable(null);
         })
         .finally(() => {

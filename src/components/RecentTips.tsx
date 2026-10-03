@@ -153,8 +153,6 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
   const fastUntilRef = useRef<number | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
   // Tracks ids from the previous successful fetch so new arrivals can be
   // announced. Stays null until the first fetch resolves, which is how we
   // avoid announcing the initial page load as "new" tips.
@@ -190,23 +188,11 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
           }
         }
         previousIndexedIdsRef.current = new Set(fresh.map((t) => t.id));
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message);
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [jwt, limit]);
 
-  const abortInFlight = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-  }, []);
+        return fresh;
+      }),
+    );
+  }, [jwt, limit, run]);
 
   const poll = useCallback(() => {
     fetchTips();

@@ -15,7 +15,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { authApi, creatorApi, type CreatorProfile } from "@/lib/api";
+import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -51,9 +51,9 @@ export default function SettingsPage() {
       .me(jwt, { signal: controller.signal })
       .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
       .then((r) => setCreator(r.creator))
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setLoadError(e.message);
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setLoadError(e instanceof Error ? e.message : "Failed to load your profile.");
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
@@ -83,8 +83,8 @@ export default function SettingsPage() {
       creatorApi
         .checkSlug(newSlug, { signal: controller.signal })
         .then((r) => setAvailable(r.available))
-        .catch((e: any) => {
-          if (e.code === "ABORTED") return;
+        .catch((e: unknown) => {
+          if (e instanceof ApiError && e.code === "ABORTED") return;
           setAvailable(null);
         })
         .finally(() => {

@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError } from "@/lib/api";
 
 export interface UseAbortableRequestResult<T> {
   data:    T;
@@ -53,10 +54,10 @@ export function useAbortableRequest<T>(initialData: T): UseAbortableRequestResul
         setData(result);
         setError(null);
       })
-      .catch((e: any) => {
+      .catch((e: unknown) => {
         if (abortControllerRef.current !== controller) return;
-        if (e?.code === "ABORTED") return;
-        setError(e.message);
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setError(e instanceof Error ? e.message : "Something went wrong.");
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
