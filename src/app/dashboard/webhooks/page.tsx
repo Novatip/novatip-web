@@ -14,7 +14,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { webhookApi } from "@/lib/api";
+import { ApiError, getErrorMessage, webhookApi } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -74,9 +74,9 @@ export default function WebhooksPage() {
         setWebhooks(r.webhooks);
         setListError(null);
       })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setListError(e.message ?? "Failed to load webhooks.");
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setListError(getErrorMessage(e, "Failed to load webhooks."));
       })
       .finally(() => {
         if (abortRef.current === controller) {
@@ -108,8 +108,8 @@ export default function WebhooksPage() {
       setNewSecret(r.webhook.secret);
       setUrl("");
       setUrlTouched(false);
-    } catch (e: any) {
-      setAddError(e.message ?? "Failed to register webhook.");
+    } catch (e: unknown) {
+      setAddError(getErrorMessage(e, "Failed to register webhook."));
     } finally {
       setAddLoading(false);
     }
@@ -133,10 +133,10 @@ export default function WebhooksPage() {
     try {
       await webhookApi.remove(jwt, id);
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
-    } catch (e: any) {
+    } catch (e: unknown) {
       setRemoveErrors((prev) => ({
         ...prev,
-        [id]: e.message ?? "Failed to remove webhook.",
+        [id]: getErrorMessage(e, "Failed to remove webhook."),
       }));
     } finally {
       setRemoving(null);

@@ -10,7 +10,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { analyticsApi, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
+import { analyticsApi, ApiError, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { shortenAddress } from "@novatip/sdk";
 import { Card } from "@/components/ui/Card";
@@ -87,12 +87,13 @@ export default function HistoryPage() {
           );
         }
       })
-      .catch((e: Error) => {
+      .catch((e: unknown) => {
         // Ignore aborted requests — component is unmounted or jwt changed.
-        if ((e as any).code === "ABORTED") return;
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        const message = e instanceof Error ? e.message : "Something went wrong.";
         // A failed later page must not replace the rows already shown with
         // a page-level error — report it beside the button so it can retry.
-        if (offset === 0) setError(e.message);
+        if (offset === 0) setError(message);
         else setPageError("Couldn't load more tips. Try again.");
       })
       .finally(() => {

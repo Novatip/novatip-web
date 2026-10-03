@@ -35,6 +35,17 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Safely read a message out of a caught value of unknown shape.
+ *
+ * A rejected request is almost always an ApiError or a plain Error, but
+ * nothing guarantees it — `throw "oops"` is valid JS. Narrow before reading
+ * `.message` rather than trusting every catch's shape.
+ */
+export function getErrorMessage(err: unknown, fallback = "Something went wrong."): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 // ── Base fetch ────────────────────────────────────────────────────────────────
 
 async function request<T>(
@@ -89,11 +100,18 @@ async function request<T>(
       signal,
     });
     cleanup?.();
-  } catch (err: any) {
+  } catch (err: unknown) {
     cleanup?.();
+    // fetch() rejects with a DOMException (AbortError) or a TypeError
+    // (network failure) — neither is guaranteed to be an Error instance, so
+    // .name is read via a duck-typed check rather than assuming the shape.
+    const errName =
+      typeof err === "object" && err !== null && "name" in err
+        ? String((err as { name: unknown }).name)
+        : undefined;
     const isAbort =
-      err.name === "AbortError" ||
-      err.name === "TimeoutError" ||
+      errName === "AbortError" ||
+      errName === "TimeoutError" ||
       callerSignal?.aborted ||
       timeoutSignal.aborted;
 

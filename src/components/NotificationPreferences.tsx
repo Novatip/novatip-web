@@ -21,7 +21,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { notificationsApi, type NotificationPreferences as Prefs } from "@/lib/api";
+import { ApiError, getErrorMessage, notificationsApi, type NotificationPreferences as Prefs } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -115,9 +115,9 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
       .then((r) => {
         if (abortControllerRef.current === controller) setPrefs(r.preferences);
       })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message ?? "Failed to load notification preferences.");
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setError(getErrorMessage(e, "Failed to load notification preferences."));
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
@@ -143,10 +143,10 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
     try {
       const r = await notificationsApi.updatePreferences(jwt, { [key]: next });
       setPrefs(r.preferences);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Revert on failure so displayed state matches server state
       setPrefs(previous);
-      setError(e.message ?? "Failed to save. Please try again.");
+      setError(getErrorMessage(e, "Failed to save. Please try again."));
     } finally {
       setSaving(false);
     }

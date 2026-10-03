@@ -15,7 +15,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
-import { authApi } from "@/lib/api";
+import { ApiError, authApi } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { CopyFallback } from "@/components/CopyFallback";
@@ -144,8 +144,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           setSlug(r.user.slug);
         }
       })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
         setSlug(null);
       })
       .finally(() => {

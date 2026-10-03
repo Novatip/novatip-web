@@ -14,7 +14,7 @@
  */
 
 import { useEffect, useState, useRef, useCallback, useId } from "react";
-import { analyticsApi } from "@/lib/api";
+import { ApiError, getErrorMessage, analyticsApi } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
@@ -231,9 +231,9 @@ export function TipChart({ jwt }: TipChartProps) {
         setSeries(fillSeries(r.series, days));
         setError(null);
       })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message ?? "Failed to load chart data.");
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setError(getErrorMessage(e, "Failed to load chart data."));
       })
       .finally(() => {
         if (abortRef.current === controller) {

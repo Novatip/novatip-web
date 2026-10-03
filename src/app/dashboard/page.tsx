@@ -73,37 +73,6 @@ export default function DashboardPage() {
     );
   }, [jwt, runCreator]);
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    analyticsApi
-      .totals(jwt, { signal: controller.signal })
-      .then((data) => {
-        setTotals(data);
-        setError(null);
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message);
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [jwt]);
-
   const totalUsdc = totals
     ? formatUsdc(BigInt(totals.totalAmountRaw), 2)
     : "—";
