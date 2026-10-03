@@ -1,11 +1,11 @@
 /**
  * src/lib/time.test.ts
  *
- * Unit tests for the shared timeAgo formatter.
+ * Unit tests for the shared timeAgo formatter and formatAbsoluteTime.
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { timeAgo } from "./time";
+import { timeAgo, formatAbsoluteTime } from "./time";
 
 describe("timeAgo", () => {
   afterEach(() => vi.restoreAllMocks());
@@ -68,5 +68,20 @@ describe("timeAgo", () => {
     freeze(now);
     const justUnderADay = new Date(now - (86_400_000 - 1)).toISOString();
     expect(timeAgo(justUnderADay)).toBe("23h ago");
+  });
+});
+
+describe("formatAbsoluteTime", () => {
+  it("formats an ISO timestamp into a readable date and time", () => {
+    const result = formatAbsoluteTime("2026-01-05T15:45:12.000Z");
+    // Exact wording depends on the runtime's locale data, but it must carry
+    // the date, and the reconciliation use case this exists for needs a time.
+    expect(result).toMatch(/2026/);
+    expect(result).toMatch(/\d{1,2}:\d{2}/);
+  });
+
+  it("renders a formatted local-time string rather than echoing the raw ISO timestamp", () => {
+    const iso = "2026-01-05T15:45:12.000Z";
+    expect(formatAbsoluteTime(iso)).not.toBe(iso);
   });
 });

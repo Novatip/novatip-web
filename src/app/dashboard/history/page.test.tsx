@@ -1,12 +1,19 @@
 /**
  * src/app/dashboard/history/page.test.tsx
  *
- * Accessibility tests for the history page's "Load more" control.
+ * Accessibility tests for the history page's "Load more" control, plus the
+ * pagination rules themselves.
  *
  * Covers:
  *   - The number of newly appended rows is announced politely (aria-live)
  *   - The in-flight state is conveyed on the button, not just as a spinner
  *   - Focus is not stolen from the button when a page lands
+ *   - A second page is appended without duplicating a row repeated across
+ *     the offset boundary
+ *   - The "all tips shown" cap message appears once the total reaches
+ *     RECENT_TIPS_MAX_LIMIT
+ *   - hasMore (and the Load more button) goes away once a page shorter than
+ *     the page size comes back
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -150,5 +157,56 @@ describe("HistoryPage – focus", () => {
     );
 
     expect(button).toHaveFocus();
+  });
+});
+
+// ── Pagination rules ──────────────────────────────────────────────────────────
+
+describe("HistoryPage – pagination", () => {
+  it("appends a second page without duplicating a row repeated across the offset boundary", async () => {
+    // The component's own comment explains why this happens: a tip indexed
+    // between pages shifts the offset by one, repeating the last row of the
+    // previous page. tip-19 (the last id of page one) is repeated here.
+    recent
+      .mockResolvedValueOnce({ tips: makeTips(PAGE_SIZE, 0) }) // tip-0..tip-19
+      .mockResolvedValueOnce({ tips: makeTips(5, PAGE_SIZE - 1) }); // tip-19..tip-23
+    const user = userEvent.setup();
+
+    render(<HistoryPage />);
+
+    const button = await screen.findByRole("button", { name: "Load more" });
+    // +1 for the column-header row, which also carries role="row".
+    expect(screen.getAllByRole("row")).toHaveLength(PAGE_SIZE + 1);
+
+    await user.click(button);
+
+    await waitFor(() => {
+      // 20 from page one + 4 genuinely new from page two — tip-19 is
+      // filtered out as already shown, not appended a second time.
+      expect(screen.getAllByRole("row")).toHaveLength(PAGE_SIZE + 4 + 1);
+    });
+    expect(recent).toHaveBeenNthCalledWith(2, "jwt", PAGE_SIZE, expect.anything(), PAGE_SIZE);
+  });
+
+  it("shows the cap message once the loaded total reaches RECENT_TIPS_MAX_LIMIT", async () => {
+    recent.mockResolvedValueOnce({ tips: makeTips(100, 0) });
+
+    render(<HistoryPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText("Showing all tips (100 max)")).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+
+  it("drops hasMore (and the Load more button) once a page shorter than the page size comes back", async () => {
+    recent.mockResolvedValueOnce({ tips: makeTips(7, 0) }); // fewer than PAGE_SIZE
+
+    render(<HistoryPage />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/that.s all your tips/i)).toBeInTheDocument(),
+    );
+    expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 });

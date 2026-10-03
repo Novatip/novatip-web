@@ -203,52 +203,17 @@ export default function HistoryPage() {
                   </span>
 
                   {/* Time */}
-                  <span role="cell" className="col-span-2 text-right text-xs text-gray-500">
+                  <TimeAgo
+                    iso={tip.ledgerAt}
+                    className="col-span-2 text-right text-xs text-gray-500"
+                  >
                     {timeAgo(tip.ledgerAt)}
-                  </span>
+                  </TimeAgo>
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* Tip rows */}
-        {tips.length > 0 && (
-          <div className="divide-y divide-white/5">
-            {tips.map((tip) => (
-              <div
-                key={tip.id}
-                className="grid grid-cols-12 gap-4 py-3 hover:bg-white/3 transition-colors rounded-lg"
-              >
-                {/* Sender */}
-                <span className="col-span-4 font-mono text-sm text-gray-300 truncate">
-                  {shortenAddress(tip.fromAddress)}
-                </span>
-
-                {/* Amount */}
-                <span className="col-span-2 text-right text-sm font-semibold text-brand-400">
-                  ${formatUsdc(BigInt(tip.amount), 2)}
-                </span>
-
-                {/* Message */}
-                <span className={cn(
-                  "col-span-4 text-sm truncate",
-                  tip.message ? "text-gray-300" : "text-gray-600 italic",
-                )}>
-                  {tip.message || "No message"}
-                </span>
-
-                {/* Time */}
-                <TimeAgo
-                  iso={tip.ledgerAt}
-                  className="col-span-2 text-right text-xs text-gray-500"
-                >
-                  {timeAgo(tip.ledgerAt)}
-                </TimeAgo>
-              </div>
-            ))}
-          </div>
-        )}
 
         {hasMore && tips.length > 0 && (
           <div className="pt-4 flex flex-col items-center gap-2">

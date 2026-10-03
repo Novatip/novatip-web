@@ -209,6 +209,57 @@ through a shared helper that takes a variable name. Do not refactor this into a
 loop or a helper function that receives the key as a string argument — every
 value will be `undefined` in the browser.
 
+---
+
+## Deployment
+
+The app deploys to [Vercel](https://vercel.com) from this repository.
+
+### Environment variables
+
+Set every variable from the [Environment Variables](#environment-variables)
+table above in the Vercel project (**Settings → Environment Variables**), for
+each environment you deploy (Production, Preview, Development). Vercel never
+reads `.env.local` — that file is local-development-only and is not part of
+the deployment.
+
+| Variable | Set it on Vercel? | Why |
+|---|---|---|
+| `NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID` | **Always.** | No default. The build fails without it (see above). |
+| `NEXT_PUBLIC_SITE_URL` | **Always.** | Defaults to `http://localhost:3000`, which is wrong for any deployed environment. Set it to the real domain for Production, and to the deployment's own preview URL for Preview deployments — Open Graph images resolve against this. |
+| `NEXT_PUBLIC_API_URL` | **Always.** | Defaults to `http://localhost:3001/api/v1`. Set it to the deployed novatip-backend's URL, or every dashboard panel and the public tip page will fail to load data. |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Only to deploy against Mainnet. | Defaults to `testnet`, which is correct for a staging/preview deployment. Production against real funds needs `mainnet`. |
+| `NEXT_PUBLIC_USDC_CONTRACT_ID` | Rarely. | The default is the well-known SAC address for both Testnet and Mainnet. Only override for a custom network (e.g. a private Futurenet node). |
+
+### Why `vercel.json` pins the install command
+
+```json
+{ "installCommand": "npm ci" }
+```
+
+This exists for the same reason `@novatip/sdk` is pinned to an exact commit
+(see [Why the SDK is pinned to an exact
+commit](#why-the-sdk-is-pinned-to-an-exact-commit) above): an unpinned SDK
+spec previously let a stale copy of the package survive in Vercel's build
+cache, shipping production against an SDK version that no longer matched the
+deployed contract. `npm ci` installs strictly from `package-lock.json` and
+**fails** rather than silently re-resolving if the lockfile and
+`package.json` disagree. Vercel's zero-config default (`npm install`) does
+not give that guarantee — it will happily rewrite the lockfile to make things
+line up, which is exactly the drift that let the stale-SDK bug happen. Do not
+remove `installCommand` from `vercel.json`; doing so re-opens it.
+
+### Changing a `NEXT_PUBLIC_` variable requires a new deployment
+
+`NEXT_PUBLIC_` variables are baked into the client bundle **at build time**
+(see [How NEXT_PUBLIC_ variables are
+read](#how-next_public_-variables-are-read-important-for-contributors)
+above). Editing one in the Vercel dashboard does not change anything about an
+already-built deployment — the live site keeps serving the bundle built with
+the old value until a new build runs. After changing a variable, trigger a
+redeploy (push a commit, or use **Deployments → Redeploy** in the Vercel
+dashboard) — do not expect the change to take effect on its own.
+
 ## Troubleshooting
 
 ### `Error: Missing required environment variable: NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID`
