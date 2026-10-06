@@ -8,7 +8,7 @@
  *   - An explicitly passed id wins over the generated one
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { Input } from "./Input";
 

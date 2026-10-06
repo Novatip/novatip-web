@@ -22,7 +22,9 @@ const PAYLOAD: TipSuccessPayload = {
 };
 
 describe("tipEvents", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it("delivers the payload to a subscribed listener", () => {
     const listener = vi.fn();
@@ -87,8 +89,10 @@ describe("tipEvents", () => {
 
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("tipEvents"), err);
     unsub();
+  });
+
   it("does not throw when emitting with no listeners", () => {
-    expect(() => tipEvents.emit(makePayload())).not.toThrow();
+    expect(() => tipEvents.emit(PAYLOAD)).not.toThrow();
   });
 
   it("is safe to unsubscribe the same listener twice", () => {
@@ -98,7 +102,7 @@ describe("tipEvents", () => {
     unsubscribe();
     expect(() => unsubscribe()).not.toThrow();
 
-    tipEvents.emit(makePayload());
+    tipEvents.emit(PAYLOAD);
     expect(listener).not.toHaveBeenCalled();
   });
 });

@@ -28,6 +28,7 @@ import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import { timeAgo } from "@/lib/time";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

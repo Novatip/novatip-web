@@ -15,7 +15,7 @@
  *   - Each variant and size applies its expected classes
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef } from "react";

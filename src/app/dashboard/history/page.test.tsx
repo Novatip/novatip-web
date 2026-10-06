@@ -129,7 +129,10 @@ describe("HistoryPage – in-flight state", () => {
     const busy = await screen.findByRole("button", { name: "Loading more…" });
     expect(busy).toHaveAttribute("aria-busy", "true");
 
-    resolveSecond!({ tips: makeTips(3, PAGE_SIZE) });
+    // A full second page, so there is still more to fetch and the button
+    // legitimately remains. A short page sets hasMore false and replaces it
+    // with the "that's all" message, which is a different behaviour.
+    resolveSecond!({ tips: makeTips(PAGE_SIZE, PAGE_SIZE) });
 
     await waitFor(() =>
       expect(
@@ -143,7 +146,8 @@ describe("HistoryPage – in-flight state", () => {
 
 describe("HistoryPage – focus", () => {
   it("keeps focus on the button after a page lands", async () => {
-    twoPages(3);
+    // Full second page so the button is still mounted and can hold focus.
+    twoPages(PAGE_SIZE);
     const user = userEvent.setup();
 
     render(<HistoryPage />);
@@ -153,7 +157,9 @@ describe("HistoryPage – focus", () => {
 
     await screen.findByRole("status");
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent("3 more tips loaded."),
+      expect(screen.getByRole("status")).toHaveTextContent(
+        `${PAGE_SIZE} more tips loaded.`,
+      ),
     );
 
     expect(button).toHaveFocus();

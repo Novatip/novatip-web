@@ -17,6 +17,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useAbortableRequest } from "./useAbortableRequest";
+import { ApiError } from "@/lib/api";
 
 describe("useAbortableRequest", () => {
   it("starts loading with the initial data", () => {
@@ -97,9 +98,10 @@ describe("useAbortableRequest", () => {
 
     act(() => {
       result.current.run(async () => {
-        const err: any = new Error("Request aborted");
-        err.code = "ABORTED";
-        throw err;
+        // A real ApiError, not a plain Error carrying a `code`: the hook
+        // narrows with `instanceof ApiError` rather than duck-typing, so a
+        // look-alike is correctly treated as a genuine failure.
+        throw new ApiError(0, "ABORTED", "Request aborted");
       });
     });
 

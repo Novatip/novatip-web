@@ -14,7 +14,6 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/Input";
 import { formatUsdc, isValidTipAmount, usdcToStroops } from "@novatip/sdk";
-import { isValidTipAmount, usdcToStroops } from "@novatip/sdk";
 import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
 
 /** Used when a creator hasn't configured their own preset amounts. */
@@ -26,6 +25,8 @@ interface AmountPickerProps {
   disabled?: boolean;
   /** Preset amount buttons, in display order. Defaults to DEFAULT_AMOUNT_PRESETS. */
   presets?:  string[];
+  /** The connected supporter's USDC balance, if known — null while unknown/loading. */
+  balance?:  bigint | null;
 }
 
 export function AmountPicker({
@@ -33,12 +34,8 @@ export function AmountPicker({
   onChange,
   disabled = false,
   presets = DEFAULT_AMOUNT_PRESETS,
+  balance = null,
 }: AmountPickerProps) {
-  /** The connected supporter's USDC balance, if known — null while unknown/loading. */
-  balance?:  bigint | null;
-}
-
-export function AmountPicker({ value, onChange, disabled = false, balance = null }: AmountPickerProps) {
   const [isCustom, setIsCustom] = useState(false);
 
   const isPreset = presets.includes(value);

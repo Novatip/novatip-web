@@ -92,35 +92,6 @@ export function Leaderboard({ jwt, limit = 10, slug }: LeaderboardProps) {
       {!loading && supporters.length > 0 && (
         <ol className="space-y-2" aria-label="Top supporters leaderboard">
           {supporters.map((s, i) => (
-            <li
-              key={s.fromAddress}
-              className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors",
-                i === 0 ? "bg-warning/10 border border-warning/20" : "hover:bg-surface-strong",
-              )}
-            >
-              {/* Rank */}
-              <span className="w-6 text-center text-sm" aria-label={`Rank ${i + 1}`}>
-                <span aria-hidden="true">
-                  {MEDALS[i] ?? <span className="text-fg-dim font-mono text-xs">{i + 1}</span>}
-                </span>
-              </span>
-
-              {/* Address */}
-              <span className="flex-1 font-mono text-sm text-fg-muted truncate">
-                {shortenAddress(s.fromAddress)}
-              </span>
-
-              {/* Tip count */}
-              <span className="text-xs text-fg-faint hidden sm:block">
-                {s.tipCount} tip{s.tipCount !== 1 ? "s" : ""}
-              </span>
-
-              {/* Amount */}
-              <span className="text-sm font-semibold text-accent shrink-0">
-                ${formatUsdc(BigInt(s.totalAmountRaw), 2)}
-              </span>
-            </li>
             <SupporterRow key={s.fromAddress} supporter={s} rank={i} />
           ))}
         </ol>
@@ -141,9 +112,13 @@ function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number 
         rank === 0 ? "bg-warning/10 border border-warning/20" : "hover:bg-surface-strong",
       )}
     >
-      {/* Rank */}
+      {/* Rank. The medal is decoration on top of the rank, so it is hidden from
+          assistive technology — otherwise the first row announces both the
+          label and the emoji, e.g. "Rank 1, first place medal". */}
       <span className="w-6 text-center text-sm" aria-label={`Rank ${rank + 1}`}>
-        {MEDALS[rank] ?? <span className="text-fg-dim font-mono text-xs">{rank + 1}</span>}
+        <span aria-hidden="true">
+          {MEDALS[rank] ?? <span className="text-fg-dim font-mono text-xs">{rank + 1}</span>}
+        </span>
       </span>
 
       {/* Address + copy control */}

@@ -22,7 +22,8 @@ import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import { ApiError } from "@/lib/api";
 import CreatorNotFound from "./not-found";
-import TipPage, { generateMetadata, normalizeSlug } from "./page";
+import TipPage, { generateMetadata } from "./page";
+import { normalizeSlug } from "@/lib/slug";
 
 vi.mock("@/components/Header", () => ({
   Header: () => <header data-testid="header" />,

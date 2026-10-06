@@ -48,6 +48,12 @@ export default function HistoryPage() {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Mirrors `tips` so a landed page can be deduplicated and counted without
+  // reading state inside a setState updater. React queues updaters rather than
+  // running them synchronously, so a count assigned inside one is still zero
+  // on the next line — which made the announcement always say "0 more tips".
+  const tipsRef = useRef<Tip[]>([]);
+
   // Each call fetches one page starting after the rows already shown and
   // appends it, so a load more costs one page rather than the whole history,
   // and existing rows are never replaced.
@@ -67,13 +73,14 @@ export default function HistoryPage() {
       .then((r) => {
         // A tip indexed between pages shifts the offset by one, which would
         // repeat the last row of the previous page — skip ids already shown.
-        let added = 0;
-        setTips((prev) => {
-          const seen = new Set(prev.map((t) => t.id));
-          const fresh = r.tips.filter((t) => !seen.has(t.id));
-          added = fresh.length;
-          return [...prev, ...fresh];
-        });
+        const shown = offset === 0 ? [] : tipsRef.current;
+        const seen = new Set(shown.map((t) => t.id));
+        const fresh = r.tips.filter((t) => !seen.has(t.id));
+        const added = fresh.length;
+
+        const next = [...shown, ...fresh];
+        tipsRef.current = next;
+        setTips(next);
         setHasMore(r.tips.length === PAGE_SIZE);
         setError(null);
         setPageError(null);
@@ -107,6 +114,7 @@ export default function HistoryPage() {
   }, [jwt]);
 
   useEffect(() => {
+    tipsRef.current = [];
     setTips([]);
     setHasMore(true);
     setPageError(null);
@@ -134,6 +142,17 @@ export default function HistoryPage() {
           All tips received, newest first
         </p>
       </div>
+
+      {/*
+        Appended rows land below the button, which keeps focus — so without a
+        live region a screen reader user gets no signal that anything happened
+        or how much arrived. Polite rather than assertive: it is a confirmation,
+        not an interruption. Empty on the first page, which the page load
+        already conveys.
+      */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
 
       {/* Error */}
       {error && (

@@ -77,13 +77,6 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     setAmount(getLastTipAmount());
   }, []);
 
-  // Restore the supporter's last tip amount after mount — not in the initial
-  // useState, so the server-rendered markup (which has no access to
-  // localStorage) matches the client's first paint and only then updates.
-  useEffect(() => {
-    setAmount(getLastTipAmount());
-  }, []);
-
   // ── Validation ─────────────────────────────────────────────────────────────
   const stroops    = (() => {
     try { return usdcToStroops(amount); } catch { return BigInt(0); }
@@ -91,11 +84,29 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   const amountValid = isValidTipAmount(stroops);
   const insufficientBalance = balance !== null && amountValid && stroops > balance;
   const trimmedMessage = message.trim();
+
+  // The contract limits the message in UTF-8 bytes, not characters, so the
+  // count shown and the count enforced both have to be in bytes — a string of
+  // emoji is well under 280 characters and well over 280 bytes.
+  const messageBytes = utf8ByteLength(trimmedMessage);
+
+  // A jar with no recipients cannot pay anyone, so tipping it would fail
+  // on-chain after the supporter had already signed.
+  const hasRecipients = splits.length > 0;
+
+  // The contract divides with integer maths (amount * bps / 10_000), so a
+  // small enough tip rounds a collaborator's share down to nothing. Mirror
+  // that division here rather than approximating it with floats.
+  const zeroPaidCount = amountValid
+    ? splits.filter((s) => (stroops * BigInt(s.bps)) / 10_000n === 0n).length
+    : 0;
+
   const canSubmit   =
     isConnected &&
     amountValid &&
+    hasRecipients &&
     !insufficientBalance &&
-    trimmedMessage.length <= MAX_MESSAGE_LENGTH &&
+    messageBytes <= MAX_MESSAGE_BYTES &&
     step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────

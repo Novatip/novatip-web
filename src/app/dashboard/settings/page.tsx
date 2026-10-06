@@ -120,30 +120,15 @@ export default function SettingsPage() {
     }
   }
 
-  return (
-    <div className="flex flex-col gap-6 animate-fade-in max-w-xl">
-      <div>
-        <h1 className="text-2xl font-bold text-fg">Settings</h1>
-        <p className="text-sm text-fg-subtle mt-1">
-          Manage your public tip page link.
-        </p>
-      </div>
-
-  // ── Avatar preview ─────────────────────────────────────────────────────────
-  const avatarPreviewUrl =
-    avatarUrl && !validateAvatarUrl(avatarUrl)
-      ? avatarUrl
-      : profile?.avatarUrl ?? null;
-
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
 
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-fg">Profile settings</h1>
+        <h1 className="text-2xl font-bold text-fg">Settings</h1>
         <p className="text-sm text-fg-subtle mt-1">
-          Changes appear on your public tip page immediately after saving.
+          Manage your public tip page link.
         </p>
       </div>
 

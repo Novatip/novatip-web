@@ -11,6 +11,7 @@ import { notFound } from "next/navigation";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ApiError, resolverApi, type ResolvedPage } from "@/lib/api";
+import { normalizeSlug } from "@/lib/slug";
 import { Header } from "@/components/Header";
 import { TipForm } from "@/components/TipForm";
 import { Badge } from "@/components/ui/Badge";
@@ -22,11 +23,6 @@ import { Avatar } from "@/components/Avatar";
 interface Props {
   // Next 15 resolves route params asynchronously, so this is a Promise.
   params: Promise<{ slug: string }>;
-}
-
-// Strip leading @ if the user typed /@alice in the URL
-export function normalizeSlug(slug: string): string {
-  return decodeURIComponent(slug).replace(/^@/, "");
 }
 
 /** True for the one failure that means "nobody has claimed this slug". */

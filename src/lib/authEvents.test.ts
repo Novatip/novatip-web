@@ -1,8 +1,8 @@
 /**
  * src/lib/authEvents.test.ts
  *
- * Unit tests for the 401 pub/sub bus that WalletContext uses to
- * tear down a session when the API client sees an unauthorized response.
+ * Unit tests for the 401 pub/sub bus that WalletContext uses to tear down a
+ * session when the API client sees an unauthorized response.
  *
  * Covers:
  *   - A subscribed listener is notified on emitUnauthorized
@@ -10,21 +10,6 @@
  *   - Unsubscribing stops further notifications to that listener
  *   - Emitting with no listeners does not throw
  *   - Unsubscribing twice is a no-op
- */
-
-import { describe, it, expect, vi } from "vitest";
-import { onUnauthorized, emitUnauthorized } from "./authEvents";
-
-describe("authEvents", () => {
-  it("notifies a subscribed listener on emitUnauthorized", () => {
-    const listener = vi.fn();
-    const unsubscribe = onUnauthorized(listener);
- * Unit tests for the authEvents pub/sub bus.
- *
- * Covers:
- *   - A subscribed listener is called on emit
- *   - Multiple listeners are all called on emit
- *   - onUnauthorized's return value stops a listener from being called
  *   - A throwing listener does not stop later listeners from running
  *   - A throwing listener's error is reported, not silently dropped
  */
@@ -33,16 +18,17 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { onUnauthorized, emitUnauthorized } from "./authEvents";
 
 describe("authEvents", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-  it("calls a subscribed listener on emit", () => {
+  it("notifies a subscribed listener on emitUnauthorized", () => {
     const listener = vi.fn();
-    const unsub = onUnauthorized(listener);
+    const unsubscribe = onUnauthorized(listener);
 
     emitUnauthorized();
 
     expect(listener).toHaveBeenCalledTimes(1);
-
     unsubscribe();
   });
 
@@ -66,28 +52,6 @@ describe("authEvents", () => {
     const unsubscribe = onUnauthorized(listener);
 
     unsubscribe();
-    unsub();
-  });
-
-  it("calls every subscribed listener on emit", () => {
-    const a = vi.fn();
-    const b = vi.fn();
-    const unsubA = onUnauthorized(a);
-    const unsubB = onUnauthorized(b);
-
-    emitUnauthorized();
-
-    expect(a).toHaveBeenCalledTimes(1);
-    expect(b).toHaveBeenCalledTimes(1);
-    unsubA();
-    unsubB();
-  });
-
-  it("stops notifying a listener once it has unsubscribed", () => {
-    const listener = vi.fn();
-    const unsub = onUnauthorized(listener);
-    unsub();
-
     emitUnauthorized();
 
     expect(listener).not.toHaveBeenCalled();
@@ -106,6 +70,11 @@ describe("authEvents", () => {
 
     emitUnauthorized();
     expect(listener).not.toHaveBeenCalled();
+  });
+
+  // This bus exists to tear down an invalid session everywhere at once, so a
+  // half-finished teardown is worse than a noisy one: a listener that throws
+  // must not take the remaining listeners down with it.
   it("still calls later listeners when an earlier one throws", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     const throwing = vi.fn(() => {
@@ -119,6 +88,7 @@ describe("authEvents", () => {
 
     expect(throwing).toHaveBeenCalledTimes(1);
     expect(after).toHaveBeenCalledTimes(1);
+
     unsubThrowing();
     unsubAfter();
   });

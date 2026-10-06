@@ -22,14 +22,6 @@ import { CopyFallback } from "@/components/CopyFallback";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { href: "/dashboard",          label: "Overview",  icon: "📊" },
-  { href: "/dashboard/history",  label: "History",   icon: "📜" },
-  { href: "/dashboard/splits",   label: "Splits",    icon: "✂️"  },
-  { href: "/dashboard/qr",       label: "QR & Link", icon: "🔗" },
-  { href: "/dashboard/settings", label: "Settings",  icon: "⚙️"  },
-];
 import { NAV_ITEMS } from "./nav";
 
 // ── Tip-link copy control ─────────────────────────────────────────────────────

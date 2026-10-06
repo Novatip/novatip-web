@@ -211,7 +211,7 @@ export default function WebhooksPage() {
             className="self-end text-xs text-fg-faint hover:text-fg transition-colors"
             onClick={() => setNewSecret(null)}
           >
-            I've saved it — dismiss
+            I&apos;ve saved it — dismiss
           </button>
         </div>
       )}

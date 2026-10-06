@@ -22,7 +22,6 @@ export default function SplitsPage() {
   const { jwt, publicKey } = useWallet();
   const { data: creator, loading, error, run } = useAbortableRequest<CreatorProfile | null>(null);
 
-  useEffect(() => {
   const fetchCreator = useCallback(() => {
     if (!jwt) return;
     // Fetch the creator profile via the auth/me + creator slug

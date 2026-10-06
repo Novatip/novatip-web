@@ -8,7 +8,9 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { timeAgo, formatAbsoluteTime } from "./time";
 
 describe("timeAgo", () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   function freeze(nowMs: number) {
     vi.spyOn(Date, "now").mockReturnValue(nowMs);
