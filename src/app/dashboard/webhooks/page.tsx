@@ -433,14 +433,25 @@ export default function WebhooksPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-mono text-fg truncate">{wh.url}</p>
                   </div>
-                  <Badge variant={wh.enabled ? "success" : "default"}>
-                    {wh.enabled ? "active" : "disabled"}
-                  </Badge>
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(wh.id, wh.enabled)}
+                    disabled={toggling === wh.id || !!rotating || !!removing}
+                    className="shrink-0 group"
+                    aria-label={wh.enabled ? "Disable webhook" : "Enable webhook"}
+                  >
+                    <Badge
+                      variant={wh.enabled ? "success" : "default"}
+                      className="cursor-pointer group-hover:opacity-80 transition-opacity"
+                    >
+                      {toggling === wh.id ? "..." : wh.enabled ? "active" : "disabled"}
+                    </Badge>
+                  </button>
                   <Button
                     variant="secondary"
                     size="sm"
                     loading={rotating === wh.id}
-                    disabled={!!rotating || !!removing}
+                    disabled={!!rotating || !!removing || !!toggling}
                     onClick={() => requestRotate(wh.id, wh.url)}
                     aria-label={`Rotate secret for ${wh.url}`}
                   >
@@ -450,7 +461,7 @@ export default function WebhooksPage() {
                     variant="danger"
                     size="sm"
                     loading={removing === wh.id}
-                    disabled={!!removing || !!rotating}
+                    disabled={!!removing || !!rotating || !!toggling}
                     onClick={() => requestRemove(wh.id, wh.url)}
                     aria-label={`Remove webhook ${wh.url}`}
                   >
@@ -462,6 +473,9 @@ export default function WebhooksPage() {
                 )}
                 {rotateErrors[wh.id] && (
                   <p className="text-xs text-danger ml-8">{rotateErrors[wh.id]}</p>
+                )}
+                {toggleErrors[wh.id] && (
+                  <p className="text-xs text-danger ml-8">{toggleErrors[wh.id]}</p>
                 )}
 
                 {/* Deliveries section */}
