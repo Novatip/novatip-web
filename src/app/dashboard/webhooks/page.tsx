@@ -56,6 +56,7 @@ export default function WebhooksPage() {
   // ── Remove state ───────────────────────────────────────────────────────────
   const [removing,     setRemoving]     = useState<string | null>(null); // id being deleted
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
+  const [confirmRemove, setConfirmRemove] = useState<{ id: string; url: string } | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -125,6 +126,7 @@ export default function WebhooksPage() {
       delete next[id];
       return next;
     });
+    setConfirmRemove(null);
     // Dismiss any revealed secret when the corresponding webhook is removed
     if (newSecret && webhooks.find((w) => w.id === id)) {
       setNewSecret(null);
@@ -141,6 +143,14 @@ export default function WebhooksPage() {
     } finally {
       setRemoving(null);
     }
+  }
+
+  function requestRemove(id: string, url: string) {
+    setConfirmRemove({ id, url });
+  }
+
+  function cancelRemove() {
+    setConfirmRemove(null);
   }
 
   // ── Copy secret ────────────────────────────────────────────────────────────
@@ -290,7 +300,7 @@ export default function WebhooksPage() {
                     size="sm"
                     loading={removing === wh.id}
                     disabled={!!removing}
-                    onClick={() => handleRemove(wh.id)}
+                    onClick={() => requestRemove(wh.id, wh.url)}
                     aria-label={`Remove webhook ${wh.url}`}
                   >
                     {removing === wh.id ? "Removing…" : "Remove"}
@@ -304,6 +314,53 @@ export default function WebhooksPage() {
           </ul>
         )}
       </Card>
+
+      {/* Remove confirmation dialog */}
+      {confirmRemove && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
+          onClick={cancelRemove}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-remove-title"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") cancelRemove();
+          }}
+        >
+          <div
+            className="bg-surface border border-hairline rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="confirm-remove-title" className="text-lg font-bold text-fg mb-2">
+              Remove webhook?
+            </h2>
+            <p className="text-sm text-fg-subtle mb-4">
+              This will delete the endpoint and its signing secret immediately.
+              There is no undo.
+            </p>
+            <div className="rounded-lg bg-surface-strong border border-hairline px-3 py-2 mb-6">
+              <p className="text-xs font-mono text-fg break-all">{confirmRemove.url}</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={cancelRemove}
+                autoFocus
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                size="md"
+                onClick={() => handleRemove(confirmRemove.id)}
+              >
+                Remove webhook
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
