@@ -340,6 +340,13 @@ export const notificationsApi = {
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
+export interface WebhookDelivery {
+  id:        string;
+  status:    number;
+  attempt:   number;
+  createdAt: string;
+}
+
 export const webhookApi = {
   list: (jwt: string, options?: RequestOptions) =>
     request<{ webhooks: Array<{ id: string; url: string; enabled: boolean }> }>(
@@ -357,4 +364,18 @@ export const webhookApi = {
 
   remove: (jwt: string, id: string, options?: RequestOptions) =>
     request<void>(`/webhooks/${id}`, { ...options, method: "DELETE" }, jwt),
+
+  deliveries: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ deliveries: WebhookDelivery[] }>(
+      `/webhooks/${id}/deliveries`,
+      options,
+      jwt,
+    ),
+
+  rotateSecret: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ secret: string }>(
+      `/webhooks/${id}/secret`,
+      { ...options, method: "POST" },
+      jwt,
+    ),
 };

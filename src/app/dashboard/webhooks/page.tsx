@@ -14,7 +14,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { ApiError, getErrorMessage, webhookApi } from "@/lib/api";
+import { ApiError, getErrorMessage, webhookApi, type WebhookDelivery } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -52,11 +52,18 @@ export default function WebhooksPage() {
   // ── Secret reveal state (shown once after creation) ────────────────────────
   const [newSecret,    setNewSecret]    = useState<string | null>(null);
   const [secretCopied, setSecretCopied] = useState(false);
+  const [secretContext, setSecretContext] = useState<"created" | "rotated">("created");
 
   // ── Remove state ───────────────────────────────────────────────────────────
   const [removing,     setRemoving]     = useState<string | null>(null); // id being deleted
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; url: string } | null>(null);
+
+  // ── Deliveries state ───────────────────────────────────────────────────────
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [deliveries, setDeliveries] = useState<Record<string, WebhookDelivery[]>>({});
+  const [deliveriesLoading, setDeliveriesLoading] = useState<Record<string, boolean>>({});
+  const [deliveriesError, setDeliveriesError] = useState<Record<string, string>>({});
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -151,6 +158,52 @@ export default function WebhooksPage() {
 
   function cancelRemove() {
     setConfirmRemove(null);
+  }
+
+  // ── Toggle deliveries ──────────────────────────────────────────────────────
+  async function toggleDeliveries(id: string) {
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+
+    setExpandedId(id);
+
+    // Fetch deliveries if not already loaded
+    if (!deliveries[id] && !deliveriesLoading[id] && jwt) {
+      setDeliveriesLoading((prev) => ({ ...prev, [id]: true }));
+      setDeliveriesError((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+
+      try {
+        const r = await webhookApi.deliveries(jwt, id);
+        setDeliveries((prev) => ({ ...prev, [id]: r.deliveries }));
+      } catch (e: unknown) {
+        setDeliveriesError((prev) => ({
+          ...prev,
+          [id]: getErrorMessage(e, "Failed to load deliveries."),
+        }));
+      } finally {
+        setDeliveriesLoading((prev) => ({ ...prev, [id]: false }));
+      }
+    }
+  }
+
+  function formatDeliveryTime(iso: string): string {
+    const date = new Date(iso);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60_000);
+
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
   }
 
   // ── Copy secret ────────────────────────────────────────────────────────────
@@ -287,8 +340,19 @@ export default function WebhooksPage() {
         {!listLoading && webhooks.length > 0 && (
           <ul className="flex flex-col divide-y divide-hairline" aria-label="Registered webhooks">
             {webhooks.map((wh) => (
-              <li key={wh.id} className="flex flex-col gap-1 py-3 first:pt-0 last:pb-0">
+              <li key={wh.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => toggleDeliveries(wh.id)}
+                    className="shrink-0 text-fg-subtle hover:text-fg transition-colors"
+                    aria-label={expandedId === wh.id ? "Hide deliveries" : "Show deliveries"}
+                    aria-expanded={expandedId === wh.id}
+                  >
+                    <span className={`transition-transform ${expandedId === wh.id ? "rotate-90" : ""}`}>
+                      ▶
+                    </span>
+                  </button>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-mono text-fg truncate">{wh.url}</p>
                   </div>
@@ -307,7 +371,59 @@ export default function WebhooksPage() {
                   </Button>
                 </div>
                 {removeErrors[wh.id] && (
-                  <p className="text-xs text-danger">{removeErrors[wh.id]}</p>
+                  <p className="text-xs text-danger ml-8">{removeErrors[wh.id]}</p>
+                )}
+
+                {/* Deliveries section */}
+                {expandedId === wh.id && (
+                  <div className="ml-8 mt-2 rounded-lg bg-surface-strong border border-hairline p-3">
+                    <h3 className="text-xs font-semibold text-fg mb-2">Recent deliveries</h3>
+
+                    {deliveriesLoading[wh.id] && (
+                      <div className="flex items-center gap-2 text-xs text-fg-faint py-2">
+                        <span className="animate-spin">⏳</span>
+                        Loading…
+                      </div>
+                    )}
+
+                    {deliveriesError[wh.id] && (
+                      <p className="text-xs text-danger py-2">{deliveriesError[wh.id]}</p>
+                    )}
+
+                    {!deliveriesLoading[wh.id] && !deliveriesError[wh.id] && deliveries[wh.id] && (
+                      <>
+                        {deliveries[wh.id].length === 0 ? (
+                          <p className="text-xs text-fg-faint py-2">
+                            No deliveries yet. This endpoint will receive a POST when a tip lands.
+                          </p>
+                        ) : (
+                          <ul className="space-y-2">
+                            {deliveries[wh.id].map((d) => (
+                              <li key={d.id} className="flex items-center gap-3 text-xs">
+                                <Badge
+                                  variant={d.status >= 200 && d.status < 300 ? "success" : "danger"}
+                                  className="shrink-0"
+                                >
+                                  {d.status}
+                                </Badge>
+                                <span className="text-fg-subtle">
+                                  {d.status >= 200 && d.status < 300 ? "✓" : "✗"}
+                                </span>
+                                <span className="text-fg-faint">
+                                  {formatDeliveryTime(d.createdAt)}
+                                </span>
+                                {d.attempt > 1 && (
+                                  <span className="text-fg-faint text-xs">
+                                    (attempt {d.attempt})
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </li>
             ))}
