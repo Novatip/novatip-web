@@ -378,4 +378,11 @@ export const webhookApi = {
       { ...options, method: "POST" },
       jwt,
     ),
+
+  update: (jwt: string, id: string, data: { enabled: boolean }, options?: RequestOptions) =>
+    request<{ webhook: { id: string; url: string; enabled: boolean } }>(
+      `/webhooks/${id}`,
+      { ...options, method: "PATCH", body: JSON.stringify(data) },
+      jwt,
+    ),
 };

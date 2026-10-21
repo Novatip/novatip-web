@@ -65,6 +65,15 @@ export default function WebhooksPage() {
   const [deliveriesLoading, setDeliveriesLoading] = useState<Record<string, boolean>>({});
   const [deliveriesError, setDeliveriesError] = useState<Record<string, string>>({});
 
+  // ── Rotate secret state ────────────────────────────────────────────────────
+  const [confirmRotate, setConfirmRotate] = useState<{ id: string; url: string } | null>(null);
+  const [rotating, setRotating] = useState<string | null>(null);
+  const [rotateErrors, setRotateErrors] = useState<Record<string, string>>({});
+
+  // ── Toggle enabled state ───────────────────────────────────────────────────
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
+
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Fetch list ─────────────────────────────────────────────────────────────
@@ -114,6 +123,7 @@ export default function WebhooksPage() {
         { id: r.webhook.id, url: r.webhook.url, enabled: true },
       ]);
       setNewSecret(r.webhook.secret);
+      setSecretContext("created");
       setUrl("");
       setUrlTouched(false);
     } catch (e: unknown) {
@@ -206,6 +216,66 @@ export default function WebhooksPage() {
     return `${diffDays}d ago`;
   }
 
+  // ── Rotate secret ──────────────────────────────────────────────────────────
+  function requestRotate(id: string, url: string) {
+    setConfirmRotate({ id, url });
+  }
+
+  function cancelRotate() {
+    setConfirmRotate(null);
+  }
+
+  async function handleRotate(id: string) {
+    if (!jwt || rotating) return;
+
+    setRotating(id);
+    setRotateErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setConfirmRotate(null);
+
+    try {
+      const r = await webhookApi.rotateSecret(jwt, id);
+      setNewSecret(r.secret);
+      setSecretContext("rotated");
+    } catch (e: unknown) {
+      setRotateErrors((prev) => ({
+        ...prev,
+        [id]: getErrorMessage(e, "Failed to rotate secret."),
+      }));
+    } finally {
+      setRotating(null);
+    }
+  }
+
+  // ── Toggle enabled ─────────────────────────────────────────────────────────
+  async function handleToggle(id: string, currentEnabled: boolean) {
+    if (!jwt || toggling) return;
+
+    setToggling(id);
+    setToggleErrors((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+    try {
+      await webhookApi.update(jwt, id, { enabled: !currentEnabled });
+      setWebhooks((prev) =>
+        prev.map((w) => (w.id === id ? { ...w, enabled: !currentEnabled } : w)),
+      );
+    } catch (e: unknown) {
+      setToggleErrors((prev) => ({
+        ...prev,
+        [id]: getErrorMessage(e, "Failed to update webhook."),
+      }));
+    } finally {
+      setToggling(null);
+    }
+  }
+
   // ── Copy secret ────────────────────────────────────────────────────────────
   async function handleCopySecret() {
     if (!newSecret) return;
@@ -248,9 +318,16 @@ export default function WebhooksPage() {
             <span className="text-warning text-lg leading-none mt-0.5" aria-hidden="true">⚠</span>
             <div className="flex flex-col gap-0.5">
               <p className="text-sm font-semibold text-warning">
-                Save your signing secret — it will not be shown again
+                {secretContext === "created"
+                  ? "Save your signing secret — it will not be shown again"
+                  : "New signing secret generated — save it now"}
               </p>
               <p className="text-xs text-fg-subtle">
+                {secretContext === "rotated" && (
+                  <span className="block mb-1 text-warning">
+                    The old secret is no longer valid.
+                  </span>
+                )}
                 Use this value to verify the <code className="text-accent">X-Novatip-Signature</code> header on incoming requests.
               </p>
             </div>
@@ -360,10 +437,20 @@ export default function WebhooksPage() {
                     {wh.enabled ? "active" : "disabled"}
                   </Badge>
                   <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={rotating === wh.id}
+                    disabled={!!rotating || !!removing}
+                    onClick={() => requestRotate(wh.id, wh.url)}
+                    aria-label={`Rotate secret for ${wh.url}`}
+                  >
+                    {rotating === wh.id ? "Rotating…" : "Rotate secret"}
+                  </Button>
+                  <Button
                     variant="danger"
                     size="sm"
                     loading={removing === wh.id}
-                    disabled={!!removing}
+                    disabled={!!removing || !!rotating}
                     onClick={() => requestRemove(wh.id, wh.url)}
                     aria-label={`Remove webhook ${wh.url}`}
                   >
@@ -372,6 +459,9 @@ export default function WebhooksPage() {
                 </div>
                 {removeErrors[wh.id] && (
                   <p className="text-xs text-danger ml-8">{removeErrors[wh.id]}</p>
+                )}
+                {rotateErrors[wh.id] && (
+                  <p className="text-xs text-danger ml-8">{rotateErrors[wh.id]}</p>
                 )}
 
                 {/* Deliveries section */}
@@ -472,6 +562,53 @@ export default function WebhooksPage() {
                 onClick={() => handleRemove(confirmRemove.id)}
               >
                 Remove webhook
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rotate secret confirmation dialog */}
+      {confirmRotate && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in"
+          onClick={cancelRotate}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="confirm-rotate-title"
+          onKeyDown={(e) => {
+            if (e.key === "Escape") cancelRotate();
+          }}
+        >
+          <div
+            className="bg-surface border border-hairline rounded-2xl shadow-2xl max-w-md w-full mx-4 p-6 animate-slide-up"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="confirm-rotate-title" className="text-lg font-bold text-fg mb-2">
+              Rotate signing secret?
+            </h2>
+            <p className="text-sm text-fg-subtle mb-4">
+              This will generate a new secret and invalidate the old one immediately.
+              Update your endpoint to use the new secret before rotating.
+            </p>
+            <div className="rounded-lg bg-surface-strong border border-hairline px-3 py-2 mb-6">
+              <p className="text-xs font-mono text-fg break-all">{confirmRotate.url}</p>
+            </div>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={cancelRotate}
+                autoFocus
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={() => handleRotate(confirmRotate.id)}
+              >
+                Rotate secret
               </Button>
             </div>
           </div>
