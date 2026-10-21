@@ -505,7 +505,7 @@ export default function WebhooksPage() {
                             {deliveries[wh.id].map((d) => (
                               <li key={d.id} className="flex items-center gap-3 text-xs">
                                 <Badge
-                                  variant={d.status >= 200 && d.status < 300 ? "success" : "danger"}
+                                  variant={d.status >= 200 && d.status < 300 ? "success" : "error"}
                                   className="shrink-0"
                                 >
                                   {d.status}
