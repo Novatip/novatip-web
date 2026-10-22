@@ -117,6 +117,8 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
     abortControllerRef.current = controller;
 
     setLoading(true);
+    setPrefs(null);
+    setError(null);
     notificationsApi
       .getPreferences(jwt, { signal: controller.signal })
       .then((r) => {
@@ -124,7 +126,11 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.code === "ABORTED") return;
-        setError(getErrorMessage(e, "Failed to load notification preferences."));
+        setError(
+          e instanceof ApiError && e.status === 404
+            ? "Notification preferences are not available yet."
+            : getErrorMessage(e, "Failed to load notification preferences."),
+        );
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
