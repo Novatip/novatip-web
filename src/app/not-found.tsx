@@ -8,11 +8,10 @@
  * that one is handled by app/[slug]/not-found.tsx.
  */
 
-import Link from "next/link";
 import type { Metadata } from "next";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { LinkButton } from "@/components/ui/LinkButton";
 
 export const metadata: Metadata = {
   title: "Page not found — Novatip",
@@ -47,16 +46,12 @@ export default function NotFound() {
             </div>
 
             <div className="flex flex-col w-full gap-3">
-              <Link href="/" className="w-full">
-                <Button size="lg" className="w-full">
-                  Back to home
-                </Button>
-              </Link>
-              <Link href="/onboarding" className="w-full">
-                <Button size="lg" variant="ghost" className="w-full">
-                  Create your tip jar
-                </Button>
-              </Link>
+              <LinkButton href="/" size="lg" className="w-full">
+                Back to home
+              </LinkButton>
+              <LinkButton href="/onboarding" size="lg" variant="ghost" className="w-full">
+                Create your tip jar
+              </LinkButton>
             </div>
 
           </div>

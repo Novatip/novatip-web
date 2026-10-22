@@ -35,6 +35,12 @@ vi.mock("@/components/TipForm", () => ({
   TipForm: () => <form data-testid="tip-form" />,
 }));
 
+// Avatar is outside this page-boundary test's scope. Mocking it also keeps this
+// branch independent from the separate avatar accessibility fix in #223.
+vi.mock("@/components/Avatar", () => ({
+  Avatar: () => <div data-testid="avatar" />,
+}));
+
 // notFound() throws a sentinel in Next; reproduce that shape so the tests can
 // tell "bailed out to the 404 boundary" apart from "threw for the error one".
 const NOT_FOUND = new Error("NEXT_NOT_FOUND");
@@ -93,6 +99,13 @@ describe("app/[slug]/not-found", () => {
       "href",
       "/onboarding",
     );
+  });
+
+  it("renders one interactive element per recovery action", () => {
+    const { container } = render(<CreatorNotFound />);
+
+    expect(container.querySelector("a button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 
   it("says nothing that blames the visitor for a broken link", () => {
