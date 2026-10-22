@@ -142,3 +142,18 @@ describe("NotificationPreferences – saving", () => {
     expect(updatePreferences).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("NotificationPreferences – unavailable endpoint", () => {
+  it("explains a 404 without rendering notification toggles", async () => {
+    getPreferences.mockRejectedValue(
+      new ApiError(404, "NOT_FOUND", "Route GET:/notifications/preferences not found"),
+    );
+
+    render(<NotificationPreferences jwt={JWT} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Notification preferences are not available yet.",
+    );
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+});

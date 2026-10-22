@@ -39,61 +39,23 @@ export function Avatar({ src, displayName, slug, className }: AvatarProps) {
 
   const initials = getInitials(displayName, slug);
   const showFallback = !src || imageError;
+  const accessibleName = `${displayName.trim() || `@${slug}`} avatar`;
 
   if (showFallback) {
     return (
       <div
         className={`w-full h-full flex items-center justify-center font-bold select-none bg-surface-strong text-fg-muted border border-hairline rounded-full ${className || ""}`}
-        aria-label={`${displayName} avatar fallback`}
+        role="img"
+        aria-label={accessibleName}
       >
-        <span className="text-lg">{initials}</span>
+        <span className="text-lg" aria-hidden="true">{initials}</span>
       </div>
     );
   }
-
-
-export function getInitials(name?: string): string {
-  if (!name || typeof name !== 'string') return '';
-
-  const trimmed = name.trim();
-  if (trimmed === '') return '';
-
-  // Use spread operator([...string]) to split by Unicode code points / graphemes instead of UTF-16 units
-  const parts = trimmed.split(/\s+/);
-  
-  if (parts.length >= 2) {
-    const firstChar = [...parts[0]][0] || '';
-    const lastChar = [...parts[parts.length - 1]][0] || '';
-    return (firstChar + lastChar).toUpperCase();
-  }
-
-  // Single word or name: take up to the first 2 code points
-  const chars = [...trimmed];
-  return chars.slice(0, 2).join('').toUpperCase();
-}
-
-interface AvatarProps {
-  name: string;
-  src?: string;
-}
-
-export const Avatar: React.FC<AvatarProps> = ({ name, src }) => {
-  const initials = getInitials(name);
-
-  if (src) {
-    return <img src={src} alt={name} className="avatar-img" />;
-  }
-
-  return (
-    <div className="avatar-fallback" aria-label={name}>
-      <span>{initials}</span>
-    </div>
-  );
-};
   return (
     <Image
       src={src}
-      alt={`${displayName} avatar`}
+      alt={accessibleName}
       fill
       className={`object-cover ${className || ""}`}
       unoptimized

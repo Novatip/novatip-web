@@ -95,6 +95,13 @@ describe("app/[slug]/not-found", () => {
     );
   });
 
+  it("renders one interactive element per recovery action", () => {
+    const { container } = render(<CreatorNotFound />);
+
+    expect(container.querySelector("a button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
+  });
+
   it("says nothing that blames the visitor for a broken link", () => {
     render(<CreatorNotFound />);
 
