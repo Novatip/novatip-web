@@ -17,10 +17,10 @@
  */
 
 import { useEffect } from "react";
-import Link from "next/link";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { LinkButton } from "@/components/ui/LinkButton";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -82,11 +82,9 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
               <Button size="lg" className="w-full" onClick={reset}>
                 Try again
               </Button>
-              <Link href="/" className="w-full">
-                <Button size="lg" variant="ghost" className="w-full">
-                  Back to home
-                </Button>
-              </Link>
+              <LinkButton href="/" size="lg" variant="ghost" className="w-full">
+                Back to home
+              </LinkButton>
             </div>
 
           </div>
