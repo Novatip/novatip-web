@@ -27,7 +27,7 @@ export function normalizeSlug(slug: string): string {
     return decodeURIComponent(slug).replace(/^@/, "");
   } catch (err) {
     if (err instanceof URIError) {
-      return slug.replace(/^@/, "");
+      return slug.replace(/^(?:@|%40)/, "");
     }
     throw err;
   }

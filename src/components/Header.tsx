@@ -38,7 +38,7 @@ export function Header() {
               unoptimized
               priority
             />
-            <span className="font-semibold text-fg group-hover:text-accent transition-colors">
+            <span className={`${isConnected ? "hidden sm:inline " : ""}font-semibold text-fg group-hover:text-accent transition-colors`}>
               Novatip
             </span>
           </Link>
@@ -48,9 +48,12 @@ export function Header() {
             {isConnected && (
               <Link
                 href="/dashboard"
-                className="text-sm text-fg-subtle hover:text-fg transition-colors whitespace-nowrap"
+                className="p-2 sm:p-0 text-sm text-fg-subtle hover:text-fg transition-colors whitespace-nowrap"
               >
-                Dashboard
+                <svg className="h-4 w-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
+                </svg>
+                <span className="sr-only sm:not-sr-only">Dashboard</span>
               </Link>
             )}
             <ThemeToggle />

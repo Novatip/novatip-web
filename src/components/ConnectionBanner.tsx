@@ -1,5 +1,7 @@
+"use client";
+
 import React from 'react';
-import { useConnection } from '../context/ConnectionContext';
+import { useConnection } from '@/contexts/ConnectionContext';
 
 export const ConnectionBanner: React.FC = () => {
   const { isBackendUnreachable } = useConnection();

@@ -25,8 +25,8 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
   if (isConnected && publicKey) {
     return (
       <div className="flex flex-col items-end gap-1">
-        <div className="flex items-center gap-2">
-          <span className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-mono">
+        <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+          <span className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-mono">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow" />
             {shortenAddress(publicKey)}
           </span>
@@ -48,7 +48,10 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
             onClick={disconnect}
             aria-label="Disconnect wallet"
           >
-            Disconnect
+            <svg className="h-4 w-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path d="M9 5H5v14h4M14 8l4 4-4 4M9 12h9" />
+            </svg>
+            <span className="hidden sm:inline">Disconnect</span>
           </Button>
         </div>
         {error && (
@@ -68,7 +71,6 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
         loading={isConnecting}
         className={className}
         onClick={connect}
-        aria-label="Connect Freighter wallet"
       >
         {isConnecting ? "Connecting…" : "Connect Wallet"}
       </Button>

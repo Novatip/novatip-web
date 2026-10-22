@@ -49,7 +49,7 @@ const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
 describe("WalletConnectButton – disconnected", () => {
   it("shows a Connect Wallet button", () => {
     render(<WalletConnectButton />);
-    expect(screen.getByRole("button", { name: /connect freighter wallet/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect Wallet" })).toBeInTheDocument();
     expect(screen.getByText("Connect Wallet")).toBeInTheDocument();
   });
 
@@ -69,7 +69,7 @@ describe("WalletConnectButton – disconnected", () => {
     const user = userEvent.setup();
     render(<WalletConnectButton />);
 
-    await user.click(screen.getByRole("button", { name: /connect freighter wallet/i }));
+    await user.click(screen.getByRole("button", { name: "Connect Wallet" }));
 
     expect(mockWallet.connect).toHaveBeenCalledTimes(1);
   });
@@ -80,7 +80,7 @@ describe("WalletConnectButton – connecting", () => {
     mockWallet.isConnecting = true;
     render(<WalletConnectButton />);
 
-    const button = screen.getByRole("button", { name: /connect freighter wallet/i });
+    const button = screen.getByRole("button", { name: "Connecting…" });
     expect(button).toHaveTextContent("Connecting…");
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toBeDisabled();

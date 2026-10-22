@@ -71,7 +71,21 @@ function TipLinkCopy({ slug }: { slug: string }) {
               : "text-accent hover:text-accent-strong",
           )}
         >
-          {failed ? "Failed" : copied ? "Copied!" : "Copy link"}
+          <svg className="h-4 w-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            {failed ? (
+              <path d="M6 6l12 12M6 18L18 6" />
+            ) : copied ? (
+              <path d="M5 12l4 4L19 6" />
+            ) : (
+              <>
+                <rect x="8" y="8" width="12" height="12" rx="2" />
+                <path d="M16 8V4H4v12h4" />
+              </>
+            )}
+          </svg>
+          <span className="sr-only sm:not-sr-only">
+            {failed ? "Failed" : copied ? "Copied!" : "Copy link"}
+          </span>
         </button>
       </div>
 
@@ -166,8 +180,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-2 sm:gap-4">
+          <Link href="/" className="flex items-center gap-2 group shrink-0" aria-label="Novatip home">
             <Image
               src="/logo.svg"
               alt=""
@@ -176,7 +190,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="rounded"
               unoptimized
             />
-            <span className="font-semibold text-fg group-hover:text-accent transition-colors">
+            <span className="hidden sm:inline font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>
             <span className="text-fg-dim text-sm hidden sm:block">/ Dashboard</span>

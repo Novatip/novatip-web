@@ -15,7 +15,7 @@ import userEvent from "@testing-library/user-event";
 import SplitsPage from "./page";
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
+  publicKey:    "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR",
   jwt:          "mock.jwt.token",
   isConnected:  true,
   isConnecting: false,
@@ -51,7 +51,7 @@ vi.mock("@/lib/api", () => ({
   },
 }));
 
-const mockSyncJarToChain = vi.fn();
+const mockSyncJarToChain = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/jar", () => ({
   syncJarToChain: mockSyncJarToChain,
@@ -61,7 +61,7 @@ const MOCK_CREATOR = {
   slug: "testcreator",
   jarId: "@testcreator",
   splits: [
-    { to: "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC", bps: 10000 },
+    { to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 10000 },
   ],
 };
 
@@ -71,7 +71,7 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  mockWallet.publicKey = "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC";
+  mockWallet.publicKey = "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR";
   mockWallet.jwt = "mock.jwt.token";
   mockAuthApi.me.mockResolvedValue({ user: { slug: "testcreator" } });
   mockCreatorApi.getBySlug.mockResolvedValue({ creator: MOCK_CREATOR });
@@ -135,8 +135,8 @@ describe("SplitsPage – save ordering", () => {
 
   it("updates the displayed splits after a successful save", async () => {
     const updatedSplits = [
-      { to: "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC", bps: 5000 },
-      { to: "GCOLLAB123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890AB", bps: 5000 },
+      { to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 5000 },
+      { to: "GCB6PYGTNPFCHUXULHSVCTITYXPUB4Y6JKW2GSJ5C2WL5CRQBY5GUBNR", bps: 5000 },
     ];
 
     const updatedCreator = {
@@ -165,7 +165,7 @@ describe("SplitsPage – save ordering", () => {
 
     // Fill in the new collaborator's address
     const addressInputs = screen.getAllByLabelText(/address/i);
-    await userEvent.type(addressInputs[1]!, "GCOLLAB123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890AB");
+    await userEvent.type(addressInputs[1]!, "GCB6PYGTNPFCHUXULHSVCTITYXPUB4Y6JKW2GSJ5C2WL5CRQBY5GUBNR");
 
     // Fill in the new collaborator's bps
     const newBpsInputs = screen.getAllByLabelText(/basis points/i);
@@ -233,7 +233,7 @@ describe("SplitsPage – initial load", () => {
 
     // The address input should contain the creator's address
     await waitFor(() => {
-      const addressInput = screen.getByDisplayValue(/GOWNER/i);
+      const addressInput = screen.getByDisplayValue(mockWallet.publicKey);
       expect(addressInput).toBeInTheDocument();
     });
   });
