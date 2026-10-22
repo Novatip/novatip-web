@@ -28,13 +28,13 @@ import { cn } from "@/lib/utils";
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
 interface ToggleProps {
-  id:       string;
-  checked:  boolean;
+  id: string;
+  checked: boolean;
   disabled: boolean;
   onChange: (next: boolean) => void;
-  label:    string;
+  label: string;
   description: string;
-  badge?:   string;
+  badge?: string;
 }
 
 function Toggle({ id, checked, disabled, onChange, label, description, badge }: ToggleProps) {
@@ -59,25 +59,31 @@ function Toggle({ id, checked, disabled, onChange, label, description, badge }: 
         <span className="text-xs text-fg-subtle">{description}</span>
       </div>
 
-      {/* The actual checkbox is visually hidden; the styled div acts as the
-          visible indicator. Both are labelled via htmlFor/id above. */}
-      <div className="relative shrink-0 mt-0.5" aria-hidden="true">
+      {/* The actual checkbox is visually hidden; the styled divs act as the
+          visible indicator. The input is a peer of the track so that
+          peer-focus-visible can draw a focus ring when keyboard focus lands
+          on it — the aria-hidden wrapper is kept only around the decorative
+          divs, not around the input itself. */}
+      <div className="relative shrink-0 mt-0.5">
         <input
           type="checkbox"
           id={id}
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
+          className="peer sr-only"
         />
         <div
+          aria-hidden="true"
           className={cn(
             "w-10 h-6 rounded-full transition-colors",
+            "peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
             checked ? "bg-brand-500" : "bg-hairline",
             disabled && "opacity-50",
           )}
         />
         <div
+          aria-hidden="true"
           className={cn(
             "absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform",
             checked && "translate-x-4",
@@ -95,10 +101,10 @@ interface NotificationPreferencesProps {
 }
 
 export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
-  const [prefs,   setPrefs]   = useState<Prefs | null>(null);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 

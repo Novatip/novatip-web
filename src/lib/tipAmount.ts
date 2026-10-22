@@ -13,12 +13,26 @@ export const MAX_CUSTOM_TIP_USDC = 1000;
 /** At or above this, the tip form asks the supporter to confirm before signing. */
 export const LARGE_TIP_CONFIRM_USDC = 100;
 
-export function isWithinTipCeiling(amount: string): boolean {
-  const n = Number(amount);
-  return Number.isFinite(n) && n <= MAX_CUSTOM_TIP_USDC;
+/**
+ * Validates that an input is a plain, non-negative decimal number string.
+ * Rejects empty strings, whitespace, negative numbers, hex notation, and exponents.
+ */
+export function isValidPlainDecimal(amount: unknown): boolean {
+  if (typeof amount !== 'string') return false;
+  // Regex matches 1+ digits optionally followed by a dot and 1+ digits, or just digits.
+  // Strictly disallows negative signs, '0x', 'e' exponents, or whitespace.
+  const plainDecimalRegex = /^\d+(\.\d+)?$/;
+  return plainDecimalRegex.test(amount.trim());
 }
 
-export function isLargeTip(amount: string): boolean {
-  const n = Number(amount);
-  return Number.isFinite(n) && n >= LARGE_TIP_CONFIRM_USDC;
+export function isWithinTipCeiling(amount: unknown, ceiling: number = MAX_CUSTOM_TIP_USDC): boolean {
+  if (!isValidPlainDecimal(amount)) return false;
+  const num = Number(amount);
+  return num >= 0 && num <= ceiling;
+}
+
+export function isLargeTip(amount: unknown, threshold: number = LARGE_TIP_CONFIRM_USDC): boolean {
+  if (!isValidPlainDecimal(amount)) return false;
+  const num = Number(amount);
+  return num >= threshold;
 }

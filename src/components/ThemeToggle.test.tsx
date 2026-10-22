@@ -4,10 +4,11 @@
  * Unit tests for ThemeToggle.
  *
  * Covers:
- *   - Renders identical markup regardless of the applied theme (no hydration
- *     mismatch — the icon and label are swapped by CSS, not by React)
- *   - Clicking flips the class on <html> and persists the new preference
- *   - It reads the applied class, not localStorage, when deciding which way to flip
+ *   - Identical initial markup in both painted themes (no hydration mismatch)
+ *   - Cycling system → explicit theme → other explicit theme → system, with
+ *     the accessible name and icon following the current preference
+ *   - The first click from "system" flips whatever is currently painted
+ *   - An explicit stored preference is adopted after hydration
  *   - OS changes are followed only while no explicit preference is stored
  *   - A preference change in another tab is picked up via the storage event
  */
@@ -15,6 +16,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { render, screen, cleanup, act } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { renderToStaticMarkup } from "react-dom/server";
 import { ThemeToggle } from "./ThemeToggle";
 import { THEME_STORAGE_KEY } from "@/lib/theme";
 
@@ -50,7 +52,7 @@ function isDark() {
 }
 
 function getToggle() {
-  return screen.getByRole("button", { name: /switch to (dark|light) theme/i });
+  return screen.getByRole("button", { name: /^Theme:/ });
 }
 
 beforeEach(() => {
@@ -68,72 +70,118 @@ afterEach(() => {
 // ── Rendering ─────────────────────────────────────────────────────────────────
 
 describe("ThemeToggle – rendering", () => {
-  it("renders the same markup in both themes so hydration cannot mismatch", () => {
+  it("renders identical initial markup in both themes so hydration cannot mismatch", () => {
+    // Server rendering skips effects, which is exactly the render the client
+    // hydrates against. Both painted themes must produce the same markup.
     applyThemeClass("dark");
-    const { container } = render(<ThemeToggle />);
-    const darkMarkup = container.innerHTML;
+    const darkMarkup = renderToStaticMarkup(<ThemeToggle />);
 
-    cleanup();
     applyThemeClass("light");
-    const { container: lightContainer } = render(<ThemeToggle />);
+    const lightMarkup = renderToStaticMarkup(<ThemeToggle />);
 
-    expect(lightContainer.innerHTML).toBe(darkMarkup);
+    expect(lightMarkup).toBe(darkMarkup);
   });
 
-  it("offers both accessible labels, leaving CSS to reveal the right one", () => {
+  it("names the current preference and the next one in the accessible name", () => {
     applyThemeClass("dark");
     render(<ThemeToggle />);
 
-    expect(screen.getByText("Switch to light theme")).toBeInTheDocument();
-    expect(screen.getByText("Switch to dark theme")).toBeInTheDocument();
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: system. Switch to light theme.",
+    );
+    expect(getToggle()).toHaveTextContent("🖥️");
+  });
+
+  it("adopts an explicit stored preference after hydration", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "light");
+    applyThemeClass("light");
+    render(<ThemeToggle />);
+
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: light. Switch to dark theme.",
+    );
+    expect(getToggle()).toHaveTextContent("☀️");
   });
 });
 
-// ── Toggling ──────────────────────────────────────────────────────────────────
+// ── Cycling through all three preferences ────────────────────────────────────
 
-describe("ThemeToggle – toggling", () => {
-  it("switches dark to light and stores the preference", async () => {
-    applyThemeClass("dark");
+describe("ThemeToggle – cycling", () => {
+  it("cycles system → light → dark → system and names each step", async () => {
+    stubMatchMedia(true);
+    applyThemeClass("dark"); // the OS is dark, and no explicit choice is stored
+    const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    await userEvent.click(getToggle());
+    const toggle = getToggle();
+    expect(toggle).toHaveAccessibleName(
+      "Theme: system. Switch to light theme.",
+    );
 
+    // system → light
+    await user.click(toggle);
     expect(isDark()).toBe(false);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
+    expect(toggle).toHaveAccessibleName(
+      "Theme: light. Switch to dark theme.",
+    );
+    expect(toggle).toHaveTextContent("☀️");
+
+    // light → dark
+    await user.click(toggle);
+    expect(isDark()).toBe(true);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(toggle).toHaveAccessibleName(
+      "Theme: dark. Switch to system theme.",
+    );
+    expect(toggle).toHaveTextContent("🌙");
+
+    // dark → system, which resolves to the OS preference and clears the key
+    await user.click(toggle);
+    expect(isDark()).toBe(true);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
+    expect(toggle).toHaveAccessibleName(
+      "Theme: system. Switch to light theme.",
+    );
+    expect(toggle).toHaveTextContent("🖥️");
   });
 
-  it("switches light to dark and stores the preference", async () => {
+  it("flips the painted theme on the first click when the OS is light", async () => {
+    stubMatchMedia(false);
     applyThemeClass("light");
+    const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    await userEvent.click(getToggle());
+    const toggle = getToggle();
+    expect(toggle).toHaveAccessibleName(
+      "Theme: system. Switch to dark theme.",
+    );
+
+    await user.click(toggle);
 
     expect(isDark()).toBe(true);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    expect(toggle).toHaveAccessibleName(
+      "Theme: dark. Switch to system theme.",
+    );
   });
 
-  it("flips from the applied class, not from a stale stored value", async () => {
-    // Storage says dark but the document is light — e.g. another tab changed it.
+  it("starts from an explicit stored preference rather than assuming system", async () => {
     window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
-    applyThemeClass("light");
+    applyThemeClass("dark");
+    const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    await userEvent.click(getToggle());
+    const toggle = getToggle();
+    expect(toggle).toHaveAccessibleName(
+      "Theme: dark. Switch to system theme.",
+    );
 
-    expect(isDark()).toBe(true);
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-  });
+    await user.click(toggle);
 
-  it("survives repeated toggling", async () => {
-    applyThemeClass("light");
-    render(<ThemeToggle />);
-
-    await userEvent.click(getToggle());
-    await userEvent.click(getToggle());
-    await userEvent.click(getToggle());
-
-    expect(isDark()).toBe(true);
-    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
+    // system resolves to the stubbed light OS, and the key is cleared.
+    expect(isDark()).toBe(false);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
   });
 });
 
@@ -146,20 +194,28 @@ describe("ThemeToggle – OS preference", () => {
 
     emitOsThemeChange(true);
     expect(isDark()).toBe(true);
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: system. Switch to light theme.",
+    );
 
     emitOsThemeChange(false);
     expect(isDark()).toBe(false);
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: system. Switch to dark theme.",
+    );
   });
 
   it("ignores an OS change once the user has chosen", async () => {
     applyThemeClass("dark");
+    const user = userEvent.setup();
     render(<ThemeToggle />);
 
-    await userEvent.click(getToggle()); // user explicitly picks light
+    await user.click(getToggle()); // user explicitly picks light
     expect(isDark()).toBe(false);
 
     emitOsThemeChange(true);
     expect(isDark()).toBe(false);
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
   });
 });
 
@@ -178,6 +234,27 @@ describe("ThemeToggle – cross-tab sync", () => {
     });
 
     expect(isDark()).toBe(true);
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: dark. Switch to system theme.",
+    );
+  });
+
+  it("returns to system when another tab clears the preference", () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, "dark");
+    applyThemeClass("dark");
+    render(<ThemeToggle />);
+
+    window.localStorage.removeItem(THEME_STORAGE_KEY);
+    act(() => {
+      window.dispatchEvent(
+        new StorageEvent("storage", { key: null, newValue: null }),
+      );
+    });
+
+    expect(isDark()).toBe(false); // the stubbed OS prefers light
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: system. Switch to dark theme.",
+    );
   });
 
   it("ignores storage events for unrelated keys", () => {
@@ -191,5 +268,8 @@ describe("ThemeToggle – cross-tab sync", () => {
     });
 
     expect(isDark()).toBe(false);
+    expect(getToggle()).toHaveAccessibleName(
+      "Theme: system. Switch to dark theme.",
+    );
   });
 });

@@ -50,6 +50,29 @@ function optionalPublic(val: string | undefined, fallback: string): string {
   return val || fallback;
 }
 
+const STELLAR_NETWORKS = ["testnet", "mainnet", "local"] as const;
+type StellarNetwork = (typeof STELLAR_NETWORKS)[number];
+
+/**
+ * Validate that `val` is one of the accepted Stellar network names.
+ * Falls back to `fallback` when absent, and throws at build/boot if the
+ * value is present but unrecognised — the same pattern as requireContractId.
+ */
+function requireNetwork(
+  key: string,
+  val: string | undefined,
+  fallback: StellarNetwork,
+): StellarNetwork {
+  const raw = val || fallback;
+  if (!(STELLAR_NETWORKS as readonly string[]).includes(raw)) {
+    throw new Error(
+      `Invalid value for ${key}: ${JSON.stringify(raw)}\n` +
+      `Accepted values: ${STELLAR_NETWORKS.join(", ")}.`,
+    );
+  }
+  return raw as StellarNetwork;
+}
+
 /**
  * Validate that `value` looks like a Stellar/Soroban contract ID:
  * a 56-character base-32 strkey beginning with "C" with a valid checksum.
@@ -158,11 +181,14 @@ export const config = {
     /**
      * Stellar network to connect to.
      * Defaults to "testnet"; set to "mainnet" for production.
+     * An unrecognised value throws at build/boot naming the variable and the
+     * accepted values — same fail-fast policy as requireContractId.
      */
-    network: optionalPublic(
+    network: requireNetwork(
+      "NEXT_PUBLIC_STELLAR_NETWORK",
       process.env.NEXT_PUBLIC_STELLAR_NETWORK,
       "testnet",
-    ) as "testnet" | "mainnet" | "local",
+    ),
 
     /**
      * Soroban contract ID of the deployed tip_splitter contract.

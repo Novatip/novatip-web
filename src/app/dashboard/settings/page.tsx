@@ -3,7 +3,13 @@
 /**
  * app/dashboard/settings/page.tsx
  *
- * Dashboard page for renaming the creator's public slug.
+ * Profile settings — edit display name, bio and avatar URL, and rename the
+ * creator's public slug.
+ *
+ * The profile form saves through PATCH /creators/me (creatorApi.updateProfile);
+ * the rename card keeps its own guarded flow. They share a single creator
+ * fetch and a single piece of creator state, so a profile save and a slug
+ * rename cannot render two different versions of the same profile.
  *
  * A slug is chosen once during onboarding and otherwise permanent, but the
  * old link is printed on posters and encoded into QR codes — so a rename has
@@ -11,29 +17,84 @@
  * after. The warning and acknowledgement below are load-bearing, not
  * decoration: they're what turns "permanent by omission" into a deliberate
  * choice.
+ *
+ * Validation mirrors the limits the backend enforces so errors surface inline
+ * before the network round trip rather than after.
  */
 
 import { useEffect, useState, useRef } from "react";
+import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Input } from "@/components/ui/Input";
+
+// ── Validation ────────────────────────────────────────────────────────────────
+
+// Both limits match UpdateProfileBody in novatip-backend's creator routes.
+const DISPLAY_NAME_MAX = 80;
+const BIO_MAX          = 300;
+
+function validateDisplayName(value: string): string | undefined {
+  if (value.length > DISPLAY_NAME_MAX)
+    return `Display name must be ${DISPLAY_NAME_MAX} characters or fewer`;
+  return undefined;
+}
+
+function validateBio(value: string): string | undefined {
+  if (value.length > BIO_MAX)
+    return `Bio must be ${BIO_MAX} characters or fewer`;
+  return undefined;
+}
+
+function validateAvatarUrl(value: string): string | undefined {
+  if (!value) return undefined; // optional field
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "https:")
+      return "Avatar URL must start with https://";
+    return undefined;
+  } catch {
+    return "Must be a valid URL";
+  }
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { jwt } = useWallet();
-  const [creator, setCreator] = useState<CreatorProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+
+  // ── Loaded creator ─────────────────────────────────────────────────────────
+  const [creator,   setCreator]   = useState<CreatorProfile | null>(null);
+  const [loading,   setLoading]   = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  const [newSlug,    setNewSlug]    = useState("");
-  const [available,  setAvailable]  = useState<boolean | null>(null);
-  const [checking,   setChecking]   = useState(false);
+  // ── Profile form state ─────────────────────────────────────────────────────
+  const [displayName, setDisplayName] = useState("");
+  const [bio,         setBio]         = useState("");
+  const [avatarUrl,   setAvatarUrl]   = useState("");
+  // Track which fields have been blurred so errors only appear after
+  // interaction, not the moment the page loads with a long existing value.
+  const [touched, setTouched] = useState({
+    displayName: false,
+    bio:         false,
+    avatarUrl:   false,
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError,  setProfileError]  = useState<string | null>(null);
+  const [profileSaved,  setProfileSaved]  = useState(false);
+
+  // ── Slug rename state ──────────────────────────────────────────────────────
+  const [newSlug,      setNewSlug]      = useState("");
+  const [available,    setAvailable]    = useState<boolean | null>(null);
+  const [checking,     setChecking]     = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [saving,     setSaving]     = useState(false);
-  const [saveError,  setSaveError]  = useState<string | null>(null);
-  const [saved,      setSaved]      = useState(false);
+  const [renaming,     setRenaming]     = useState(false);
+  const [renameError,  setRenameError]  = useState<string | null>(null);
+  const [renameSaved,  setRenameSaved]  = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -50,7 +111,14 @@ export default function SettingsPage() {
     authApi
       .me(jwt, { signal: controller.signal })
       .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
-      .then((r) => setCreator(r.creator))
+      .then((r) => {
+        const loaded = r.creator;
+        setCreator(loaded);
+        setDisplayName(loaded.displayName ?? "");
+        setBio(loaded.bio ?? "");
+        setAvatarUrl(loaded.avatarUrl ?? "");
+        setLoadError(null);
+      })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.code === "ABORTED") return;
         setLoadError(e instanceof Error ? e.message : "Failed to load your profile.");
@@ -68,6 +136,63 @@ export default function SettingsPage() {
       }
     };
   }, [jwt]);
+
+  // ── Profile validation ─────────────────────────────────────────────────────
+
+  const profileErrors = {
+    displayName: touched.displayName ? validateDisplayName(displayName) : undefined,
+    bio:         touched.bio         ? validateBio(bio)                 : undefined,
+    avatarUrl:   touched.avatarUrl   ? validateAvatarUrl(avatarUrl)     : undefined,
+  };
+
+  const profileHasErrors =
+    !!validateDisplayName(displayName) ||
+    !!validateBio(bio) ||
+    !!validateAvatarUrl(avatarUrl);
+
+  const profileDirty =
+    creator !== null && (
+      displayName !== (creator.displayName ?? "") ||
+      bio         !== (creator.bio ?? "")         ||
+      avatarUrl   !== (creator.avatarUrl ?? "")
+    );
+
+  function touchProfileField(field: keyof typeof touched) {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  }
+
+  async function handleProfileSave(e: React.FormEvent) {
+    e.preventDefault();
+    setTouched({ displayName: true, bio: true, avatarUrl: true });
+    if (!jwt || !creator || profileSaving || profileHasErrors) return;
+
+    setProfileSaving(true);
+    setProfileError(null);
+    setProfileSaved(false);
+
+    try {
+      // Empty fields are omitted rather than sent as "": the backend accepts
+      // an empty display name as a value, and the public tip page falls back
+      // to @slug only for null, so "" would render a blank heading.
+      const r = await creatorApi.updateProfile(jwt, {
+        displayName: displayName.trim() || undefined,
+        bio:         bio.trim()         || undefined,
+        avatarUrl:   avatarUrl.trim()   || undefined,
+      });
+      setCreator(r.creator);
+      setDisplayName(r.creator.displayName ?? "");
+      setBio(r.creator.bio ?? "");
+      setAvatarUrl(r.creator.avatarUrl ?? "");
+      setProfileSaved(true);
+      setTouched({ displayName: false, bio: false, avatarUrl: false });
+    } catch (e: unknown) {
+      setProfileError(e instanceof Error ? e.message : "Failed to save profile.");
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  // ── Slug rename ────────────────────────────────────────────────────────────
 
   const slugValid   = /^[a-z0-9_-]{3,32}$/.test(newSlug);
   const isUnchanged = slugValid && creator !== null && newSlug === creator.slug;
@@ -97,28 +222,37 @@ export default function SettingsPage() {
     };
   }, [newSlug, slugValid, isUnchanged]);
 
-  const canSave =
+  const canRename =
     !!jwt && !!creator && slugValid && !isUnchanged && available === true &&
-    acknowledged && !saving;
+    acknowledged && !renaming;
 
   async function handleRename() {
-    if (!jwt || !canSave) return;
-    setSaving(true);
-    setSaveError(null);
-    setSaved(false);
+    if (!jwt || !canRename) return;
+    setRenaming(true);
+    setRenameError(null);
+    setRenameSaved(false);
     try {
       const result = await creatorApi.updateSlug(jwt, newSlug);
       setCreator(result.creator);
       setNewSlug("");
       setAcknowledged(false);
       setAvailable(null);
-      setSaved(true);
+      setRenameSaved(true);
     } catch (e) {
-      setSaveError(e instanceof Error ? e.message : "Failed to rename slug.");
+      setRenameError(e instanceof Error ? e.message : "Failed to rename slug.");
     } finally {
-      setSaving(false);
+      setRenaming(false);
     }
   }
+
+  // ── Avatar preview ─────────────────────────────────────────────────────────
+  const avatarPreviewUrl =
+    avatarUrl && !validateAvatarUrl(avatarUrl)
+      ? avatarUrl
+      : creator?.avatarUrl ??
+        (creator
+          ? `https://api.dicebear.com/8.x/identicon/svg?seed=${creator.slug}`
+          : null);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -128,7 +262,7 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-fg">Settings</h1>
         <p className="text-sm text-fg-subtle mt-1">
-          Manage your public tip page link.
+          Manage your public profile and tip page link.
         </p>
       </div>
 
@@ -139,6 +273,175 @@ export default function SettingsPage() {
         </div>
       )}
 
+      {/* ── Public profile ─────────────────────────────────────────────────── */}
+      <form onSubmit={handleProfileSave} noValidate>
+        <Card glass={false}>
+          <CardHeader>
+            <CardTitle>Public profile</CardTitle>
+          </CardHeader>
+
+          {loading ? (
+            <div className="flex flex-col gap-4 animate-pulse">
+              <div className="flex items-center gap-4">
+                <div className="h-16 w-16 rounded-full bg-hairline shrink-0" />
+                <div className="flex-1 h-10 rounded-xl bg-hairline" />
+              </div>
+              <div className="h-10 rounded-xl bg-hairline" />
+              <div className="h-24 rounded-xl bg-hairline" />
+            </div>
+          ) : (
+            <div className="flex flex-col gap-5">
+
+              {/* Avatar preview + URL */}
+              <div className="flex items-start gap-4">
+                <div className="shrink-0">
+                  {avatarPreviewUrl ? (
+                    <div className="h-16 w-16 rounded-full overflow-hidden ring-2 ring-brand-500/20">
+                      <Image
+                        src={avatarPreviewUrl}
+                        alt="Avatar preview"
+                        width={64}
+                        height={64}
+                        className="object-cover w-full h-full"
+                        unoptimized
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-16 w-16 rounded-full bg-surface-strong border border-hairline flex items-center justify-center">
+                      <span className="text-2xl text-fg-dim" aria-hidden="true">👤</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <Input
+                    label="Avatar URL"
+                    type="url"
+                    placeholder="https://example.com/avatar.jpg"
+                    value={avatarUrl}
+                    onChange={(e) => {
+                      setAvatarUrl(e.target.value);
+                      setProfileSaved(false);
+                    }}
+                    onBlur={() => touchProfileField("avatarUrl")}
+                    error={profileErrors.avatarUrl}
+                    hint="Must be an https:// URL. Leave blank to keep your current avatar."
+                    disabled={profileSaving}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              {/* Display name */}
+              <div>
+                <Input
+                  label="Display name"
+                  type="text"
+                  placeholder="Your name or handle"
+                  value={displayName}
+                  onChange={(e) => {
+                    setDisplayName(e.target.value);
+                    setProfileSaved(false);
+                  }}
+                  onBlur={() => touchProfileField("displayName")}
+                  error={profileErrors.displayName}
+                  disabled={profileSaving}
+                  autoComplete="off"
+                />
+                <p className="text-xs text-fg-faint mt-1 text-right">
+                  {displayName.length} / {DISPLAY_NAME_MAX}
+                </p>
+              </div>
+
+              {/* Bio */}
+              <div className="flex flex-col gap-1.5">
+                <label
+                  htmlFor="profile-bio"
+                  className="text-sm font-medium text-fg-muted"
+                >
+                  Bio
+                </label>
+                <textarea
+                  id="profile-bio"
+                  rows={4}
+                  placeholder="Tell supporters a bit about yourself…"
+                  value={bio}
+                  onChange={(e) => {
+                    setBio(e.target.value);
+                    setProfileSaved(false);
+                  }}
+                  onBlur={() => touchProfileField("bio")}
+                  disabled={profileSaving}
+                  className={[
+                    "w-full rounded-xl bg-surface-strong border px-4 py-2.5",
+                    "text-fg placeholder:text-fg-dim text-sm resize-none",
+                    "focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50",
+                    "transition-all duration-200 disabled:opacity-50",
+                    profileErrors.bio
+                      ? "border-danger/50 focus:ring-danger/30"
+                      : "border-hairline",
+                  ].join(" ")}
+                  aria-describedby={profileErrors.bio ? "bio-error" : "bio-hint"}
+                />
+                {profileErrors.bio ? (
+                  <p id="bio-error" className="text-xs text-danger">{profileErrors.bio}</p>
+                ) : (
+                  <p id="bio-hint" className="text-xs text-fg-faint text-right">
+                    {bio.length} / {BIO_MAX}
+                  </p>
+                )}
+              </div>
+
+              {/* Save error */}
+              {profileError && (
+                <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+                  <p className="text-sm text-danger">{profileError}</p>
+                </div>
+              )}
+
+              {/* Success */}
+              {profileSaved && (
+                <div className="rounded-xl bg-success/10 border border-success/20 px-4 py-3">
+                  <p className="text-sm text-success">
+                    Profile saved — your tip page reflects the changes.
+                  </p>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex items-center gap-3 pt-1">
+                <Button
+                  type="submit"
+                  size="md"
+                  loading={profileSaving}
+                  disabled={profileSaving || profileHasErrors || !profileDirty}
+                  aria-label="Save profile changes"
+                >
+                  {profileSaving ? "Saving…" : "Save changes"}
+                </Button>
+                {profileDirty && !profileSaving && (
+                  <button
+                    type="button"
+                    className="text-sm text-fg-faint hover:text-fg transition-colors"
+                    onClick={() => {
+                      if (!creator) return;
+                      setDisplayName(creator.displayName ?? "");
+                      setBio(creator.bio ?? "");
+                      setAvatarUrl(creator.avatarUrl ?? "");
+                      setTouched({ displayName: false, bio: false, avatarUrl: false });
+                      setProfileError(null);
+                    }}
+                  >
+                    Discard
+                  </button>
+                )}
+              </div>
+
+            </div>
+          )}
+        </Card>
+      </form>
+
+      {/* ── Public link ────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle>Your link</CardTitle>
@@ -153,6 +456,7 @@ export default function SettingsPage() {
         ) : null}
       </Card>
 
+      {/* ── Rename slug ────────────────────────────────────────────────────── */}
       <Card>
         <CardHeader>
           <CardTitle>Rename your slug</CardTitle>
@@ -181,12 +485,12 @@ export default function SettingsPage() {
                 type="text"
                 value={newSlug}
                 onChange={(e) => {
-                  setSaved(false);
+                  setRenameSaved(false);
                   setNewSlug(e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""));
                 }}
                 placeholder={creator?.slug ?? "newslug"}
                 maxLength={32}
-                disabled={saving || loading}
+                disabled={renaming || loading}
                 className="w-full rounded-xl bg-surface-strong border border-hairline pl-8 pr-4 py-3
                            text-fg text-sm placeholder:text-fg-dim focus:outline-none
                            focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50"
@@ -216,20 +520,20 @@ export default function SettingsPage() {
               type="checkbox"
               checked={acknowledged}
               onChange={(e) => setAcknowledged(e.target.checked)}
-              disabled={saving}
+              disabled={renaming}
               className="mt-0.5"
             />
             I understand my old link will stop working immediately.
           </label>
 
-          {saveError && <p className="text-sm text-danger">{saveError}</p>}
-          {saved && <p className="text-sm text-success">Slug renamed successfully!</p>}
+          {renameError && <p className="text-sm text-danger">{renameError}</p>}
+          {renameSaved && <p className="text-sm text-success">Slug renamed successfully!</p>}
 
           <Button
             size="lg"
             className="w-full"
-            disabled={!canSave}
-            loading={saving}
+            disabled={!canRename}
+            loading={renaming}
             onClick={handleRename}
           >
             Rename to @{newSlug || "…"}

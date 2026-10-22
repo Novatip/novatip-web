@@ -6,7 +6,7 @@ Next.js 14 frontend for Novatip.
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
-Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser extension.
+Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser extension
 
     npm install
     cp .env.example .env.local
@@ -512,6 +512,95 @@ added to a split. The guard lives in `src/lib/trustline.ts`
 4. JWT stored in localStorage
 5. JWT attached to all authenticated API requests
 
+### Session token storage: localStorage and its tradeoffs
+
+The creator session JWT is stored in `localStorage` rather than an `httpOnly` cookie. This section documents why that choice was made and what security costs it carries.
+
+#### Why localStorage
+
+**Cross-origin architecture**
+
+The frontend (`novatip.xyz`) and backend API (`api.novatip.xyz`) are separate origins. An `httpOnly` cookie set by the API cannot be read by JavaScript (which is the security benefit), but it also cannot be sent with `fetch()` requests to the API unless:
+
+1. The API sets `Access-Control-Allow-Credentials: true`, **and**
+2. Every fetch includes `credentials: 'include'`, **and**
+3. The `Access-Control-Allow-Origin` response header is set to the exact frontend origin (wildcards are forbidden with credentials).
+
+This works, but it makes local development harder (every developer needs matching CORS config) and makes the API harder to use from other clients (mobile apps, CLI tools, third-party integrations). `localStorage` with a bearer token in the `Authorization` header has none of these constraints.
+
+**No server-side rendering for authenticated pages**
+
+The creator dashboard pages are client-side only (`"use client"` directive). There is no server component that needs to read the session to pre-render personalized HTML. If the session lived in an `httpOnly` cookie, the Next.js server still could not read it (the cookie is `httpOnly` precisely so JavaScript cannot), so SSR would not work anyway.
+
+Because the dashboard is always hydrated client-side, there is no SSR benefit to giving up the flexibility of `localStorage`.
+
+**The tip flow does not involve the session**
+
+Sending a tip is an on-chain transaction: the tipper signs it with their wallet and submits it directly to the Stellar network. The backend is not in that path — there is no API call, so there is no session token to protect. The session is only needed for creator-facing features (onboarding, splits, analytics), and those are behind wallet signature verification (SIWS) at sign-in time.
+
+A compromised session token lets an attacker read a creator's dashboard. It does **not** let them:
+- Steal funds (tips go to on-chain addresses, not to "whoever holds the session")
+- Change splits or claim a new slug (those endpoints re-verify the wallet signature)
+- Send tips on someone else's behalf (tips are signed by the sender's wallet, not by a session)
+
+The blast radius is dashboard read access, not write or financial access.
+
+#### Security costs
+
+**Script injection can read the token**
+
+Any script running on the page can call `localStorage.getItem("novatip_jwt")` and exfiltrate the session. This includes:
+
+- A compromised third-party script (analytics, ads, a supply-chain attack on a dependency)
+- A stored XSS vulnerability (if user input is ever rendered unescaped — this app does not render user HTML, but the risk is non-zero)
+- A browser extension with overly broad permissions
+
+An `httpOnly` cookie would be invisible to all of those, which is why it is the default recommendation for session tokens.
+
+**Mitigations in place:**
+
+1. **Short token expiry**: The JWT expires after a limited time (configured server-side). An exfiltrated token becomes useless once it expires, limiting the window for abuse.
+
+2. **No write operations without wallet re-verification**: Sensitive endpoints (claiming a slug, updating splits) require a fresh wallet signature, not just the session token. A stolen JWT grants read access to the dashboard but cannot change on-chain state or modify the creator's profile.
+
+3. **Server remains the authority**: The token's `exp` claim is checked client-side as a UX optimization (to skip a guaranteed-failing request), but the server validates every token on every request. A manipulated or forged token is rejected immediately.
+
+4. **Minimal third-party scripts**: The app includes no analytics, no ads, and no third-party scripts beyond the essential SDK and wallet libraries. The attack surface for script injection is kept small.
+
+5. **Content Security Policy (future work)**: A strict CSP would block inline scripts and restrict script sources to a known allowlist, further reducing XSS risk. This is not currently implemented but is planned.
+
+**What is not protected:**
+
+- If an attacker gains script execution on the page (via XSS or a compromised dependency), they can read the session token and any other `localStorage` data. This is the inherent cost of client-side storage.
+
+- A session token does not prove wallet ownership at request time — it proves it was owned at sign-in. If a creator's wallet is compromised separately (phishing, leaked seed phrase), the session token does not add protection, but it also does not make things worse (the attacker already has the wallet, which is the real credential).
+
+#### What limits the damage
+
+| Defense | What it prevents |
+|---------|-----------------|
+| Short token expiry | An exfiltrated token becomes useless after expiry (hours, not days or weeks) |
+| Wallet re-verification on writes | Stolen session cannot change splits, claim slugs, or modify on-chain state |
+| No financial access via session | Tips are on-chain transactions; session tokens do not control funds |
+| Server-side validation on every request | Forged or tampered tokens are rejected immediately |
+| Minimal third-party scripts | Reduces the number of scripts that could exfiltrate the token |
+
+#### The alternative: httpOnly cookies
+
+An `httpOnly` cookie would be invisible to scripts, eliminating the XSS exfiltration risk. The costs:
+
+- CORS complexity (see above)
+- No SSR benefit (the dashboard is client-only, and the cookie is `httpOnly`)
+- Harder to use from non-browser clients (mobile apps, CLI tools)
+- CSRF risk (though that can be mitigated with SameSite and CSRF tokens)
+
+The current choice prioritizes flexibility and simplicity over defense-in-depth against XSS. The tradeoff is acceptable because:
+1. The session grants only read access to the dashboard, not write or financial access.
+2. Write operations require fresh wallet signatures, not just the session.
+3. The token expires quickly, limiting the blast radius of a compromised session.
+
+If XSS defense becomes a higher priority (e.g., if the app begins rendering user-generated HTML, or if a security audit recommends it), switching to `httpOnly` cookies is a reversible decision. The backend already supports stateless JWT validation, so no server-side session store is needed — the cookie would carry the JWT just as `localStorage` does today.
+
 ## Theming
 
 Light and dark are driven by a `dark` class on `<html>` (Tailwind `darkMode: "class"`).
@@ -523,8 +612,11 @@ the server render cannot know the result, `<html>` carries `suppressHydrationWar
 
 Two rules keep it flash-free:
 
-- **Never re-derive the theme after hydration.** `ThemeToggle` reads the class the
-  script already applied (`getAppliedTheme()`), it does not read storage and re-apply.
+- **Never re-apply the theme after hydration.** The class the script already applied
+  is the source of truth for what is painted (`getAppliedTheme()`). `ThemeToggle`
+  does read the stored *preference* after hydration so it can distinguish "system"
+  from an explicit light/dark choice, but it never re-applies the theme and its first
+  render uses the server-safe "system" default so hydration still matches.
 - **Style with the semantic tokens, not raw colours.** Use `bg-canvas`, `bg-surface`,
   `border-hairline`, `text-fg` / `-muted` / `-subtle` / `-faint` / `-dim`, `text-accent`,
   and `success` / `warning` / `danger`. They are CSS variables defined for both themes in
@@ -658,6 +750,83 @@ If a test depends on `@novatip/sdk`, the stub at `src/test/mocks/novatip-sdk.ts`
 **CI**
 
 `npm test` runs as part of the GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`, alongside lint, typecheck, and build steps.
+
+### The SDK test stub
+
+Tests run against a hand-maintained stub of `@novatip/sdk` located at `src/test/mocks/novatip-sdk.ts`. The stub exists because the real SDK depends on Node crypto APIs and Stellar transaction primitives that are difficult to run in a jsdom test environment.
+
+`vitest.config.mts` aliases `@novatip/sdk` to this stub, so every test import of the SDK resolves to the mock rather than the real package. The stub is **not automatically synchronized** with the real SDK — when the SDK's public interface changes, the stub must be updated by hand.
+
+#### What the stub provides
+
+The stub exports the following to match the real SDK's public API:
+
+| Export | Type | Purpose |
+|--------|------|---------|
+| `usdcToStroops` | function | Converts a USDC string to stroops (`1 USDC = 10_000_000 stroops`) |
+| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` and `<= 1000 USDC`) |
+| `formatUsdc` | function | Formats stroops as a USDC decimal string |
+| `shortenAddress` | function | Abbreviates a Stellar address to `GABC…WXYZ` format |
+| `validateSplitsBps` | function | Validates that an array of basis points sums to exactly `10_000` |
+| `ContractErrorCode` | enum | Error codes mirroring the `tip_splitter` contract's `Error` enum |
+| `NovatipContractError` | class | SDK-level error wrapping a contract error code |
+| `Split` | interface | `{ to: string; bps: number }` |
+| `Jar` | interface | `{ owner: string; splits: Split[] }` |
+
+The stub intentionally omits blockchain interaction classes like `TipSplitterClient` and wallet signing helpers, since those are not unit-testable in isolation. Tests that need those behaviors should use `vi.mock('@novatip/sdk', ...)` to provide test doubles for the specific functions under test.
+
+#### When to update the stub
+
+Update the stub whenever you bump the SDK pin in `package.json` **and** the SDK's public API has changed. Common triggers:
+
+- A new helper function is added to the SDK and production code begins using it
+- An existing function's signature changes (new parameter, different return type)
+- `ContractErrorCode` gains or loses a variant because the contract's `Error` enum changed
+- Type definitions for `Split`, `Jar`, or other interfaces are modified
+
+**The stub does not need to match private SDK internals** — only the exports that production code actually imports.
+
+#### How to update the stub
+
+1. Identify which SDK exports changed by reviewing the commit that bumped the pin.
+2. Open `src/test/mocks/novatip-sdk.ts` and add, remove, or update the affected exports.
+3. Ensure the stub's behavior matches the real SDK's documented behavior (especially for validation functions like `isValidTipAmount` and `validateSplitsBps`).
+4. Run `npm test` to verify that existing tests still pass with the updated stub.
+5. If a test fails after updating the stub, the failure indicates either:
+   - The stub was changed incorrectly (fix the stub), or
+   - The production code depends on old SDK behavior and needs updating (fix the production code)
+
+**Do not introduce behavior that the real SDK does not have.** The stub exists to let tests run, not to add test-only features. If a test needs behavior the SDK does not provide, mock the SDK in that specific test file rather than polluting the shared stub.
+
+#### Example: Adding a new SDK export to the stub
+
+Suppose the SDK adds a new function `parseJarId` that extracts the slug from a jar ID:
+
+```ts
+// Real SDK: novatip-sdk/src/jar.ts
+export function parseJarId(jarId: string): string | null {
+  if (!jarId.startsWith('@')) return null;
+  return jarId.slice(1);
+}
+```
+
+After bumping the SDK pin and seeing production code import `parseJarId`, add it to the stub:
+
+```ts
+// src/test/mocks/novatip-sdk.ts
+export function parseJarId(jarId: string): string | null {
+  if (!jarId.startsWith('@')) return null;
+  return jarId.slice(1);
+}
+```
+
+Then verify the change:
+
+```bash
+npm test
+```
+
+If tests fail, inspect the failure to determine whether the stub's implementation matches the real SDK's behavior.
 
 ## Client-side architecture
 

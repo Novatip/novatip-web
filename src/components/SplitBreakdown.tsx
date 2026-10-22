@@ -9,6 +9,7 @@
 
 import { shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { formatBps } from "@/lib/splits";
 
 interface SplitBreakdownProps {
   splits: Array<{ to: string; bps: number }>;
@@ -30,7 +31,7 @@ export function SplitBreakdown({ splits }: SplitBreakdownProps) {
               {shortenAddress(split.to)}
             </span>
             <span className="text-sm font-semibold text-fg shrink-0">
-              {(split.bps / 100).toFixed(1)}%
+              {formatBps(split.bps)}
             </span>
           </li>
         ))}

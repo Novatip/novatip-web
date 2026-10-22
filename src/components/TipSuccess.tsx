@@ -60,6 +60,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
       origin: { y: 0.55 },
       // No pure white — it disappears against the light theme's canvas.
       colors: ["#38bdf8", "#0ea5e9", "#7dd3fc", "#22d3ee", "#2775ca"],
+      disableForReducedMotion: true,
     });
 
     // Second burst after a short delay for extra flair
@@ -69,6 +70,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
         spread: 120,
         origin: { y: 0.5 },
         scalar: 0.8,
+        disableForReducedMotion: true,
       });
     }, 400);
 

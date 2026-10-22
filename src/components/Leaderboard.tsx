@@ -16,6 +16,15 @@ import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
 interface Supporter {
   fromAddress: string;
   tipCount: number;
@@ -138,8 +147,8 @@ function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number 
             copied
               ? "Full address copied"
               : failed
-              ? "Couldn't copy address — try again"
-              : `Copy full address ${supporter.fromAddress}`
+                ? "Couldn't copy address — try again"
+                : `Copy full address ${supporter.fromAddress}`
           }
         >
           {copied ? "✓" : failed ? "✕" : "📋"}
@@ -153,7 +162,10 @@ function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number 
 
       {/* Amount */}
       <span className="text-sm font-semibold text-accent shrink-0">
-        ${formatUsdc(BigInt(supporter.totalAmountRaw), 2)}
+        {(() => {
+          const amount = parseAmount(supporter.totalAmountRaw);
+          return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
+        })()}
       </span>
     </li>
   );

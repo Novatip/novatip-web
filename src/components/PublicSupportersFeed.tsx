@@ -12,6 +12,15 @@ import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { timeAgo } from "@/lib/time";
 
+/** Parse amount safely — returns null when the string is not a valid integer. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
 interface PublicSupportersFeedProps {
   tips: PublicTip[];
 }
@@ -29,32 +38,37 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
       </CardHeader>
 
       <ul className="space-y-3" aria-label="Recent supporters">
-        {tips.map((tip) => (
-          <li key={tip.id} className="flex items-start gap-3">
-            <div className="h-8 w-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0">
-              <span className="text-xs">💸</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-fg">
-                <span className="font-mono text-fg-subtle">
-                  {shortenAddress(tip.fromAddress)}
-                </span>
-                {" "}tipped{" "}
-                <span className="font-semibold text-accent">
-                  ${formatUsdc(BigInt(tip.amount), 2)} USDC
-                </span>
-              </p>
-              {tip.message && (
-                <p className="text-xs text-fg-faint mt-0.5 truncate">
-                  &ldquo;{tip.message}&rdquo;
+        {tips.map((tip) => {
+          const amount = parseAmount(tip.amount);
+          if (amount === null) return null;
+
+          return (
+            <li key={tip.id} className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0">
+                <span className="text-xs">💸</span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-fg">
+                  <span className="font-mono text-fg-subtle">
+                    {shortenAddress(tip.fromAddress)}
+                  </span>
+                  {" "}tipped{" "}
+                  <span className="font-semibold text-accent">
+                    ${formatUsdc(amount, 2)} USDC
+                  </span>
                 </p>
-              )}
-            </div>
-            <span className="text-xs text-fg-dim shrink-0 mt-0.5">
-              {timeAgo(tip.ledgerAt)}
-            </span>
-          </li>
-        ))}
+                {tip.message && (
+                  <p className="text-xs text-fg-faint mt-0.5 truncate">
+                    &ldquo;{tip.message}&rdquo;
+                  </p>
+                )}
+              </div>
+              <span className="text-xs text-fg-dim shrink-0 mt-0.5">
+                {timeAgo(tip.ledgerAt)}
+              </span>
+            </li>
+          );
+        })}
       </ul>
     </Card>
   );

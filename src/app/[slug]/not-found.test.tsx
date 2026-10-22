@@ -159,6 +159,24 @@ describe("normalizeSlug", () => {
   it("does not touch an @ that is not a prefix", () => {
     expect(normalizeSlug("ali@ce")).toBe("ali@ce");
   });
+
+  it("handles malformed percent sequences like %zz without throwing", () => {
+    expect(normalizeSlug("%zz")).toBe("%zz");
+  });
+
+  it("handles incomplete percent sequences like %E0%A4%A without throwing", () => {
+    expect(normalizeSlug("%E0%A4%A")).toBe("%E0%A4%A");
+  });
+
+  it("handles malformed sequences with leading @ by stripping the @ and returning the malformed part", () => {
+    expect(normalizeSlug("%40%zz")).toBe("%zz");
+  });
+
+  it("does not throw on other malformed percent sequences", () => {
+    expect(() => normalizeSlug("%")).not.toThrow();
+    expect(() => normalizeSlug("%G")).not.toThrow();
+    expect(() => normalizeSlug("alice%zz")).not.toThrow();
+  });
 });
 
 // ── Metadata ──────────────────────────────────────────────────────────────────

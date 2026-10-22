@@ -15,9 +15,10 @@ import { Badge } from "@/components/ui/Badge";
 import { shortenAddress, validateSplitsBps } from "@novatip/sdk";
 import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
+import { formatBps } from "@/lib/splits";
 
 export interface SplitRow {
-  to:  string;
+  to: string;
   bps: number;
 }
 
@@ -27,8 +28,8 @@ export interface SplitRow {
 // not parsed until save, so an unparseable entry can never collapse into
 // NaN in state.
 interface SplitRowState {
-  id:  string;
-  to:  string;
+  id: string;
+  to: string;
   bps: string;
 }
 
@@ -62,9 +63,9 @@ function parseBpsInput(raw: string): number | null {
 }
 
 interface SplitsManagerProps {
-  initial:    SplitRow[];
-  onSave:     (splits: SplitRow[]) => Promise<void>;
-  disabled?:  boolean;
+  initial: SplitRow[];
+  onSave: (splits: SplitRow[]) => Promise<void>;
+  disabled?: boolean;
   /**
    * The creator's own connected wallet, if known. Used only to warn when it
    * is missing from the splits being saved — every tip would then go
@@ -80,19 +81,19 @@ export function SplitsManager({
   disabled = false,
   connectedAddress,
 }: SplitsManagerProps) {
-  const [rows,    setRows]    = useState<SplitRowState[]>(
+  const [rows, setRows] = useState<SplitRowState[]>(
     (initial.length > 0 ? initial : [{ to: "", bps: 10000 }]).map(withId),
   );
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   // True while the "your wallet isn't in this list" warning is up, waiting
   // for the creator to either back out or confirm it is intentional.
   const [confirmingMissingWallet, setConfirmingMissingWallet] = useState(false);
 
-  const parsedBps   = rows.map((r) => parseBpsInput(r.bps));
-  const totalBps    = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
-  const bpsValid    = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
+  const parsedBps = rows.map((r) => parseBpsInput(r.bps));
+  const totalBps = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const bpsValid = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
   const addressesOk = rows.every((r) => isValidAddress(r.to));
   // The contract rejects a jar that lists the same recipient twice
   // (DuplicateRecipient), so duplicates block saving rather than just warn.
@@ -101,9 +102,9 @@ export function SplitsManager({
     if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
     return counts;
   }, new Map());
-  const isDuplicate   = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
+  const isDuplicate = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
   const hasDuplicates = isDuplicate.some(Boolean);
-  const canSave       = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
+  const canSave = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
 
   // Only ever warns when the connected wallet is known — an anonymous/absent
   // wallet is not itself suspicious, so there is nothing to compare against.
@@ -221,7 +222,7 @@ export function SplitsManager({
                 {row.bps !== "" && parsedBps[i] === null
                   ? "Whole number only"
                   : parsedBps[i] !== null
-                    ? `${(parsedBps[i]! / 100).toFixed(1)}%`
+                    ? `${formatBps(parsedBps[i]!)}`
                     : "0%"}
               </p>
             </div>
@@ -266,7 +267,7 @@ export function SplitsManager({
             {totalBps.toLocaleString()} / 10,000 bps
           </span>
           <Badge variant={bpsValid ? "success" : "error"}>
-            {bpsValid ? "100%" : `${(totalBps / 100).toFixed(1)}%`}
+            {bpsValid ? "100%" : formatBps(totalBps)}
           </Badge>
         </div>
       </div>

@@ -25,6 +25,7 @@ import {
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { config } from "./config";
+import { shortenAddress } from "@novatip/sdk";
 
 // ── Extension detection ───────────────────────────────────────────────────────
 
@@ -107,15 +108,11 @@ export async function assertActiveAccount(expected: string): Promise<void> {
   const active = await getActiveAddress();
   if (active && active !== expected) {
     throw new Error(
-      `Freighter is currently on ${shorten(active)} but this action is for ` +
-        `${shorten(expected)}. Switch accounts in Freighter, or reconnect your ` +
+      `Freighter is currently on ${shortenAddress(active)} but this action is for ` +
+        `${shortenAddress(expected)}. Switch accounts in Freighter, or reconnect your ` +
         `wallet to use the active one.`,
     );
   }
-}
-
-function shorten(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
 /**

@@ -19,6 +19,7 @@ import { SplitsStep }    from "@/components/onboarding/SplitsStep";
 import { ShareStep }     from "@/components/onboarding/ShareStep";
 import { ThemeToggle }   from "@/components/ThemeToggle";
 import { Card }          from "@/components/ui/Card";
+import { Button }        from "@/components/ui/Button";
 import { authApi, creatorApi } from "@/lib/api";
 import { isTempSlug } from "@/lib/onboarding";
 import Link from "next/link";
@@ -26,19 +27,24 @@ import Link from "next/link";
 const STEP_LABELS = ["Claim slug", "Set splits", "Share"];
 
 export default function OnboardingPage() {
-  const { isConnected, jwt } = useWallet();
+  const { isConnected, jwt, error, isSigningIn, retrySignIn } = useWallet();
   const [step, setStep] = useState(0);
   const [slug, setSlug] = useState("");
-  const [resuming, setResuming] = useState(false);
+  const [resumedJwt, setResumedJwt] = useState<string | null>(null);
+  const resuming = !!jwt && resumedJwt !== jwt;
 
   // A returning creator who already claimed a slug should not be dropped
   // back at step one. A temporary slug (the backend's default for every new
   // sign-in) means there is nothing to resume; a real one means picking up
   // at splits, or share if splits were saved too.
   useEffect(() => {
-    if (!jwt) return;
+    if (!jwt) {
+      setResumedJwt(null);
+      return;
+    }
     let cancelled = false;
-    setResuming(true);
+    setStep(0);
+    setSlug("");
 
     (async () => {
       try {
@@ -52,7 +58,7 @@ export default function OnboardingPage() {
       } catch {
         // Not resumable — fall back to starting fresh.
       } finally {
-        if (!cancelled) setResuming(false);
+        if (!cancelled) setResumedJwt(jwt);
       }
     })();
 
@@ -60,7 +66,7 @@ export default function OnboardingPage() {
   }, [jwt]);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main id="main-content" tabIndex={-1} className="min-h-screen flex flex-col items-center justify-center px-4 py-12 outline-none">
 
       {/* Back link */}
       <div className="w-full max-w-md mb-6 flex items-center justify-between">
@@ -92,15 +98,29 @@ export default function OnboardingPage() {
         ) : (
           <>
             {/* Step indicator */}
-            <StepIndicator
-              currentStep={step}
-              totalSteps={STEP_LABELS.length}
-              labels={STEP_LABELS}
-            />
+            {!resuming && (
+              <StepIndicator
+                currentStep={step}
+                totalSteps={STEP_LABELS.length}
+                labels={STEP_LABELS}
+              />
+            )}
 
             {/* Step content */}
             <Card>
-              {resuming ? (
+              {!jwt ? (
+                <div className="flex flex-col items-center gap-4 py-4">
+                  <p className="text-sm text-fg-subtle text-center">
+                    Your wallet is connected. Sign in to continue creating your tip jar.
+                  </p>
+                  {error && (
+                    <p role="alert" className="text-sm text-danger text-center">{error}</p>
+                  )}
+                  <Button size="lg" className="w-full" loading={isSigningIn} onClick={retrySignIn}>
+                    {isSigningIn ? "Signing in..." : "Sign in"}
+                  </Button>
+                </div>
+              ) : resuming ? (
                 <p className="text-sm text-fg-subtle text-center py-8">
                   Checking your progress…
                 </p>
@@ -128,6 +148,6 @@ export default function OnboardingPage() {
         )}
 
       </div>
-    </div>
+    </main>
   );
 }

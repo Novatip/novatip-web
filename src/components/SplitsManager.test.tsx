@@ -308,7 +308,7 @@ describe("SplitsManager – field editing", () => {
     setup([{ to: VALID_ADDR_1, bps: 10_000 }]);
     const bpsInput = screen.getByRole("textbox", { name: /recipient 1 basis points/i });
     fireEvent.change(bpsInput, { target: { value: "5000" } });
-    // 5,000 bps renders as 50.0% twice — once on the row, once as the total.
-    expect(screen.getAllByText("50.0%")).toHaveLength(2);
+    // 5,000 bps renders as 50% twice — once on the row, once as the total.
+    expect(screen.getAllByText("50%")).toHaveLength(2);
   });
 });

@@ -17,7 +17,18 @@
  * on-chain jar id, not to the URL — and the parameter arrives percent-encoded
  * when the visitor typed the "@", so it is decoded before the prefix is
  * stripped. An "@" anywhere other than the start is left alone.
+ *
+ * Malformed percent sequences (e.g., %zz, %E0%A4%A) throw URIError from
+ * decodeURIComponent. We catch those and treat the slug as-is, which lets
+ * a visitor's mistyped link land on the 404 page instead of an error.
  */
 export function normalizeSlug(slug: string): string {
-  return decodeURIComponent(slug).replace(/^@/, "");
+  try {
+    return decodeURIComponent(slug).replace(/^@/, "");
+  } catch (err) {
+    if (err instanceof URIError) {
+      return slug.replace(/^@/, "");
+    }
+    throw err;
+  }
 }

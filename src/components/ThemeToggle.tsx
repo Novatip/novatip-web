@@ -3,20 +3,23 @@
 /**
  * ThemeToggle.tsx
  *
- * Switches between the light and dark themes.
+ * Cycles the theme preference through light, dark and system.
  *
  * The theme is already on <html> by the time this mounts — THEME_INIT_SCRIPT
- * (see lib/theme.ts) put it there before the first paint.  So this component
- * deliberately does *not* re-derive the theme from localStorage on mount, and
- * it holds no React state for it either: the icon and label are swapped by the
- * `dark:` variants below, driven by the same class.
+ * (see lib/theme.ts) put it there before the first paint.  This component
+ * still keeps the *preference* in React state, because "system" and an
+ * explicit light/dark choice can paint the same theme while being different
+ * preferences — and the icon and accessible name have to say which one is
+ * active.
  *
- * That is what keeps the button flash-free and hydration-safe — the server
- * renders exactly what the client renders, and CSS decides which half is
- * visible.
+ * Hydration safety: the server cannot read localStorage, so the first client
+ * render deliberately starts from the same "system" default.  An effect then
+ * adopts the real preference and the applied theme immediately after
+ * hydration.  CSS cannot express the three-state cycle on its own, so the
+ * icon is driven by that state instead of the old `dark:`-only pair.
  */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import {
   DARK_MEDIA_QUERY,
@@ -26,13 +29,54 @@ import {
   getStoredPreference,
   resolvePreference,
   setThemePreference,
+  type ResolvedTheme,
+  type ThemePreference,
 } from "@/lib/theme";
 
 interface ThemeToggleProps {
   className?: string;
 }
 
+/** One glyph per preference, so "system" is distinguishable from an explicit choice. */
+const ICONS: Record<ThemePreference, string> = {
+  light: "☀️",
+  dark: "🌙",
+  system: "🖥️",
+};
+
+const NAMES: Record<ThemePreference, string> = {
+  light: "light",
+  dark: "dark",
+  system: "system",
+};
+
+/**
+ * The next preference in the cycle.
+ *
+ * Leaving "system" flips whatever is currently painted, so the first click
+ * still behaves like the old two-state toggle.  From an explicit choice the
+ * control moves to the other explicit choice and then back to "system".
+ */
+function nextPreference(
+  preference: ThemePreference,
+  applied: ResolvedTheme,
+): ThemePreference {
+  if (preference === "system") return applied === "dark" ? "light" : "dark";
+  return preference === "light" ? "dark" : "system";
+}
+
 export function ThemeToggle({ className }: ThemeToggleProps) {
+  // The server and the first client render must agree; "system" is the only
+  // preference either of them can know without localStorage.
+  const [preference, setPreference] = useState<ThemePreference>("system");
+  const [appliedTheme, setAppliedTheme] = useState<ResolvedTheme>("dark");
+
+  // Adopt the real stored preference after hydration.
+  useEffect(() => {
+    setPreference(getStoredPreference());
+    setAppliedTheme(getAppliedTheme());
+  }, []);
+
   // Follow the OS while the user has not made an explicit choice.
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
@@ -40,7 +84,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     const query = window.matchMedia(DARK_MEDIA_QUERY);
     const handleChange = (event: MediaQueryListEvent) => {
       if (getStoredPreference() !== "system") return;
-      applyTheme(event.matches ? "dark" : "light");
+      const resolved = event.matches ? "dark" : "light";
+      applyTheme(resolved);
+      setAppliedTheme(resolved);
     };
 
     query.addEventListener("change", handleChange);
@@ -52,7 +98,11 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
     const handleStorage = (event: StorageEvent) => {
       // key === null means localStorage was cleared wholesale.
       if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
-      applyTheme(resolvePreference(getStoredPreference()));
+      const stored = getStoredPreference();
+      const resolved = resolvePreference(stored);
+      applyTheme(resolved);
+      setPreference(stored);
+      setAppliedTheme(resolved);
     };
 
     window.addEventListener("storage", handleStorage);
@@ -60,13 +110,18 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
   }, []);
 
   function handleClick() {
-    setThemePreference(getAppliedTheme() === "dark" ? "light" : "dark");
+    const next = nextPreference(preference, appliedTheme);
+    setAppliedTheme(setThemePreference(next));
+    setPreference(next);
   }
+
+  const next = nextPreference(preference, appliedTheme);
 
   return (
     <button
       type="button"
       onClick={handleClick}
+      aria-label={`Theme: ${NAMES[preference]}. Switch to ${NAMES[next]} theme.`}
       className={cn(
         "inline-flex h-9 w-9 items-center justify-center rounded-lg",
         "text-fg-subtle transition-colors hover:bg-surface-strong hover:text-fg",
@@ -74,11 +129,9 @@ export function ThemeToggle({ className }: ThemeToggleProps) {
         className,
       )}
     >
-      {/* Icon + accessible name both track the applied class, via CSS only. */}
-      <span className="text-base dark:hidden" aria-hidden="true">🌙</span>
-      <span className="text-base hidden dark:inline" aria-hidden="true">☀️</span>
-      <span className="sr-only dark:hidden">Switch to dark theme</span>
-      <span className="sr-only hidden dark:inline">Switch to light theme</span>
+      <span className="text-base" aria-hidden="true">
+        {ICONS[preference]}
+      </span>
     </button>
   );
 }

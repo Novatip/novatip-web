@@ -20,6 +20,7 @@ import { JarStatusBanner } from "@/components/JarStatusBanner";
 import { Leaderboard } from "@/components/Leaderboard";
 import { RecentTips } from "@/components/RecentTips";
 import { TipChart } from "@/components/TipChart";
+import { CollaboratorEarnings } from "@/components/CollaboratorEarnings";
 
 interface Totals {
   totalTips:        number;
@@ -119,6 +120,9 @@ export default function DashboardPage() {
         {jwt && <RecentTips jwt={jwt} />}
         {jwt && <Leaderboard jwt={jwt} />}
       </div>
+
+      {/* Collaborator earnings */}
+      {jwt && <CollaboratorEarnings jwt={jwt} />}
 
     </div>
   );

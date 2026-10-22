@@ -113,25 +113,16 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-3 w-full max-w-xs">
+      <div className="w-full max-w-xs">
         <Button
           variant="secondary"
           size="sm"
-          className="flex-1"
+          className="w-full"
           loading={downloading}
           onClick={handleDownload}
           aria-label="Download QR code as PNG"
         >
           Download PNG
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex-1"
-          onClick={handleCopy}
-          aria-label="Copy tip link"
-        >
-          {failed ? "Copy failed" : copied ? "\u2713 Copied" : "Copy link"}
         </Button>
       </div>
 

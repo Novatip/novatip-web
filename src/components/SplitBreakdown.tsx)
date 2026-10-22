@@ -1,0 +1,32 @@
+import React from 'react';
+
+export interface SplitRecipient {
+  name: string;
+  percentage: number;
+  address?: string;
+}
+
+interface SplitBreakdownProps {
+  splits?: SplitRecipient[];
+}
+
+export const SplitBreakdown: React.FC<SplitBreakdownProps> = ({ splits }) => {
+  // Acceptance criterion: SplitBreakdown renders nothing when given no splits
+  if (!splits || splits.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="split-breakdown-card">
+      <h3>Where tips go</h3>
+      <ul className="split-list">
+        {splits.map((split, index) => (
+          <li key={index} className="split-item">
+            <span className="recipient-name">{split.name}</span>
+            <span className="recipient-percentage">{split.percentage}%</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+};

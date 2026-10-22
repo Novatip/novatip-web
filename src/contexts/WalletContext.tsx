@@ -33,8 +33,10 @@ interface WalletState {
   jwt:          string | null;
   isConnected:  boolean;
   isConnecting: boolean;
+  isSigningIn:  boolean;
   error:        string | null;
   connect:      () => Promise<void>;
+  retrySignIn:  () => Promise<void>;
   disconnect:   () => void;
 }
 
@@ -51,6 +53,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [publicKey,    setPublicKey]    = useState<string | null>(null);
   const [jwt,          setJwt]          = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isSigningIn,  setIsSigningIn]  = useState(false);
   const [error,        setError]        = useState<string | null>(null);
 
   // Rehydrate from localStorage on mount. The two are restored independently:
@@ -96,6 +99,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    * still set so the failure (rejected, wallet locked, nonce expired) is visible.
    */
   const signIn = useCallback(async (pk: string): Promise<string | null> => {
+    setIsSigningIn(true);
+    setError(null);
     try {
       const { nonce } = await authApi.challenge(pk);
       const signatureHex = await signNonce(nonce, pk);
@@ -103,13 +108,21 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem(JWT_STORAGE_KEY, token);
       setJwt(token);
+      setError(null);
       return token;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
       setError(message);
       return null;
+    } finally {
+      setIsSigningIn(false);
     }
   }, []);
+
+  const retrySignIn = useCallback(async () => {
+    if (!publicKey || isSigningIn) return;
+    await signIn(publicKey);
+  }, [publicKey, isSigningIn, signIn]);
 
   const connect = useCallback(async () => {
     setIsConnecting(true);
@@ -154,8 +167,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         jwt,
         isConnected:  !!publicKey,
         isConnecting,
+        isSigningIn,
         error,
         connect,
+        retrySignIn,
         disconnect,
       }}
     >

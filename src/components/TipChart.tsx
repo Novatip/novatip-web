@@ -22,20 +22,20 @@ import { cn } from "@/lib/utils";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DataPoint {
-  date:      string; // "YYYY-MM-DD"
-  tipCount:  number;
+  date: string; // "YYYY-MM-DD"
+  tipCount: number;
   amountRaw: string; // raw stroops string
 }
 
 type Window = 7 | 14 | 30;
-type Mode   = "count" | "amount";
+type Mode = "count" | "amount";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Format "YYYY-MM-DD" → short month + day, e.g. "Jun 3" */
 function fmtDate(iso: string): string {
   const [, m, d] = iso.split("-");
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   return `${months[Number(m) - 1]} ${Number(d)}`;
 }
 
@@ -77,11 +77,11 @@ function buildPath(xs: number[], ys: number[], close?: { width: number; height: 
 // ── Chart SVG ─────────────────────────────────────────────────────────────────
 
 interface ChartSvgProps {
-  series:  DataPoint[];
-  mode:    Mode;
-  width:   number;
-  height:  number;
-  gradId:  string;
+  series: DataPoint[];
+  mode: Mode;
+  width: number;
+  height: number;
+  gradId: string;
 }
 
 function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
@@ -93,9 +93,9 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       ? series.map((p) => p.tipCount)
       : series.map((p) => Number(BigInt(p.amountRaw)));
 
-  const ys   = toYCoords(values, height);
+  const ys = toYCoords(values, height);
   const step = width / Math.max(n - 1, 1);
-  const xs   = series.map((_, i) => i * step);
+  const xs = series.map((_, i) => i * step);
 
   const linePath = buildPath(xs, ys);
   const areaPath = buildPath(xs, ys, { width, height });
@@ -109,14 +109,14 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   // Value dots: only show non-zero points with a dot
   const dots = series
     .map((p, i) => ({
-      x:     xs[i],
-      y:     ys[i],
+      x: xs[i],
+      y: ys[i],
       value: values[i],
       label:
         mode === "count"
           ? String(p.tipCount)
           : `$${formatUsdc(BigInt(p.amountRaw), 2)}`,
-      date:  p.date,
+      date: p.date,
     }))
     .filter((d) => d.value > 0);
 
@@ -131,7 +131,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       <defs>
         {/* Gradient fill — uses CSS vars so it works in light and dark */}
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="var(--color-accent-stop-top)"    stopOpacity="0.25" />
+          <stop offset="0%" stopColor="var(--color-accent-stop-top)" stopOpacity="0.25" />
           <stop offset="100%" stopColor="var(--color-accent-stop-bottom)" stopOpacity="0.02" />
         </linearGradient>
       </defs>
@@ -204,20 +204,20 @@ interface TipChartProps {
 }
 
 const WINDOWS: { label: string; value: Window }[] = [
-  { label: "7d",  value: 7  },
+  { label: "7d", value: 7 },
   { label: "14d", value: 14 },
   { label: "30d", value: 30 },
 ];
 
 export function TipChart({ jwt }: TipChartProps) {
-  const [window,  setWindow]  = useState<Window>(30);
-  const [mode,    setMode]    = useState<Mode>("count");
-  const [series,  setSeries]  = useState<DataPoint[] | null>(null);
+  const [window, setWindow] = useState<Window>(30);
+  const [mode, setMode] = useState<Mode>("count");
+  const [series, setSeries] = useState<DataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const abortRef = useRef<AbortController | null>(null);
-  const gradId   = useId().replace(/:/g, ""); // SVG id must not contain colons
+  const gradId = useId().replace(/:/g, ""); // SVG id must not contain colons
 
   const fetchSeries = useCallback((days: Window) => {
     if (abortRef.current) abortRef.current.abort();
@@ -251,9 +251,9 @@ export function TipChart({ jwt }: TipChartProps) {
   }, [fetchSeries, window]);
 
   // ── Derived summary ────────────────────────────────────────────────────────
-  const totalCount  = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
+  const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
   const totalAmount = series?.reduce((s, p) => s + Number(BigInt(p.amountRaw)), 0) ?? 0;
-  const activeDays  = series?.filter((p) => p.tipCount > 0).length ?? 0;
+  const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -266,7 +266,7 @@ export function TipChart({ jwt }: TipChartProps) {
     <Card
       style={{
         // @ts-expect-error -- CSS custom properties
-        "--color-accent-stop-top":    "rgb(var(--color-accent))",
+        "--color-accent-stop-top": "rgb(var(--color-accent))",
         "--color-accent-stop-bottom": "rgb(var(--color-accent))",
       }}
     >
@@ -372,8 +372,242 @@ export function TipChart({ jwt }: TipChartProps) {
               gradId={`grad-${gradId}`}
             />
           </div>
+
+          {/*
+            Text alternative for the chart. ChartSvg is aria-hidden because an
+            SVG path is meaningless to a screen reader; this visually hidden
+            table carries the actual daily values instead, and follows both the
+            selected mode and window so it always describes what is on screen.
+          */}
+          <table className="sr-only">
+            <caption>
+              Daily {mode === "count" ? "tip count" : "USDC earned"} over the last {window} days
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">{mode === "count" ? "Tips" : "USDC earned"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {series.map((point) => (
+                <tr key={point.date}>
+                  <th scope="row">
+                    <time dateTime={point.date}>{fmtDate(point.date)}</time>
+                  </th>
+                  <td>
+                    {mode === "count"
+                      ? point.tipCount.toLocaleString()
+                      : `$${formatUsdc(BigInt(point.amountRaw), 2)} USDC`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </Card>
   );
+
+
+export type WindowDays = 7 | 30 | 90; // Renamed from Window to avoid shadowing DOM global type
+
+export interface TipDataPoint {
+  date: string;
+  amount: number;
 }
+
+export function fillSeries(data: TipDataPoint[], days: number): TipDataPoint[] {
+  const result: TipDataPoint[] = [];
+  const dataMap = new Map(data.map((item) => [item.date.slice(0, 10), item.amount]));
+
+  const now = new Date();
+  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+  for (let i = days - 1; i >= 0; i--) {
+    const targetTime = utcNow - i * 24 * 60 * 60 * 1000;
+    const d = new Date(targetTime);
+    const dateStr = d.toISOString().slice(0, 10);
+
+    result.push({
+      date: dateStr,
+      amount: dataMap.get(dateStr) || 0,
+    });
+  }
+
+  return result;
+}
+
+interface TipChartProps {
+  data: TipDataPoint[];
+}
+
+export const TipChart: React.FC<TipChartProps> = ({ data }) => {
+  // Renamed from [window, setWindow] to avoid shadowing global window
+  const [windowDays, setWindowDays] = useState<WindowDays>(30);
+  const filledData = fillSeries(data, windowDays);
+
+  return (
+    <div className="tip-chart-container">
+      <div className="chart-header">
+        <h3>Tip History</h3>
+        <div className="window-selector">
+          <button onClick={() => setWindowDays(7)} className={windowDays === 7 ? 'active' : ''}>7D</button>
+          <button onClick={() => setWindowDays(30)} className={windowDays === 30 ? 'active' : ''}>30D</button>
+          <button onClick={() => setWindowDays(90)} className={windowDays === 90 ? 'active' : ''}>90D</button>
+        </div>
+      </div>
+      <div className="chart-body">
+        <ul>
+          {filledData.map((pt) => (
+            <li key={pt.date}>
+              {pt.date}: ${pt.amount}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+
+export function fillSeries(data: TipDataPoint[], days: number): TipDataPoint[] {
+  const result: TipDataPoint[] = [];
+  const dataMap = new Map(data.map((item) => [item.date.slice(0, 10), item.amount]));
+
+  // Anchor strictly to UTC midnight to avoid local timezone / DST anomalies
+  const now = new Date();
+  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+  for (let i = days - 1; i >= 0; i--) {
+    const targetTime = utcNow - i * 24 * 60 * 60 * 1000;
+    const d = new Date(targetTime);
+    const dateStr = d.toISOString().slice(0, 10);
+
+    result.push({
+      date: dateStr,
+      amount: dataMap.get(dateStr) || 0,
+    });
+  }
+
+  return result;
+}
+
+interface TipChartProps {
+  data: TipDataPoint[];
+}
+
+export const TipChart: React.FC<TipChartProps> = ({ data }) => {
+  const [windowDays, setWindowDays] = useState<7 | 30 | 90>(30);
+  const filledData = fillSeries(data, windowDays);
+
+  return (
+    <div className="tip-chart-container">
+      <div className="chart-header">
+        <h3>Tip History</h3>
+        <div className="window-selector">
+          <button onClick={() => setWindowDays(7)} className={windowDays === 7 ? 'active' : ''}>7D</button>
+          <button onClick={() => setWindowDays(30)} className={windowDays === 30 ? 'active' : ''}>30D</button>
+          <button onClick={() => setWindowDays(90)} className={windowDays === 90 ? 'active' : ''}>90D</button>
+        </div>
+      </div>
+      <div className="chart-body">
+        <ul>
+          {filledData.map((pt) => (
+            <li key={pt.date}>
+              {pt.date}: ${pt.amount}
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+};
+}
+
+interface ChartPoint {
+  x: number;
+  y: number;
+  label?: string;
+}
+
+interface ChartSvgProps {
+  points: ChartPoint[];
+  pathD: string;
+}
+
+export const ChartSvg: React.FC<ChartSvgProps> = ({ points, pathD }) => {
+  return (
+    <div className="chart-svg-container">
+      <svg
+        viewBox="0 0 600 120"
+        preserveAspectRatio="none"
+        className="tip-chart-svg"
+      >
+        {/* Line path with non-scaling stroke so width stays constant when stretched */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          vectorEffect="non-scaling-stroke"
+          className="chart-line"
+        />
+
+        {/* Data dots with non-scaling stroke and constant rendering */}
+        {points.map((pt, idx) => (
+          <circle
+            key={idx}
+            cx={pt.x}
+            cy={pt.y}
+            r="3"
+            className="chart-dot"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
+      </svg>
+    </div>
+  );
+};
+export interface TipDataPoint {
+  date: string;
+  amountRaw: string; // Raw stroop amount string
+}
+
+export function calculateTotalStroops(data: TipDataPoint[]): bigint {
+  return data.reduce((sum, item) => sum + BigInt(item.amountRaw || '0'), BigInt(0));
+}
+
+interface TipChartProps {
+  data: TipDataPoint[];
+}
+
+export const TipChart: React.FC<TipChartProps> = ({ data }) => {
+  // Compute exact total as BigInt
+  const totalStroops = calculateTotalStroops(data);
+
+  // Format exact total for display (e.g. converted to Lumens/XLM or formatted BigInt)
+  const formattedTotal = totalStroops.toString();
+
+  return (
+    <div className="tip-chart">
+      <div className="summary-row">
+        <span>Total Tips: {formattedTotal} stroops</span>
+      </div>
+
+      <div className="chart-bars">
+        {data.map((item, idx) => {
+          // Plotting retains approximate Number conversion for CSS height percentages
+          const plotValue = Number(BigInt(item.amountRaw));
+          return (
+            <div
+              key={idx}
+              className="chart-bar"
+              style={{ height: `${Math.min(plotValue / 1000, 100)}%` }}
+              title={`${item.date}: ${item.amountRaw} stroops`}
+            />
+          );
+        })}
+      </div>
+    </div>
+  );
+};

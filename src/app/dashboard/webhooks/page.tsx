@@ -72,6 +72,10 @@ export default function WebhooksPage() {
   const [removing, setRemoving] = useState<string | null>(null); // id being deleted
   const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
 
+  // ── Ping state ─────────────────────────────────────────────────────────────
+  const [pinging,      setPinging]      = useState<string | null>(null); // id being pinged
+  const [pingResults,  setPingResults]  = useState<Record<string, { success: boolean; message: string }>>({});
+
   const abortRef = useRef<AbortController | null>(null);
 
   // ── Fetch list ─────────────────────────────────────────────────────────────
@@ -165,6 +169,41 @@ export default function WebhooksPage() {
   async function handleCopySecret() {
     if (!newSecret) return;
     await copy(newSecret.secret);
+  }
+
+  // ── Ping webhook ───────────────────────────────────────────────────────────
+  async function handlePing(id: string) {
+    if (!jwt || pinging) return;
+
+    setPinging(id);
+    setPingResults((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+    try {
+      const r = await webhookApi.ping(jwt, id);
+      setPingResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: r.success,
+          message: r.success
+            ? `Success (${r.statusCode ?? 200})`
+            : r.error || "Failed to deliver test ping",
+        },
+      }));
+    } catch (e: unknown) {
+      setPingResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: false,
+          message: getErrorMessage(e, "Failed to send test ping."),
+        },
+      }));
+    } finally {
+      setPinging(null);
+    }
   }
 
   const urlError =
@@ -323,16 +362,31 @@ export default function WebhooksPage() {
                     {wh.enabled ? "active" : "disabled"}
                   </Badge>
                   <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={pinging === wh.id}
+                    disabled={!!pinging || !!removing}
+                    onClick={() => handlePing(wh.id)}
+                    aria-label={`Test webhook ${wh.url}`}
+                  >
+                    {pinging === wh.id ? "Testing…" : "Test"}
+                  </Button>
+                  <Button
                     variant="danger"
                     size="sm"
                     loading={removing === wh.id}
-                    disabled={!!removing}
+                    disabled={!!removing || !!pinging}
                     onClick={() => handleRemove(wh.id)}
                     aria-label={`Remove webhook ${wh.url}`}
                   >
                     {removing === wh.id ? "Removing…" : "Remove"}
                   </Button>
                 </div>
+                {pingResults[wh.id] && (
+                  <p className={`text-xs ${pingResults[wh.id].success ? "text-success" : "text-danger"}`}>
+                    {pingResults[wh.id].message}
+                  </p>
+                )}
                 {removeErrors[wh.id] && (
                   <p className="text-xs text-danger">{removeErrors[wh.id]}</p>
                 )}

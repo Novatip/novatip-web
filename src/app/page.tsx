@@ -1,7 +1,6 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
-import { Button } from "@/components/ui/Button";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { ConnectPrompt } from "@/components/ConnectPrompt";
 
 export default function HomePage() {
@@ -21,12 +20,8 @@ export default function HomePage() {
           musicians. Powered by Stellar USDC — no middlemen, no big cuts.
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Link href="/onboarding">
-            <Button size="lg">Create your tip jar</Button>
-          </Link>
-          <Link href="/demo">
-            <Button size="lg" variant="secondary">See a demo page</Button>
-          </Link>
+          <LinkButton href="/onboarding" size="lg">Create your tip jar</LinkButton>
+          <LinkButton href="/demo" size="lg" variant="secondary">See a demo page</LinkButton>
         </div>
       </main>
     </>
