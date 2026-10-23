@@ -27,10 +27,12 @@ import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
+import { isValidSlug } from "@/lib/slug";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
+import { NotificationPreferences } from "@/components/NotificationPreferences";
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -194,7 +196,7 @@ export default function SettingsPage() {
 
   // ── Slug rename ────────────────────────────────────────────────────────────
 
-  const slugValid   = /^[a-z0-9_-]{3,32}$/.test(newSlug);
+  const slugValid   = isValidSlug(newSlug);
   const isUnchanged = slugValid && creator !== null && newSlug === creator.slug;
 
   // Debounced availability check — mirrors onboarding/SlugStep.tsx. Skipped
@@ -440,6 +442,9 @@ export default function SettingsPage() {
           )}
         </Card>
       </form>
+
+      {/* ── Notification preferences ───────────────────────────────────────── */}
+      {jwt && creator && <NotificationPreferences jwt={jwt} />}
 
       {/* ── Public link ────────────────────────────────────────────────────── */}
       <Card>

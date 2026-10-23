@@ -7,6 +7,7 @@
 
 import { config, DEFAULT_REQUEST_TIMEOUT_MS } from "./config";
 import { emitUnauthorized } from "./authEvents";
+import { emitConnectionFailure, emitConnectionSuccess } from "./connectionEvents";
 
 export interface RequestOptions extends Omit<RequestInit, "signal"> {
   timeout?: number;
@@ -117,12 +118,18 @@ async function request<T>(
 
     if (isAbort) {
       if (timeoutSignal.aborted && (!callerSignal || !callerSignal.aborted)) {
+        emitConnectionFailure();
         throw new ApiError(408, "TIMEOUT", "Request timed out");
       }
+      // A caller-initiated abort says nothing about the backend's health.
       throw new ApiError(0, "ABORTED", "Request aborted");
     }
+    emitConnectionFailure();
     throw err;
   }
+
+  // Any HTTP response, even an error status, proves the backend is reachable.
+  emitConnectionSuccess();
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({})) as Record<string, unknown>;

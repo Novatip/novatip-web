@@ -19,6 +19,10 @@ vi.mock("next/image", () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }));
 
+vi.mock("@/components/NotificationPreferences", () => ({
+  NotificationPreferences: () => <div data-testid="notification-preferences" />,
+}));
+
 const mockWallet = vi.hoisted(() => ({
   publicKey:    "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
   jwt:          "mock.jwt.token",
@@ -77,6 +81,19 @@ beforeEach(() => {
   mockWallet.jwt = "mock.jwt.token";
   mockAuthApi.me.mockResolvedValue({ user: { slug: "currentslug" } });
   mockCreatorApi.getBySlug.mockResolvedValue({ creator: MOCK_CREATOR });
+});
+
+describe("SettingsPage – notification preferences", () => {
+  it("renders the card once the creator has loaded", async () => {
+    render(<SettingsPage />);
+    expect(await screen.findByTestId("notification-preferences")).toBeInTheDocument();
+  });
+
+  it("does not render the card when signed out", () => {
+    mockWallet.jwt = null as unknown as string;
+    render(<SettingsPage />);
+    expect(screen.queryByTestId("notification-preferences")).not.toBeInTheDocument();
+  });
 });
 
 describe("SettingsPage – rename button disabled until conditions met", () => {
