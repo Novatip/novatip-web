@@ -66,6 +66,22 @@ Before opening a pull request, check off each of the following:
 - Use [conventional commits](https://novatip-docs.pages.dev/contributing):
   `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`
 
+## Merging to main
+
+`main` is protected by a ruleset that requires:
+
+- The CI check (lint, typecheck, test, build) to pass
+- The branch to be up to date with `main` (see below)
+
+**Who can bypass it:** Organisation owners, repository admins, and maintainers
+can bypass this ruleset. Maintainers may only bypass it by merging a pull
+request — they cannot push directly to `main`.
+
+**When to bypass:** Treat the bypass as an emergency escape hatch, not a
+shortcut around review or CI. Only use it for something that cannot wait for a
+normal CI run (for example, reverting a breaking change already on `main`),
+and say why in the pull request so the bypass is traceable afterwards.
+
 ## Keeping your branch up to date
 
 This repository requires branches to be up to date with `main` before merging.
