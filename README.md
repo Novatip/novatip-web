@@ -6,7 +6,7 @@ Next.js 14 frontend for Novatip.
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
-Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser extension
+Prerequisites: Node.js 20 (pinned in `.nvmrc`, matching CI — run `nvm use`), novatip-backend on port 3001, Freighter browser extension
 
     npm install
     cp .env.example .env.local
