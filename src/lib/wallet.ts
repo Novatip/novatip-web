@@ -69,8 +69,14 @@ export function getTipSplitterClient(): TipSplitterClient {
 // ── Sign helper ───────────────────────────────────────────────────────────────
 
 /**
- * Returns a signTransaction callback bound to the Freighter adapter
- * and the current network passphrase. Passed directly into SDK client methods.
+ * Returns a signTransaction callback bound to the current network passphrase
+ * and the given address, calling @stellar/freighter-api directly. Passed
+ * directly into SDK client methods.
+ *
+ * `address` is passed through to Freighter on every call so it signs with
+ * the account the transaction was built for, not whatever account happens to
+ * be active in the extension — the network rejects a signature from the
+ * wrong account as txBAD_AUTH, so this is how that account must be pinned.
  */
 export function makeSignTransaction(address: string) {
   const network = getNetworkConfig();

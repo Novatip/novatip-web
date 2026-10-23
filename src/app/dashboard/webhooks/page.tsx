@@ -19,20 +19,12 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
+import { isValidHttpsUrl } from "@/lib/webhooks";
 
 interface Webhook {
   id:      string;
   url:     string;
   enabled: boolean;
-}
-
-function isValidHttpsUrl(value: string): boolean {
-  try {
-    const u = new URL(value);
-    return u.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 export default function WebhooksPage() {
@@ -73,6 +65,10 @@ export default function WebhooksPage() {
   // ── Toggle enabled state ───────────────────────────────────────────────────
   const [toggling, setToggling] = useState<string | null>(null);
   const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
+
+  // ── Ping state ─────────────────────────────────────────────────────────────
+  const [pinging,      setPinging]      = useState<string | null>(null); // id being pinged
+  const [pingResults,  setPingResults]  = useState<Record<string, { success: boolean; message: string }>>({});
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -288,6 +284,41 @@ export default function WebhooksPage() {
     }
   }
 
+  // ── Ping webhook ───────────────────────────────────────────────────────────
+  async function handlePing(id: string) {
+    if (!jwt || pinging) return;
+
+    setPinging(id);
+    setPingResults((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+
+    try {
+      const r = await webhookApi.ping(jwt, id);
+      setPingResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: r.success,
+          message: r.success
+            ? `Success (${r.statusCode ?? 200})`
+            : r.error || "Failed to deliver test ping",
+        },
+      }));
+    } catch (e: unknown) {
+      setPingResults((prev) => ({
+        ...prev,
+        [id]: {
+          success: false,
+          message: getErrorMessage(e, "Failed to send test ping."),
+        },
+      }));
+    } finally {
+      setPinging(null);
+    }
+  }
+
   const urlError =
     urlTouched && url && !isValidHttpsUrl(url)
       ? "Must be a valid HTTPS URL"
@@ -458,6 +489,16 @@ export default function WebhooksPage() {
                     {rotating === wh.id ? "Rotating…" : "Rotate secret"}
                   </Button>
                   <Button
+                    variant="secondary"
+                    size="sm"
+                    loading={pinging === wh.id}
+                    disabled={!!pinging || !!removing}
+                    onClick={() => handlePing(wh.id)}
+                    aria-label={`Test webhook ${wh.url}`}
+                  >
+                    {pinging === wh.id ? "Testing…" : "Test"}
+                  </Button>
+                  <Button
                     variant="danger"
                     size="sm"
                     loading={removing === wh.id}
@@ -468,6 +509,11 @@ export default function WebhooksPage() {
                     {removing === wh.id ? "Removing…" : "Remove"}
                   </Button>
                 </div>
+                {pingResults[wh.id] && (
+                  <p className={`text-xs ${pingResults[wh.id].success ? "text-success" : "text-danger"}`}>
+                    {pingResults[wh.id].message}
+                  </p>
+                )}
                 {removeErrors[wh.id] && (
                   <p className="text-xs text-danger ml-8">{removeErrors[wh.id]}</p>
                 )}

@@ -166,7 +166,7 @@ export default function HistoryPage() {
         <div role="table" aria-label="Tip history" className="w-full">
           {/* Column headers */}
           <div role="rowgroup">
-            <div role="row" className="grid grid-cols-12 gap-4 pb-3 border-b border-white/10 text-xs text-gray-500 uppercase tracking-wider">
+            <div role="row" className="grid grid-cols-12 gap-4 pb-3 border-b border-hairline text-xs text-fg-faint uppercase tracking-wider">
               <span role="columnheader" className="col-span-4">From</span>
               <span role="columnheader" className="col-span-2 text-right">Amount</span>
               <span role="columnheader" className="col-span-4">Message</span>
@@ -176,13 +176,13 @@ export default function HistoryPage() {
 
           {/* Loading skeletons */}
           {loading && tips.length === 0 && (
-            <div role="rowgroup" className="divide-y divide-white/5">
+            <div role="rowgroup" className="divide-y divide-hairline">
               {Array.from({ length: 8 }).map((_, i) => (
                 <div key={i} role="row" className="grid grid-cols-12 gap-4 py-3 animate-pulse">
-                  <div role="cell" className="col-span-4 h-4 rounded bg-white/10" />
-                  <div role="cell" className="col-span-2 h-4 rounded bg-white/10" />
-                  <div role="cell" className="col-span-4 h-4 rounded bg-white/5" />
-                  <div role="cell" className="col-span-2 h-4 rounded bg-white/10" />
+                  <div role="cell" className="col-span-4 h-4 rounded bg-hairline" />
+                  <div role="cell" className="col-span-2 h-4 rounded bg-hairline" />
+                  <div role="cell" className="col-span-4 h-4 rounded bg-hairline/50" />
+                  <div role="cell" className="col-span-2 h-4 rounded bg-hairline" />
                 </div>
               ))}
             </div>
@@ -190,34 +190,34 @@ export default function HistoryPage() {
 
           {/* Empty state */}
           {!loading && tips.length === 0 && !error && (
-            <p className="text-sm text-gray-500 py-8 text-center">
+            <p className="text-sm text-fg-faint py-8 text-center">
               No tips received yet. Share your link to get started!
             </p>
           )}
 
           {/* Tip rows */}
           {tips.length > 0 && (
-            <div role="rowgroup" className="divide-y divide-white/5">
+            <div role="rowgroup" className="divide-y divide-hairline">
               {tips.map((tip) => (
                 <div
                   key={tip.id}
                   role="row"
-                  className="grid grid-cols-12 gap-4 py-3 hover:bg-white/3 transition-colors rounded-lg"
+                  className="grid grid-cols-12 gap-4 py-3 hover:bg-surface-strong transition-colors rounded-lg"
                 >
                   {/* Sender */}
-                  <span role="cell" className="col-span-4 font-mono text-sm text-gray-300 truncate">
+                  <span role="cell" className="col-span-4 font-mono text-sm text-fg-muted truncate">
                     {shortenAddress(tip.fromAddress)}
                   </span>
 
                   {/* Amount */}
-                  <span role="cell" className="col-span-2 text-right text-sm font-semibold text-brand-400">
+                  <span role="cell" className="col-span-2 text-right text-sm font-semibold text-accent">
                     ${formatUsdc(BigInt(tip.amount), 2)}
                   </span>
 
                   {/* Message */}
                   <span role="cell" className={cn(
                     "col-span-4 text-sm truncate",
-                    tip.message ? "text-gray-300" : "text-gray-600 italic",
+                    tip.message ? "text-fg-muted" : "text-fg-dim italic",
                   )}>
                     {tip.message || "No message"}
                   </span>
@@ -225,7 +225,7 @@ export default function HistoryPage() {
                   {/* Time */}
                   <TimeAgo
                     iso={tip.ledgerAt}
-                    className="col-span-2 text-right text-xs text-gray-500"
+                    className="col-span-2 text-right text-xs text-fg-faint"
                   >
                     {timeAgo(tip.ledgerAt)}
                   </TimeAgo>
@@ -250,7 +250,7 @@ export default function HistoryPage() {
         )}
 
         {!hasMore && tips.length > 0 && (
-          <p className="pt-4 text-center text-xs text-gray-500">
+          <p className="pt-4 text-center text-xs text-fg-faint">
             {tips.length >= RECENT_TIPS_MAX_LIMIT
               ? `Showing all tips (${RECENT_TIPS_MAX_LIMIT} max)`
               : "That\u2019s all your tips."}

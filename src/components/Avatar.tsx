@@ -22,12 +22,12 @@ interface AvatarProps {
  */
 export function getInitials(displayName: string, slug?: string): string {
   const name = displayName.trim().replace(/^@/, "");
-  if (!name) return (slug || "?").slice(0, 2).toUpperCase();
+  if (!name) return [...(slug || "?")].slice(0, 2).join("").toUpperCase();
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return ([...parts[0]][0] + [...parts[1]][0]).toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return [...name].slice(0, 2).join("").toUpperCase();
 }
 
 export function Avatar({ src, displayName, slug, className }: AvatarProps) {
@@ -51,45 +51,6 @@ export function Avatar({ src, displayName, slug, className }: AvatarProps) {
     );
   }
 
-
-export function getInitials(name?: string): string {
-  if (!name || typeof name !== 'string') return '';
-
-  const trimmed = name.trim();
-  if (trimmed === '') return '';
-
-  // Use spread operator([...string]) to split by Unicode code points / graphemes instead of UTF-16 units
-  const parts = trimmed.split(/\s+/);
-  
-  if (parts.length >= 2) {
-    const firstChar = [...parts[0]][0] || '';
-    const lastChar = [...parts[parts.length - 1]][0] || '';
-    return (firstChar + lastChar).toUpperCase();
-  }
-
-  // Single word or name: take up to the first 2 code points
-  const chars = [...trimmed];
-  return chars.slice(0, 2).join('').toUpperCase();
-}
-
-interface AvatarProps {
-  name: string;
-  src?: string;
-}
-
-export const Avatar: React.FC<AvatarProps> = ({ name, src }) => {
-  const initials = getInitials(name);
-
-  if (src) {
-    return <img src={src} alt={name} className="avatar-img" />;
-  }
-
-  return (
-    <div className="avatar-fallback" aria-label={name}>
-      <span>{initials}</span>
-    </div>
-  );
-};
   return (
     <Image
       src={src}

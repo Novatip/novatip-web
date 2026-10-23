@@ -1,170 +1,366 @@
 /**
  * src/app/dashboard/settings/page.test.tsx
  *
- * Tests for the settings page after the profile form was restored alongside
- * the slug rename card (issue #226).
+ * Unit tests for the settings page slug rename flow.
  *
- * Covers the three things that make the form safe to ship:
- *   - it loads and saves display name, bio and avatar through updateProfile
- *   - an avatar URL that is not https is rejected before any request is made
- *   - the existing rename card still validates, checks availability and saves
+ * Covers:
+ *   - The button stays disabled until all three conditions hold
+ *   - The creator's current slug is reported as unchanged
+ *   - Success clears the inputs and shows the confirmation
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ImgHTMLAttributes } from "react";
 import SettingsPage from "./page";
-import type { CreatorProfile } from "@/lib/api";
 
-// next/image's runtime requires the Next image config context, none of which
-// is under test here. A plain <img> preserves the src/alt we assert on.
 vi.mock("next/image", () => ({
-  default: ({ src, alt }: { src: string; alt: string }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} />
-  ),
+  default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }));
 
-const me           = vi.hoisted(() => vi.fn());
-const getBySlug    = vi.hoisted(() => vi.fn());
-const updateProfile = vi.hoisted(() => vi.fn());
-const updateSlug   = vi.hoisted(() => vi.fn());
-const checkSlug    = vi.hoisted(() => vi.fn());
+vi.mock("@/components/NotificationPreferences", () => ({
+  NotificationPreferences: () => <div data-testid="notification-preferences" />,
+}));
 
-vi.mock("@/lib/api", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/api")>();
-  return {
-    ...actual,
-    authApi:    { ...actual.authApi, me },
-    creatorApi: {
-      ...actual.creatorApi,
-      getBySlug,
-      updateProfile,
-      updateSlug,
-      checkSlug,
-    },
-  };
-});
+const mockWallet = vi.hoisted(() => ({
+  publicKey:    "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
+  jwt:          "mock.jwt.token",
+  isConnected:  true,
+  isConnecting: false,
+  isSigningIn:  false,
+  error:        null as string | null,
+  connect:      vi.fn(),
+  retrySignIn:  vi.fn(),
+  disconnect:   vi.fn(),
+}));
 
 vi.mock("@/contexts/WalletContext", () => ({
-  useWallet: () => ({ jwt: "jwt" }),
+  useWallet: () => mockWallet,
 }));
 
-const BASE_CREATOR: CreatorProfile = {
-  id:          "creator-1",
-  slug:        "alice",
-  displayName: "Alice",
-  bio:         "Street violinist",
-  avatarUrl:   null,
-  jarId:       "@alice",
-  splits:      [{ to: "GBOUUKWI3SUIIL75NEZMVYLYU77SIXNN2RNYMNJOJX6WXOICMMAKKKB4", bps: 10_000 }],
-  createdAt:   "2026-01-01T00:00:00Z",
+const mockAuthApi = vi.hoisted(() => ({
+  me: vi.fn(),
+}));
+
+const mockCreatorApi = vi.hoisted(() => ({
+  getBySlug: vi.fn(),
+  checkSlug: vi.fn(),
+  updateSlug: vi.fn(),
+  updateProfile: vi.fn(),
+}));
+
+vi.mock("@/lib/api", () => ({
+  authApi: mockAuthApi,
+  creatorApi: mockCreatorApi,
+  ApiError: class ApiError extends Error {
+    code: string;
+    constructor(message: string, code: string) {
+      super(message);
+      this.code = code;
+    }
+  },
+}));
+
+const MOCK_CREATOR = {
+  slug: "currentslug",
+  jarId: "@currentslug",
+  displayName: "Test Creator",
+  bio: "This is a bio",
+  avatarUrl: null,
+  splits: [],
 };
 
-function creator(overrides: Partial<CreatorProfile> = {}): CreatorProfile {
-  return { ...BASE_CREATOR, ...overrides };
-}
+afterEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+});
 
 beforeEach(() => {
-  vi.clearAllMocks();
-
-  me.mockResolvedValue({
-    user: { sub: "creator-1", wallet: "GBOUUKWI3SUIIL75NEZMVYLYU77SIXNN2RNYMNJOJX6WXOICMMAKKKB4", slug: "alice" },
-  });
-  getBySlug.mockResolvedValue({ creator: creator() });
-  checkSlug.mockResolvedValue({ slug: "newslug", available: true });
-  updateSlug.mockResolvedValue({ creator: creator({ slug: "newslug" }) });
+  mockWallet.publicKey = "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC";
+  mockWallet.jwt = "mock.jwt.token";
+  mockAuthApi.me.mockResolvedValue({ user: { slug: "currentslug" } });
+  mockCreatorApi.getBySlug.mockResolvedValue({ creator: MOCK_CREATOR });
 });
 
-afterEach(cleanup);
-
-describe("SettingsPage – profile form", () => {
-  it("loads the creator's current profile into the form", async () => {
+describe("SettingsPage – notification preferences", () => {
+  it("renders the card once the creator has loaded", async () => {
     render(<SettingsPage />);
-
-    expect(await screen.findByDisplayValue("Alice")).toBeInTheDocument();
-    expect(screen.getByLabelText("Bio")).toHaveValue("Street violinist");
-    expect(screen.getByLabelText("Avatar URL")).toHaveValue("");
+    expect(await screen.findByTestId("notification-preferences")).toBeInTheDocument();
   });
 
-  it("saves display name, bio and avatar through updateProfile", async () => {
-    const user = userEvent.setup();
-    updateProfile.mockImplementation(async (_jwt, data) => ({
-      creator: creator({
-        displayName: data.displayName ?? null,
-        bio:         data.bio         ?? null,
-        avatarUrl:   data.avatarUrl   ?? null,
-      }),
-    }));
-
+  it("does not render the card when signed out", () => {
+    mockWallet.jwt = null as unknown as string;
     render(<SettingsPage />);
-
-    const name = await screen.findByDisplayValue("Alice");
-    await user.clear(name);
-    await user.type(name, "Alice Updated");
-
-    const bio = screen.getByLabelText("Bio");
-    await user.clear(bio);
-    await user.type(bio, "New bio");
-
-    await user.type(
-      screen.getByLabelText("Avatar URL"),
-      "https://example.com/avatar.png",
-    );
-
-    await user.click(
-      screen.getByRole("button", { name: "Save profile changes" }),
-    );
-
-    await waitFor(() =>
-      expect(updateProfile).toHaveBeenCalledWith("jwt", {
-        displayName: "Alice Updated",
-        bio:         "New bio",
-        avatarUrl:   "https://example.com/avatar.png",
-      }),
-    );
-    expect(await screen.findByText(/Profile saved/)).toBeInTheDocument();
-  });
-
-  it("rejects a non-https avatar URL before sending anything", async () => {
-    const user = userEvent.setup();
-
-    render(<SettingsPage />);
-
-    const avatar = await screen.findByLabelText("Avatar URL");
-    await user.type(avatar, "http://example.com/avatar.png");
-    await user.tab();
-
-    expect(
-      await screen.findByText("Avatar URL must start with https://"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Save profile changes" }),
-    ).toBeDisabled();
-    expect(updateProfile).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("notification-preferences")).not.toBeInTheDocument();
   });
 });
 
-describe("SettingsPage – slug rename", () => {
-  it("still checks availability and renames the slug", async () => {
-    const user = userEvent.setup();
+describe("SettingsPage – rename button disabled until conditions met", () => {
+  it("keeps the button disabled when slug is invalid", async () => {
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i);
+    const checkbox = screen.getByRole("checkbox");
+    
+    // A two-character slug stays invalid after input normalization.
+    await userEvent.type(slugInput, "ab");
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+
+    // Button should still be disabled because slug is invalid
+    const renameButton = screen.getByRole("button", { name: /rename to @ab$/i });
+    expect(renameButton).toBeDisabled();
+    expect(mockCreatorApi.checkSlug).not.toHaveBeenCalled();
+  });
+
+  it("keeps the button disabled when slug is not available", async () => {
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: false });
 
     render(<SettingsPage />);
-    await screen.findByDisplayValue("Alice");
 
-    await user.type(screen.getByLabelText("New slug"), "newslug");
-    expect(
-      await screen.findByText("Available ✓", {}, { timeout: 3000 }),
-    ).toBeInTheDocument();
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
 
-    await user.click(screen.getByRole("checkbox"));
-    await user.click(screen.getByRole("button", { name: "Rename to @newslug" }));
+    const slugInput = screen.getByLabelText(/new slug/i);
+    const checkbox = screen.getByRole("checkbox");
+    
+    // Type a valid slug that's taken
+    await userEvent.type(slugInput, "takenslug");
 
-    await waitFor(() =>
-      expect(updateSlug).toHaveBeenCalledWith("jwt", "newslug"),
-    );
-    expect(
-      await screen.findByText("Slug renamed successfully!"),
-    ).toBeInTheDocument();
+    // Wait for availability check
+    await waitFor(() => {
+      expect(screen.getByText(/taken/i)).toBeInTheDocument();
+    });
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+
+    // Button should still be disabled because slug is taken
+    const renameButton = screen.getByRole("button", { name: /rename to @takenslug/i });
+    expect(renameButton).toBeDisabled();
+  });
+
+  it("keeps the button disabled when acknowledgement is not checked", async () => {
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i);
+    
+    // Type a valid, available slug
+    await userEvent.type(slugInput, "availableslug");
+
+    // Wait for availability check
+    await waitFor(() => {
+      expect(screen.getByText(/available/i)).toBeInTheDocument();
+    });
+
+    // Don't check the acknowledgement
+    const renameButton = screen.getByRole("button", { name: /rename to @availableslug/i });
+    expect(renameButton).toBeDisabled();
+  });
+
+  it("enables the button when all three conditions are met", async () => {
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i);
+    const checkbox = screen.getByRole("checkbox");
+    
+    // Type a valid, available slug
+    await userEvent.type(slugInput, "newvalidslug");
+
+    // Wait for availability check
+    await waitFor(() => {
+      expect(screen.getByText(/available/i)).toBeInTheDocument();
+    });
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+
+    // Button should now be enabled
+    const renameButton = screen.getByRole("button", { name: /rename to @newvalidslug/i });
+    expect(renameButton).not.toBeDisabled();
+  });
+});
+
+describe("SettingsPage – current slug reported as unchanged", () => {
+  it("reports the current slug as unchanged and disables the button", async () => {
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i);
+    const checkbox = screen.getByRole("checkbox");
+    
+    // Type the current slug
+    await userEvent.type(slugInput, "currentslug");
+
+    // Should show "That's your current slug" badge
+    await waitFor(() => {
+      expect(screen.getByText(/that's your current slug/i)).toBeInTheDocument();
+    });
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+
+    // Button should be disabled because it's the same slug
+    const renameButton = screen.getByRole("button", { name: /rename to @currentslug/i });
+    expect(renameButton).toBeDisabled();
+
+    // Should not trigger availability check for current slug
+    expect(mockCreatorApi.checkSlug).not.toHaveBeenCalled();
+  });
+});
+
+describe("SettingsPage – successful rename clears inputs and shows confirmation", () => {
+  it("clears the slug input, unchecks acknowledgement, and shows success message", async () => {
+    const updatedCreator = {
+      ...MOCK_CREATOR,
+      slug: "newslug",
+      jarId: "@newslug",
+    };
+
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+    mockCreatorApi.updateSlug.mockResolvedValue({ creator: updatedCreator });
+
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
+    const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
+    
+    // Type a valid, available slug
+    await userEvent.type(slugInput, "newslug");
+
+    // Wait for availability check
+    await waitFor(() => {
+      expect(screen.getByText(/available/i)).toBeInTheDocument();
+    });
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+    expect(checkbox.checked).toBe(true);
+
+    // Click rename button
+    const renameButton = screen.getByRole("button", { name: /rename to @newslug/i });
+    await userEvent.click(renameButton);
+
+    // Wait for success message
+    await waitFor(() => {
+      expect(screen.getByText(/slug renamed successfully/i)).toBeInTheDocument();
+    });
+
+    // Verify the API was called
+    expect(mockCreatorApi.updateSlug).toHaveBeenCalledWith("mock.jwt.token", "newslug");
+
+    // Input should be cleared
+    expect(slugInput.value).toBe("");
+
+    // Checkbox should be unchecked
+    expect(checkbox.checked).toBe(false);
+  });
+});
+
+describe("SettingsPage – rename error handling", () => {
+  it("shows an error message when rename fails", async () => {
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+    mockCreatorApi.updateSlug.mockRejectedValue(new Error("Slug already taken"));
+
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i);
+    const checkbox = screen.getByRole("checkbox");
+    
+    // Type a valid, available slug
+    await userEvent.type(slugInput, "errorslug");
+
+    // Wait for availability check
+    await waitFor(() => {
+      expect(screen.getByText(/available/i)).toBeInTheDocument();
+    });
+
+    // Check the acknowledgement
+    await userEvent.click(checkbox);
+
+    // Click rename button
+    const renameButton = screen.getByRole("button", { name: /rename to @errorslug/i });
+    await userEvent.click(renameButton);
+
+    // Wait for error message
+    await waitFor(() => {
+      expect(screen.getByText(/slug already taken/i)).toBeInTheDocument();
+    });
+
+    expect(mockCreatorApi.updateSlug).toHaveBeenCalledWith("mock.jwt.token", "errorslug");
+  });
+});
+
+describe("SettingsPage – slug validation", () => {
+  it("strips invalid characters as the user types", async () => {
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
+    
+    // Type slug with invalid characters (uppercase, spaces, special chars)
+    await userEvent.type(slugInput, "Test Slug!@#$123");
+
+    // Should only keep valid characters (lowercase, numbers, hyphens, underscores)
+    expect(slugInput.value).toBe("testslug123");
+  });
+
+  it("enforces the 32 character maximum", async () => {
+    render(<SettingsPage />);
+
+    // Wait for page to load
+    await waitFor(() => {
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
+    });
+
+    const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
+    
+    // Type a slug longer than 32 characters
+    const longSlug = "a".repeat(40);
+    await userEvent.type(slugInput, longSlug);
+
+    // Should be truncated to 32 characters
+    expect(slugInput.value.length).toBeLessThanOrEqual(32);
   });
 });

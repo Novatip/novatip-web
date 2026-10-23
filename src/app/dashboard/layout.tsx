@@ -20,6 +20,7 @@ import { getTipUrl } from "@/lib/tipUrl";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { CopyFallback } from "@/components/CopyFallback";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
+import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav";
@@ -71,7 +72,21 @@ function TipLinkCopy({ slug }: { slug: string }) {
               : "text-accent hover:text-accent-strong",
           )}
         >
-          {failed ? "Failed" : copied ? "Copied!" : "Copy link"}
+          <svg className="h-4 w-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+            {failed ? (
+              <path d="M6 6l12 12M6 18L18 6" />
+            ) : copied ? (
+              <path d="M5 12l4 4L19 6" />
+            ) : (
+              <>
+                <rect x="8" y="8" width="12" height="12" rx="2" />
+                <path d="M16 8V4H4v12h4" />
+              </>
+            )}
+          </svg>
+          <span className="sr-only sm:not-sr-only">
+            {failed ? "Failed" : copied ? "Copied!" : "Copy link"}
+          </span>
         </button>
       </div>
 
@@ -91,7 +106,7 @@ function TipLinkCopy({ slug }: { slug: string }) {
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isConnected, publicKey, jwt } = useWallet();
+  const { isConnected, publicKey, jwt, isSigningIn, retrySignIn, error: walletError } = useWallet();
   const pathname = usePathname();
   const [sessionKey, setSessionKey] = useState(0);
   const [slug, setSlug] = useState<string | null>(null);
@@ -161,13 +176,47 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
+  // The wallet is connected, but the creator session (SIWS) has not been
+  // established — either sign-in is still in progress, or it failed. Every
+  // dashboard page fetches data with useAbortableRequest, which starts in a
+  // loading state and only leaves it when `run` is called. Those pages guard
+  // `run` behind `if (!jwt) return`, so without this check a connected wallet
+  // with no session leaves every page on its loading skeleton forever.
+  if (!jwt) {
+    return (
+      <div className="relative min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        {isSigningIn ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent" />
+            <p className="text-fg-subtle text-sm">Signing you in…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 max-w-sm text-center">
+            <p className="text-fg-subtle text-sm">
+              {walletError ?? "Your wallet is connected, but you need to sign in to access the dashboard."}
+            </p>
+            <Button size="lg" onClick={() => void retrySignIn()}>
+              Sign in
+            </Button>
+          </div>
+        )}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+          <WalletConnectButton size="sm" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
 
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur-md">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-4">
-          <Link href="/" className="flex items-center gap-2 group shrink-0">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-2 sm:gap-4">
+          <Link href="/" className="flex items-center gap-2 group shrink-0" aria-label="Novatip home">
             <Image
               src="/logo.svg"
               alt=""
@@ -176,7 +225,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className="rounded"
               unoptimized
             />
-            <span className="font-semibold text-fg group-hover:text-accent transition-colors">
+            <span className="hidden sm:inline font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>
             <span className="text-fg-dim text-sm hidden sm:block">/ Dashboard</span>

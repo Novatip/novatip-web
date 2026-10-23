@@ -13,6 +13,7 @@ import { ApiError, creatorApi } from "@/lib/api";
 import { jarIdForSlug, readJar } from "@/lib/jar";
 import { useWallet } from "@/contexts/WalletContext";
 import { getTipUrl } from "@/lib/tipUrl";
+import { isValidSlug } from "@/lib/slug";
 
 interface SlugStepProps {
   jwt:      string;
@@ -47,7 +48,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
 
-  const slugValid = /^[a-z0-9_-]{3,32}$/.test(slug);
+  const slugValid = isValidSlug(slug);
 
   // Debounced availability check
   useEffect(() => {

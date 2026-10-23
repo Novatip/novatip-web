@@ -1,8 +1,8 @@
 import { MetadataRoute } from 'next';
-import { siteConfig } from '@/config/site'; // adjust import path to your site config
+import { config } from '@/lib/config';
 
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = siteConfig?.url || process.env.NEXT_PUBLIC_SITE_URL || 'https://novatip.me';
+  const baseUrl = config.siteUrl.replace(/\/$/, '');
 
   return {
     rules: {

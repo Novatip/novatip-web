@@ -27,6 +27,7 @@ const mockWallet = vi.hoisted(() => ({
   isConnected:  false,
   isConnecting: false,
   error:        null as string | null,
+  errorCode:    null as string | null,
   connect:      vi.fn(),
   disconnect:   vi.fn(),
 }));
@@ -42,6 +43,7 @@ afterEach(() => {
   mockWallet.isConnected = false;
   mockWallet.isConnecting = false;
   mockWallet.error = null;
+  mockWallet.errorCode = null;
 });
 
 const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
@@ -49,7 +51,7 @@ const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
 describe("WalletConnectButton – disconnected", () => {
   it("shows a Connect Wallet button", () => {
     render(<WalletConnectButton />);
-    expect(screen.getByRole("button", { name: /connect freighter wallet/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Connect Wallet" })).toBeInTheDocument();
     expect(screen.getByText("Connect Wallet")).toBeInTheDocument();
   });
 
@@ -65,11 +67,30 @@ describe("WalletConnectButton – disconnected", () => {
     expect(screen.getByText("Freighter wallet extension not found.")).toBeInTheDocument();
   });
 
+  it("links to freighter.app when the extension is not installed", () => {
+    mockWallet.error = "Freighter wallet extension not found. Install it from freighter.app, then reload this page.";
+    mockWallet.errorCode = "FREIGHTER_NOT_INSTALLED";
+    render(<WalletConnectButton />);
+
+    const link = screen.getByRole("link", { name: "freighter.app" });
+    expect(link).toHaveAttribute("href", "https://freighter.app");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not render a link for other connection errors", () => {
+    mockWallet.error = "Wallet connection failed.";
+    render(<WalletConnectButton />);
+
+    expect(screen.queryByRole("link", { name: "freighter.app" })).not.toBeInTheDocument();
+    expect(screen.getByText("Wallet connection failed.")).toBeInTheDocument();
+  });
+
   it("invokes connect() when clicked", async () => {
     const user = userEvent.setup();
     render(<WalletConnectButton />);
 
-    await user.click(screen.getByRole("button", { name: /connect freighter wallet/i }));
+    await user.click(screen.getByRole("button", { name: "Connect Wallet" }));
 
     expect(mockWallet.connect).toHaveBeenCalledTimes(1);
   });
@@ -80,7 +101,7 @@ describe("WalletConnectButton – connecting", () => {
     mockWallet.isConnecting = true;
     render(<WalletConnectButton />);
 
-    const button = screen.getByRole("button", { name: /connect freighter wallet/i });
+    const button = screen.getByRole("button", { name: "Connecting…" });
     expect(button).toHaveTextContent("Connecting…");
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button).toBeDisabled();
