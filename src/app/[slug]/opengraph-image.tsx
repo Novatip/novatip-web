@@ -11,11 +11,15 @@
 import { ImageResponse } from "next/og";
 import { resolverApi } from "@/lib/api";
 import { config } from "@/lib/config";
+import { truncateText } from "@/lib/truncate";
 
 export const runtime = "edge";
 export const alt     = "Tip this creator on Novatip";
 export const size    = { width: 1200, height: 630 };
 export const contentType = "image/png";
+
+/** Longest bio, in characters, that fits the card before it is shortened. */
+const BIO_MAX_CHARS = 100;
 
 interface Props {
   // Next 15 resolves route params asynchronously, so this is a Promise.
@@ -97,7 +101,7 @@ export default async function OgImage({ params }: Props) {
               marginBottom: 40,
             }}
           >
-            {bio.length > 100 ? `${bio.slice(0, 100)}...` : bio}
+            {truncateText(bio, BIO_MAX_CHARS)}
           </div>
         )}
 

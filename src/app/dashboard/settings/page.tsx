@@ -23,7 +23,6 @@
  */
 
 import { useEffect, useState, useRef } from "react";
-import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
@@ -33,6 +32,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Input } from "@/components/ui/Input";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
+import { Avatar } from "@/components/Avatar";
 
 // ── Validation ────────────────────────────────────────────────────────────────
 
@@ -268,13 +268,12 @@ export default function SettingsPage() {
   }
 
   // ── Avatar preview ─────────────────────────────────────────────────────────
+  // No third-party placeholder: Avatar falls back to locally generated
+  // initials, so the slug never leaves the app (see Avatar.tsx).
   const avatarPreviewUrl =
     avatarUrl && !validateAvatarUrl(avatarUrl)
       ? avatarUrl
-      : creator?.avatarUrl ??
-        (creator
-          ? `https://api.dicebear.com/8.x/identicon/svg?seed=${creator.slug}`
-          : null);
+      : creator?.avatarUrl ?? null;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -317,15 +316,12 @@ export default function SettingsPage() {
               {/* Avatar preview + URL */}
               <div className="flex items-start gap-4">
                 <div className="shrink-0">
-                  {avatarPreviewUrl ? (
-                    <div className="h-16 w-16 rounded-full overflow-hidden ring-2 ring-brand-500/20">
-                      <Image
+                  {creator ? (
+                    <div className="relative h-16 w-16 rounded-full overflow-hidden ring-2 ring-brand-500/20">
+                      <Avatar
                         src={avatarPreviewUrl}
-                        alt="Avatar preview"
-                        width={64}
-                        height={64}
-                        className="object-cover w-full h-full"
-                        unoptimized
+                        displayName={displayName || creator.displayName || creator.slug}
+                        slug={creator.slug}
                       />
                     </div>
                   ) : (
