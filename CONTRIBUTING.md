@@ -110,6 +110,25 @@ git push
 
 After updating, CI will run again and must pass before the PR can merge.
 
+## Editing the Open Graph image
+
+`src/app/[slug]/opengraph-image.tsx` runs on the edge runtime and is rendered
+by [Satori](https://github.com/vercel/satori), which enforces two rules that
+regular JSX/CSS does not:
+
+1. **Any `div` with more than one child must set `display: "flex"`** in its
+   style. Satori throws on a multi-child `div` without it — it does not fall
+   back to block layout.
+2. **A child that mixes literal text with an interpolated expression counts
+   as two child nodes, not one.** `` @{slug} `` is two children (the text
+   `"@"` and the expression `{slug}`); write it as a single template literal
+   instead: `` {`@${slug}`} ``.
+
+Both failures are render-time throws, not warnings, so breaking either rule
+takes out every creator's preview image, not just the one you were editing.
+If you add a field to the card, keep every multi-child `div` flexed and every
+mixed text/expression child collapsed into one template literal.
+
 ## Reporting security issues
 
 Do not open a public issue. See

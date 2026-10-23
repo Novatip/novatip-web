@@ -6,6 +6,16 @@
  * platform that reads OG tags, this image is shown in the preview card.
  *
  * Uses Next.js ImageResponse (built on Vercel OG) - no external deps needed.
+ *
+ * Runs on the edge runtime and is rendered by Satori, which imposes two
+ * rules on every element below (see CONTRIBUTING.md for the long version):
+ *   1. A div with more than one child must set `display: "flex"` in its
+ *      style, or Satori throws.
+ *   2. A child that mixes literal text with an interpolated expression
+ *      (e.g. `@{slug}`) is two child nodes, not one — write it as a single
+ *      template literal (`` {`@${slug}`} ``) instead.
+ * Breaking either rule fails every image render, not just the one field you
+ * changed, since Satori throws rather than degrading gracefully.
  */
 
 import { ImageResponse } from "next/og";
@@ -78,10 +88,8 @@ export default async function OgImage({ params }: Props) {
             marginBottom: 24,
           }}
         >
-          {/* One interpolation, not `@{slug}`: that is two child nodes, and
-              Satori refuses any div with multiple children unless it declares
-              display:flex. It threw on every render, so no preview image was
-              ever produced. */}
+          {/* Single template literal, not `@{slug}` — see the Satori rules
+              at the top of this file. */}
           {`@${slug}`}
         </div>
 
