@@ -28,6 +28,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validated required environment variables at build time to catch configuration errors early
 
 ### Fixed
+- Restored the avatar and analytics chart implementations, including Unicode initials, UTC dates, and exact earnings totals, after duplicate code broke typechecking.
+- Corrected the robots metadata configuration, backend connection context import, and recipient address formatting callback.
+- Kept webhook validation outside the Next.js page exports so production builds pass, and normalized encoded @ prefixes in malformed tip links.
 - Wallet account mismatch detection to prevent `txBAD_AUTH` errors when Freighter account changes
 - USDC trustline validation for split recipients to prevent payment failures
 - Theme flash prevention by applying theme before first paint

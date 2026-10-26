@@ -8,9 +8,11 @@
  *     should never see a link to a dashboard they can't use
  *   - The Dashboard link is present, and points at /dashboard, once connected
  *   - The logo links back to the home page
+ *   - Network badge shows when not on mainnet
+ *   - Network badge is hidden on mainnet
  */
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import type { ImgHTMLAttributes } from "react";
 import { Header } from "./Header";
@@ -35,6 +37,21 @@ const mockWallet = vi.hoisted(() => ({
 vi.mock("@/contexts/WalletContext", () => ({
   useWallet: () => mockWallet,
 }));
+
+// Mock config to control network value
+const mockConfig = vi.hoisted(() => ({
+  stellar: {
+    network: "testnet" as "testnet" | "mainnet" | "local",
+  },
+}));
+
+vi.mock("@/lib/config", async () => {
+  const actual = await vi.importActual("@/lib/config");
+  return {
+    ...actual,
+    config: mockConfig,
+  };
+});
 
 afterEach(() => {
   cleanup();
@@ -68,5 +85,25 @@ describe("Header – logo", () => {
   it("links the logo back to the home page", () => {
     render(<Header />);
     expect(screen.getByRole("link", { name: /novatip home/i })).toHaveAttribute("href", "/");
+  });
+});
+
+describe("Header – network badge", () => {
+  it("shows the network badge when running on testnet", () => {
+    mockConfig.stellar.network = "testnet";
+    render(<Header />);
+    expect(screen.getByText("testnet")).toBeInTheDocument();
+  });
+
+  it("shows the network badge when running on local", () => {
+    mockConfig.stellar.network = "local";
+    render(<Header />);
+    expect(screen.getByText("local")).toBeInTheDocument();
+  });
+
+  it("hides the network badge when running on mainnet", () => {
+    mockConfig.stellar.network = "mainnet";
+    render(<Header />);
+    expect(screen.queryByText("mainnet")).not.toBeInTheDocument();
   });
 });

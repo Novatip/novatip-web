@@ -45,7 +45,8 @@ function deferred<T>() {
 }
 
 function toggle(id: string): HTMLInputElement {
-  const el = document.getElementById(id);
+  const name = id === "notif-email" ? /^Email\b/ : /^Webhook\b/;
+  const el = screen.getByRole("switch", { name });
   if (!(el instanceof HTMLInputElement)) throw new Error(`Missing toggle #${id}`);
   return el;
 }
@@ -61,6 +62,17 @@ afterEach(() => {
 });
 
 describe("NotificationPreferences – saving", () => {
+  it("exposes each channel as a named switch with its current state", async () => {
+    getPreferences.mockResolvedValue({
+      preferences: { emailEnabled: true, webhookEnabled: false },
+    });
+
+    await renderLoaded();
+
+    expect(screen.getByRole("switch", { name: /^Email\b/ })).toBeChecked();
+    expect(screen.getByRole("switch", { name: /^Webhook\b/ })).not.toBeChecked();
+  });
+
   it("keeps the optimistic value after a successful save", async () => {
     const save = deferred<{ preferences: Prefs }>();
     getPreferences.mockResolvedValue({ preferences: BOTH_ENABLED });

@@ -73,7 +73,7 @@ describe("DashboardLayout – disconnected state", () => {
     );
 
     expect(screen.getByText(/connect your wallet to access the dashboard/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /connect freighter wallet/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 
   it("does not render nav items when disconnected", () => {
