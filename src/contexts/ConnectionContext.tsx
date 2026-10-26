@@ -1,4 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+"use client";
+
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { onConnectionFailure, onConnectionSuccess } from '@/lib/connectionEvents';
 
 interface ConnectionContextType {
   isBackendUnreachable: boolean;
@@ -18,6 +21,17 @@ export const ConnectionProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const reportSuccess = useCallback(() => {
     setIsBackendUnreachable(false);
   }, []);
+
+  // lib/api.ts is plain TypeScript, so it publishes through connectionEvents
+  // and the provider turns those into state.
+  useEffect(() => {
+    const offFailure = onConnectionFailure(reportError);
+    const offSuccess = onConnectionSuccess(reportSuccess);
+    return () => {
+      offFailure();
+      offSuccess();
+    };
+  }, [reportError, reportSuccess]);
 
   return (
     <ConnectionContext.Provider value={{ isBackendUnreachable, reportError, reportSuccess }}>

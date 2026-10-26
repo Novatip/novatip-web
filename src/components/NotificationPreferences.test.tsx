@@ -45,7 +45,8 @@ function deferred<T>() {
 }
 
 function toggle(id: string): HTMLInputElement {
-  const el = document.getElementById(id);
+  const name = id === "notif-email" ? /^Email\b/ : /^Webhook\b/;
+  const el = screen.getByRole("switch", { name });
   if (!(el instanceof HTMLInputElement)) throw new Error(`Missing toggle #${id}`);
   return el;
 }
@@ -61,6 +62,17 @@ afterEach(() => {
 });
 
 describe("NotificationPreferences – saving", () => {
+  it("exposes each channel as a named switch with its current state", async () => {
+    getPreferences.mockResolvedValue({
+      preferences: { emailEnabled: true, webhookEnabled: false },
+    });
+
+    await renderLoaded();
+
+    expect(screen.getByRole("switch", { name: /^Email\b/ })).toBeChecked();
+    expect(screen.getByRole("switch", { name: /^Webhook\b/ })).not.toBeChecked();
+  });
+
   it("keeps the optimistic value after a successful save", async () => {
     const save = deferred<{ preferences: Prefs }>();
     getPreferences.mockResolvedValue({ preferences: BOTH_ENABLED });
@@ -140,5 +152,20 @@ describe("NotificationPreferences – saving", () => {
     expect(email).not.toBeDisabled();
     expect(webhook).not.toBeDisabled();
     expect(updatePreferences).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("NotificationPreferences – unavailable endpoint", () => {
+  it("explains a 404 without rendering notification toggles", async () => {
+    getPreferences.mockRejectedValue(
+      new ApiError(404, "NOT_FOUND", "Route GET:/notifications/preferences not found"),
+    );
+
+    render(<NotificationPreferences jwt={JWT} />);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Notification preferences are not available yet.",
+    );
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 });

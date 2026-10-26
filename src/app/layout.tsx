@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { ConnectionProvider } from "@/contexts/ConnectionContext";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 import { SkipLink } from "@/components/SkipLink";
 import { config } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -78,9 +80,12 @@ export default function RootLayout({
       </head>
       <body>
         <SkipLink />
-        <WalletProvider>
-          {children}
-        </WalletProvider>
+        <ConnectionProvider>
+          <ConnectionBanner />
+          <WalletProvider>
+            {children}
+          </WalletProvider>
+        </ConnectionProvider>
       </body>
     </html>
   );

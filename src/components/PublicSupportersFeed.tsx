@@ -10,6 +10,7 @@
 import type { PublicTip } from "@/lib/api";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import { timeAgo } from "@/lib/time";
 
 /** Parse amount safely — returns null when the string is not a valid integer. */
@@ -63,9 +64,9 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
                   </p>
                 )}
               </div>
-              <span className="text-xs text-fg-dim shrink-0 mt-0.5">
+              <TimeAgo iso={tip.ledgerAt} className="text-xs text-fg-dim shrink-0 mt-0.5">
                 {timeAgo(tip.ledgerAt)}
-              </span>
+              </TimeAgo>
             </li>
           );
         })}

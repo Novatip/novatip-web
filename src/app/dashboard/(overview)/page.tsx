@@ -14,7 +14,9 @@ import { useWallet } from "@/contexts/WalletContext";
 import { analyticsApi, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { formatUsdc } from "@novatip/sdk";
+import { getTipUrl } from "@/lib/tipUrl";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { JarStatusBanner } from "@/components/JarStatusBanner";
 import { Leaderboard } from "@/components/Leaderboard";
@@ -83,8 +85,24 @@ export default function DashboardPage() {
 
       {/* Page title */}
       <div className="flex flex-col gap-2">
-        <h1 className="text-2xl font-bold text-fg">Overview</h1>
-        <p className="text-sm text-fg-subtle">Your earnings and supporter activity</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold text-fg">Overview</h1>
+            <p className="text-sm text-fg-subtle">Your earnings and supporter activity</p>
+          </div>
+          {creator?.slug && (
+            <LinkButton
+              href={getTipUrl(creator.slug)}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="secondary"
+              size="sm"
+              aria-label="View your public tip page (opens in a new tab)"
+            >
+              View tip page ↗
+            </LinkButton>
+          )}
+        </div>
         {creator && <JarStatusBanner jarId={creator.jarId} />}
       </div>
 

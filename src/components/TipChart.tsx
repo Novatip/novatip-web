@@ -18,6 +18,16 @@ import { ApiError, getErrorMessage, analyticsApi } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import {
+  getChartWindow,
+  getChartMode,
+  storeChartWindow,
+  storeChartMode,
+  DEFAULT_CHART_WINDOW,
+  DEFAULT_CHART_MODE,
+  type ChartWindow,
+  type ChartMode,
+} from "@/lib/tipChartPrefs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,13 +53,13 @@ function fmtDate(iso: string): string {
  * Fill in any calendar gaps so the chart always has exactly `days` points.
  * Zero-activity days are represented as { tipCount: 0, amountRaw: "0" }.
  */
-function fillSeries(raw: DataPoint[], days: number): DataPoint[] {
+export function fillSeries(raw: DataPoint[], days: number): DataPoint[] {
   const byDate = new Map(raw.map((p) => [p.date, p]));
   const result: DataPoint[] = [];
   const now = new Date();
+  const utcToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    const d = new Date(utcToday - i * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
     result.push(
       byDate.get(key) ?? { date: key, tipCount: 0, amountRaw: "0" },
@@ -123,10 +133,10 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
       className="w-full overflow-visible"
-      style={{ height }}
+      style={{ height: "auto", aspectRatio: `${width} / ${height}` }}
     >
       <defs>
         {/* Gradient fill — uses CSS vars so it works in light and dark */}
@@ -159,6 +169,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
         fill="none"
         className="stroke-accent"
         strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -172,6 +183,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
           r={3}
           className="fill-accent stroke-canvas"
           strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
         />
       ))}
 
@@ -210,11 +222,20 @@ const WINDOWS: { label: string; value: Window }[] = [
 ];
 
 export function TipChart({ jwt }: TipChartProps) {
-  const [window, setWindow] = useState<Window>(30);
-  const [mode, setMode] = useState<Mode>("count");
+  const [window, setWindow] = useState<Window>(DEFAULT_CHART_WINDOW);
+  const [mode, setMode] = useState<Mode>(DEFAULT_CHART_MODE);
   const [series, setSeries] = useState<DataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Restore the creator's saved window and mode after mount — not in the
+  // initial useState, so the server-rendered markup (which has no access to
+  // localStorage) matches the client's first paint and only then updates.
+  // Follows the same pattern as lib/lastTipAmount.ts in TipForm.
+  useEffect(() => {
+    setWindow(getChartWindow() as Window);
+    setMode(getChartMode() as Mode);
+  }, []);
 
   const abortRef = useRef<AbortController | null>(null);
   const gradId = useId().replace(/:/g, ""); // SVG id must not contain colons
@@ -252,7 +273,7 @@ export function TipChart({ jwt }: TipChartProps) {
 
   // ── Derived summary ────────────────────────────────────────────────────────
   const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
-  const totalAmount = series?.reduce((s, p) => s + Number(BigInt(p.amountRaw)), 0) ?? 0;
+  const totalAmount = series?.reduce((s, p) => s + BigInt(p.amountRaw), BigInt(0)) ?? BigInt(0);
   const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -282,7 +303,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    storeChartMode(m as ChartMode);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     mode === m
@@ -302,7 +326,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={w.value}
                   type="button"
-                  onClick={() => setWindow(w.value)}
+                  onClick={() => {
+                    setWindow(w.value);
+                    storeChartWindow(w.value as ChartWindow);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     window === w.value
@@ -349,7 +376,7 @@ export function TipChart({ jwt }: TipChartProps) {
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Earned</span>
               <p className="font-semibold text-fg">
-                ${formatUsdc(BigInt(Math.round(totalAmount)), 2)}
+                ${formatUsdc(totalAmount, 2)}
               </p>
             </div>
             <div>
@@ -408,206 +435,4 @@ export function TipChart({ jwt }: TipChartProps) {
       )}
     </Card>
   );
-
-
-export type WindowDays = 7 | 30 | 90; // Renamed from Window to avoid shadowing DOM global type
-
-export interface TipDataPoint {
-  date: string;
-  amount: number;
 }
-
-export function fillSeries(data: TipDataPoint[], days: number): TipDataPoint[] {
-  const result: TipDataPoint[] = [];
-  const dataMap = new Map(data.map((item) => [item.date.slice(0, 10), item.amount]));
-
-  const now = new Date();
-  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-
-  for (let i = days - 1; i >= 0; i--) {
-    const targetTime = utcNow - i * 24 * 60 * 60 * 1000;
-    const d = new Date(targetTime);
-    const dateStr = d.toISOString().slice(0, 10);
-
-    result.push({
-      date: dateStr,
-      amount: dataMap.get(dateStr) || 0,
-    });
-  }
-
-  return result;
-}
-
-interface TipChartProps {
-  data: TipDataPoint[];
-}
-
-export const TipChart: React.FC<TipChartProps> = ({ data }) => {
-  // Renamed from [window, setWindow] to avoid shadowing global window
-  const [windowDays, setWindowDays] = useState<WindowDays>(30);
-  const filledData = fillSeries(data, windowDays);
-
-  return (
-    <div className="tip-chart-container">
-      <div className="chart-header">
-        <h3>Tip History</h3>
-        <div className="window-selector">
-          <button onClick={() => setWindowDays(7)} className={windowDays === 7 ? 'active' : ''}>7D</button>
-          <button onClick={() => setWindowDays(30)} className={windowDays === 30 ? 'active' : ''}>30D</button>
-          <button onClick={() => setWindowDays(90)} className={windowDays === 90 ? 'active' : ''}>90D</button>
-        </div>
-      </div>
-      <div className="chart-body">
-        <ul>
-          {filledData.map((pt) => (
-            <li key={pt.date}>
-              {pt.date}: ${pt.amount}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-};
-
-export function fillSeries(data: TipDataPoint[], days: number): TipDataPoint[] {
-  const result: TipDataPoint[] = [];
-  const dataMap = new Map(data.map((item) => [item.date.slice(0, 10), item.amount]));
-
-  // Anchor strictly to UTC midnight to avoid local timezone / DST anomalies
-  const now = new Date();
-  const utcNow = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-
-  for (let i = days - 1; i >= 0; i--) {
-    const targetTime = utcNow - i * 24 * 60 * 60 * 1000;
-    const d = new Date(targetTime);
-    const dateStr = d.toISOString().slice(0, 10);
-
-    result.push({
-      date: dateStr,
-      amount: dataMap.get(dateStr) || 0,
-    });
-  }
-
-  return result;
-}
-
-interface TipChartProps {
-  data: TipDataPoint[];
-}
-
-export const TipChart: React.FC<TipChartProps> = ({ data }) => {
-  const [windowDays, setWindowDays] = useState<7 | 30 | 90>(30);
-  const filledData = fillSeries(data, windowDays);
-
-  return (
-    <div className="tip-chart-container">
-      <div className="chart-header">
-        <h3>Tip History</h3>
-        <div className="window-selector">
-          <button onClick={() => setWindowDays(7)} className={windowDays === 7 ? 'active' : ''}>7D</button>
-          <button onClick={() => setWindowDays(30)} className={windowDays === 30 ? 'active' : ''}>30D</button>
-          <button onClick={() => setWindowDays(90)} className={windowDays === 90 ? 'active' : ''}>90D</button>
-        </div>
-      </div>
-      <div className="chart-body">
-        <ul>
-          {filledData.map((pt) => (
-            <li key={pt.date}>
-              {pt.date}: ${pt.amount}
-            </li>
-          ))}
-        </ul>
-      </div>
-    </div>
-  );
-};
-}
-
-interface ChartPoint {
-  x: number;
-  y: number;
-  label?: string;
-}
-
-interface ChartSvgProps {
-  points: ChartPoint[];
-  pathD: string;
-}
-
-export const ChartSvg: React.FC<ChartSvgProps> = ({ points, pathD }) => {
-  return (
-    <div className="chart-svg-container">
-      <svg
-        viewBox="0 0 600 120"
-        preserveAspectRatio="none"
-        className="tip-chart-svg"
-      >
-        {/* Line path with non-scaling stroke so width stays constant when stretched */}
-        <path
-          d={pathD}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          vectorEffect="non-scaling-stroke"
-          className="chart-line"
-        />
-
-        {/* Data dots with non-scaling stroke and constant rendering */}
-        {points.map((pt, idx) => (
-          <circle
-            key={idx}
-            cx={pt.x}
-            cy={pt.y}
-            r="3"
-            className="chart-dot"
-            vectorEffect="non-scaling-stroke"
-          />
-        ))}
-      </svg>
-    </div>
-  );
-};
-export interface TipDataPoint {
-  date: string;
-  amountRaw: string; // Raw stroop amount string
-}
-
-export function calculateTotalStroops(data: TipDataPoint[]): bigint {
-  return data.reduce((sum, item) => sum + BigInt(item.amountRaw || '0'), BigInt(0));
-}
-
-interface TipChartProps {
-  data: TipDataPoint[];
-}
-
-export const TipChart: React.FC<TipChartProps> = ({ data }) => {
-  // Compute exact total as BigInt
-  const totalStroops = calculateTotalStroops(data);
-
-  // Format exact total for display (e.g. converted to Lumens/XLM or formatted BigInt)
-  const formattedTotal = totalStroops.toString();
-
-  return (
-    <div className="tip-chart">
-      <div className="summary-row">
-        <span>Total Tips: {formattedTotal} stroops</span>
-      </div>
-
-      <div className="chart-bars">
-        {data.map((item, idx) => {
-          // Plotting retains approximate Number conversion for CSS height percentages
-          const plotValue = Number(BigInt(item.amountRaw));
-          return (
-            <div
-              key={idx}
-              className="chart-bar"
-              style={{ height: `${Math.min(plotValue / 1000, 100)}%` }}
-              title={`${item.date}: ${item.amountRaw} stroops`}
-            />
-          );
-        })}
-      </div>
-    </div>
-  );
-};

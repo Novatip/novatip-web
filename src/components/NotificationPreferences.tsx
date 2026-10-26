@@ -67,6 +67,7 @@ function Toggle({ id, checked, disabled, onChange, label, description, badge }: 
       <div className="relative shrink-0 mt-0.5">
         <input
           type="checkbox"
+          role="switch"
           id={id}
           checked={checked}
           disabled={disabled}
@@ -116,6 +117,8 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
     abortControllerRef.current = controller;
 
     setLoading(true);
+    setPrefs(null);
+    setError(null);
     notificationsApi
       .getPreferences(jwt, { signal: controller.signal })
       .then((r) => {
@@ -123,7 +126,11 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.code === "ABORTED") return;
-        setError(getErrorMessage(e, "Failed to load notification preferences."));
+        setError(
+          e instanceof ApiError && e.status === 404
+            ? "Notification preferences are not available yet."
+            : getErrorMessage(e, "Failed to load notification preferences."),
+        );
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
