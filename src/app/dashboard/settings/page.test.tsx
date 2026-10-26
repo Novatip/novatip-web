@@ -54,9 +54,11 @@ vi.mock("@/lib/api", () => ({
   authApi: mockAuthApi,
   creatorApi: mockCreatorApi,
   ApiError: class ApiError extends Error {
+    status: number;
     code: string;
-    constructor(message: string, code: string) {
+    constructor(status: number, code: string, message: string) {
       super(message);
+      this.status = status;
       this.code = code;
     }
   },
@@ -325,6 +327,27 @@ describe("SettingsPage – rename error handling", () => {
     });
 
     expect(mockCreatorApi.updateSlug).toHaveBeenCalledWith("mock.jwt.token", "errorslug");
+  });
+
+  it("explains that slug renaming is unavailable when the route returns 404", async () => {
+    const { ApiError } = await import("@/lib/api");
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+    mockCreatorApi.updateSlug.mockRejectedValue(
+      new ApiError(404, "NOT_FOUND", "Route PATCH:/creators/me/slug not found"),
+    );
+
+    render(<SettingsPage />);
+
+    const slugInput = await screen.findByLabelText(/new slug/i);
+    await userEvent.type(slugInput, "newslug");
+    await screen.findByText(/available/i);
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("button", { name: /rename to @newslug/i }));
+
+    expect(
+      await screen.findByText("Slug renaming is not available yet."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/route patch:/i)).not.toBeInTheDocument();
   });
 });
 

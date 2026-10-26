@@ -261,7 +261,13 @@ export default function SettingsPage() {
       setAvailable(null);
       setRenameSaved(true);
     } catch (e) {
-      setRenameError(e instanceof Error ? e.message : "Failed to rename slug.");
+      setRenameError(
+        e instanceof ApiError && e.status === 404
+          ? "Slug renaming is not available yet."
+          : e instanceof Error
+            ? e.message
+            : "Failed to rename slug.",
+      );
     } finally {
       setRenaming(false);
     }
