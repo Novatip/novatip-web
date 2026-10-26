@@ -67,6 +67,7 @@ function Toggle({ id, checked, disabled, onChange, label, description, badge }: 
       <div className="relative shrink-0 mt-0.5">
         <input
           type="checkbox"
+          role="switch"
           id={id}
           checked={checked}
           disabled={disabled}

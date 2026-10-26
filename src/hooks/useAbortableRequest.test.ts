@@ -10,6 +10,8 @@
  *   - Starting a new run aborts the previous request's signal
  *   - An error whose code is "ABORTED" is swallowed rather than surfaced
  *   - abort() cancels the in-flight signal without starting a new request
+ *   - abort() resets loading when a request was in flight, and is a no-op otherwise
+ *   - run() after an abort() works normally
  *   - The in-flight request is aborted automatically on unmount
  *   - A stale request resolving after a newer one started does not clobber state
  */
@@ -128,6 +130,50 @@ describe("useAbortableRequest", () => {
     });
 
     expect(signal?.aborted).toBe(true);
+  });
+
+  it("abort() resets loading when a request was in flight", () => {
+    const { result } = renderHook(() => useAbortableRequest<string | null>(null));
+
+    act(() => {
+      result.current.run(() => new Promise(() => {}));
+    });
+    expect(result.current.loading).toBe(true);
+
+    act(() => {
+      result.current.abort();
+    });
+    expect(result.current.loading).toBe(false);
+  });
+
+  it("abort() with no request in flight leaves loading untouched", () => {
+    const { result } = renderHook(() => useAbortableRequest<string | null>(null));
+
+    act(() => {
+      result.current.abort();
+    });
+    expect(result.current.loading).toBe(true);
+  });
+
+  it("run() after an abort() works normally", async () => {
+    const { result } = renderHook(() => useAbortableRequest<string | null>(null));
+
+    act(() => {
+      result.current.run(() => new Promise(() => {}));
+    });
+    act(() => {
+      result.current.abort();
+    });
+    expect(result.current.loading).toBe(false);
+
+    act(() => {
+      result.current.run(async () => "after abort");
+    });
+    expect(result.current.loading).toBe(true);
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.data).toBe("after abort");
+    expect(result.current.error).toBeNull();
   });
 
   it("aborts the in-flight request on unmount", () => {

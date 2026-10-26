@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidHttpsUrl } from "./page";
+import { isValidHttpsUrl } from "@/lib/webhooks";
 
 describe("webhook endpoint validation", () => {
   it("accepts HTTPS endpoints and rejects insecure or malformed URLs", () => {

@@ -28,6 +28,9 @@ import { isJwtExpired } from "@/lib/jwt";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/** Narrows `error` so the UI can special-case recovery, e.g. a link to install Freighter. */
+export type WalletErrorCode = "FREIGHTER_NOT_INSTALLED";
+
 interface WalletState {
   publicKey:    string | null;
   jwt:          string | null;
@@ -35,6 +38,7 @@ interface WalletState {
   isConnecting: boolean;
   isSigningIn:  boolean;
   error:        string | null;
+  errorCode:    WalletErrorCode | null;
   connect:      () => Promise<void>;
   retrySignIn:  () => Promise<void>;
   disconnect:   () => void;
@@ -55,6 +59,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSigningIn,  setIsSigningIn]  = useState(false);
   const [error,        setError]        = useState<string | null>(null);
+  const [errorCode,    setErrorCode]    = useState<WalletErrorCode | null>(null);
 
   // Rehydrate from localStorage on mount. The two are restored independently:
   // a connected wallet with no creator session is the normal state for someone
@@ -86,6 +91,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setPublicKey(null);
       setJwt(null);
       setError("Your session has expired. Please reconnect your wallet.");
+      setErrorCode(null);
     });
   }, []);
 
@@ -127,9 +133,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
+    setErrorCode(null);
 
     try {
       if (!(await isFreighterInstalled())) {
+        setErrorCode("FREIGHTER_NOT_INSTALLED");
         throw new Error(
           "Freighter wallet extension not found. Install it from freighter.app, then reload this page.",
         );
@@ -158,6 +166,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setPublicKey(null);
     setJwt(null);
     setError(null);
+    setErrorCode(null);
   }, []);
 
   return (
@@ -169,6 +178,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         isConnecting,
         isSigningIn,
         error,
+        errorCode,
         connect,
         retrySignIn,
         disconnect,
