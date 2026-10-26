@@ -188,6 +188,8 @@ export interface CreatorProfile {
   displayName: string | null;
   bio:         string | null;
   avatarUrl:   string | null;
+  /** Address tip-received emails are sent to. Null means notifications are off. */
+  email:       string | null;
   jarId:       string;
   splits:      Array<{ to: string; bps: number }>;
   createdAt:   string;
@@ -213,7 +215,7 @@ export const creatorApi = {
 
   updateProfile: (
     jwt: string,
-    data: { displayName?: string; bio?: string; avatarUrl?: string },
+    data: { displayName?: string; bio?: string; avatarUrl?: string; email?: string | null },
     options?: RequestOptions,
   ) =>
     request<{ creator: CreatorProfile }>("/creators/me", {
@@ -355,6 +357,13 @@ export const notificationsApi = {
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
+export interface WebhookDelivery {
+  id:        string;
+  status:    number;
+  attempt:   number;
+  createdAt: string;
+}
+
 export const webhookApi = {
   list: (jwt: string, options?: RequestOptions) =>
     request<{ webhooks: Array<{ id: string; url: string; enabled: boolean }> }>(
@@ -373,10 +382,24 @@ export const webhookApi = {
   remove: (jwt: string, id: string, options?: RequestOptions) =>
     request<void>(`/webhooks/${id}`, { ...options, method: "DELETE" }, jwt),
 
-  ping: (jwt: string, id: string, options?: RequestOptions) =>
-    request<{ success: boolean; statusCode?: number; error?: string }>(
-      `/webhooks/${id}/ping`,
+  deliveries: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ deliveries: WebhookDelivery[] }>(
+      `/webhooks/${id}/deliveries`,
+      options,
+      jwt,
+    ),
+
+  rotateSecret: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ secret: string }>(
+      `/webhooks/${id}/secret`,
       { ...options, method: "POST" },
+      jwt,
+    ),
+
+  update: (jwt: string, id: string, data: { enabled: boolean }, options?: RequestOptions) =>
+    request<{ webhook: { id: string; url: string; enabled: boolean } }>(
+      `/webhooks/${id}`,
+      { ...options, method: "PATCH", body: JSON.stringify(data) },
       jwt,
     ),
 };

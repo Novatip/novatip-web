@@ -20,6 +20,7 @@ import { getTipUrl } from "@/lib/tipUrl";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { CopyFallback } from "@/components/CopyFallback";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
+import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 import { NAV_ITEMS } from "./nav";
@@ -105,7 +106,7 @@ function TipLinkCopy({ slug }: { slug: string }) {
 // ── Layout ────────────────────────────────────────────────────────────────────
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { isConnected, publicKey, jwt } = useWallet();
+  const { isConnected, publicKey, jwt, isSigningIn, retrySignIn, error: walletError } = useWallet();
   const pathname = usePathname();
   const [sessionKey, setSessionKey] = useState(0);
   const [slug, setSlug] = useState<string | null>(null);
@@ -171,6 +172,40 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         <p className="text-fg-subtle text-sm">Connect your wallet to access the dashboard</p>
         <WalletConnectButton size="lg" />
+      </div>
+    );
+  }
+
+  // The wallet is connected, but the creator session (SIWS) has not been
+  // established — either sign-in is still in progress, or it failed. Every
+  // dashboard page fetches data with useAbortableRequest, which starts in a
+  // loading state and only leaves it when `run` is called. Those pages guard
+  // `run` behind `if (!jwt) return`, so without this check a connected wallet
+  // with no session leaves every page on its loading skeleton forever.
+  if (!jwt) {
+    return (
+      <div className="relative min-h-screen flex flex-col items-center justify-center gap-6 px-4">
+        <div className="absolute top-4 right-4">
+          <ThemeToggle />
+        </div>
+        {isSigningIn ? (
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent" />
+            <p className="text-fg-subtle text-sm">Signing you in…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-4 max-w-sm text-center">
+            <p className="text-fg-subtle text-sm">
+              {walletError ?? "Your wallet is connected, but you need to sign in to access the dashboard."}
+            </p>
+            <Button size="lg" onClick={() => void retrySignIn()}>
+              Sign in
+            </Button>
+          </div>
+        )}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
+          <WalletConnectButton size="sm" />
+        </div>
       </div>
     );
   }

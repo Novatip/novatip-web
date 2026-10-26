@@ -27,6 +27,7 @@ const mockWallet = vi.hoisted(() => ({
   isConnected:  false,
   isConnecting: false,
   error:        null as string | null,
+  errorCode:    null as string | null,
   connect:      vi.fn(),
   disconnect:   vi.fn(),
 }));
@@ -42,6 +43,7 @@ afterEach(() => {
   mockWallet.isConnected = false;
   mockWallet.isConnecting = false;
   mockWallet.error = null;
+  mockWallet.errorCode = null;
 });
 
 const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
@@ -63,6 +65,25 @@ describe("WalletConnectButton – disconnected", () => {
     mockWallet.error = "Freighter wallet extension not found.";
     render(<WalletConnectButton />);
     expect(screen.getByText("Freighter wallet extension not found.")).toBeInTheDocument();
+  });
+
+  it("links to freighter.app when the extension is not installed", () => {
+    mockWallet.error = "Freighter wallet extension not found. Install it from freighter.app, then reload this page.";
+    mockWallet.errorCode = "FREIGHTER_NOT_INSTALLED";
+    render(<WalletConnectButton />);
+
+    const link = screen.getByRole("link", { name: "freighter.app" });
+    expect(link).toHaveAttribute("href", "https://freighter.app");
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+  });
+
+  it("does not render a link for other connection errors", () => {
+    mockWallet.error = "Wallet connection failed.";
+    render(<WalletConnectButton />);
+
+    expect(screen.queryByRole("link", { name: "freighter.app" })).not.toBeInTheDocument();
+    expect(screen.getByText("Wallet connection failed.")).toBeInTheDocument();
   });
 
   it("invokes connect() when clicked", async () => {

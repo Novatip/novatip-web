@@ -6,7 +6,7 @@ Next.js 14 frontend for Novatip.
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
-Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser extension
+Prerequisites: Node.js 20 (pinned in `.nvmrc`, matching CI — run `nvm use`), novatip-backend on port 3001, Freighter browser extension
 
     npm install
     cp .env.example .env.local
@@ -371,12 +371,49 @@ required for any new collaborator account before it can appear in a split.
 
 ## Key Pages
 
-/                   - Home landing page
-/[slug]             - Public tip page
-/onboarding         - Creator onboarding wizard
-/dashboard          - Creator earnings overview
-/dashboard/splits   - Collaborator splits manager
-/dashboard/qr       - QR code and share link
+This list reflects all routes under `src/app`. Each route is verified against
+the directory structure rather than written from memory.
+
+/                       - Home landing page
+/[slug]                 - Public tip page for a creator
+/onboarding             - Creator onboarding wizard
+/dashboard              - Creator earnings overview
+/dashboard/history      - Tip history and transaction log
+/dashboard/qr           - QR code and share link
+/dashboard/settings     - Profile and notification preferences
+/dashboard/splits       - Collaborator splits manager
+/dashboard/webhooks     - Webhook configuration and testing
+
+## Screen-to-endpoint mapping
+
+This table maps each screen to the backend API endpoints it calls. The mapping
+is derived from `src/lib/api.ts` (which defines all client methods) and the
+screen component files under `src/app`.
+
+Endpoints marked **[NOT IMPLEMENTED]** do not yet exist on the backend.
+
+| Screen | Endpoints called | Notes |
+|--------|------------------|-------|
+| `/` (home) | None | Static landing page |
+| `/[slug]` (tip page) | `GET /resolve/:slug` | Fetches creator profile, splits, and recent tips |
+| `/onboarding` | `GET /auth/me`<br>`GET /creators/:slug`<br>`POST /creators/claim` | Checks session, fetches existing creator data if resuming, claims slug |
+| `/dashboard` (overview) | `GET /auth/me`<br>`GET /creators/:slug`<br>`GET /analytics/totals` | Fetches creator profile and earnings summary |
+| `/dashboard/history` | `GET /analytics/recent` | Paginated tip history with offset |
+| `/dashboard/qr` | `GET /auth/me` | Fetches slug to generate QR code client-side |
+| `/dashboard/settings` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me`<br>`PATCH /creators/me/slug`<br>`GET /creators/check/:slug` | Profile editing and slug rename |
+| `/dashboard/splits` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me/splits` | Collaborator split configuration |
+| `/dashboard/webhooks` | `GET /webhooks` **[NOT IMPLEMENTED]**<br>`POST /webhooks` **[NOT IMPLEMENTED]**<br>`DELETE /webhooks/:id` **[NOT IMPLEMENTED]**<br>`POST /webhooks/:id/ping` **[NOT IMPLEMENTED]** | Webhook management UI is built but backend routes do not exist yet |
+
+### Authentication flow
+
+The SIWS (Sign-In With Stellar) flow is used across all authenticated screens:
+
+1. `POST /auth/challenge` — request a nonce for the wallet to sign
+2. Wallet signs the nonce (client-side, via Freighter)
+3. `POST /auth/verify` — exchange the signed nonce for a JWT
+
+The JWT is stored in `localStorage.novatip_jwt` and included in the
+`Authorization: Bearer <token>` header for all subsequent authenticated requests.
 
 ## Tip page URL shapes
 
@@ -417,6 +454,92 @@ always uses `@alice`, while the REST API and web routes always use `alice`.
 8.  Confetti fires, success screen shown
 9.  Backend indexer picks up TipReceived event within ~6 seconds
 10. Dashboard analytics update live
+
+### TipForm states
+
+`TipForm` (`src/components/TipForm.tsx`) is a small state machine. The current
+state is `step`, typed as `FormStep`: `input`, `confirm`, `signing`, `success`
+or `error`. The wallet is not a step — it is a condition checked while in
+`input` (see [Guards](#guards-that-stop-a-tip-being-signed)).
+
+```mermaid
+stateDiagram-v2
+    [*] --> input
+    input --> signing: Send tip, under $100
+    input --> confirm: Send tip, $100 or more
+    confirm --> input: Cancel
+    confirm --> signing: Confirm
+    signing --> success: tip() resolves
+    signing --> error: tip() throws
+    error --> input: Retry
+    success --> input: TipSuccess onReset
+```
+
+| State | What the user sees | Leaves when |
+|---|---|---|
+| `input` | Amount picker, message box, send button. Without a connected wallet the button is replaced by a connect prompt. | The send button is clicked (`handleCtaClick`). |
+| `confirm` | A warning naming the amount, with **Cancel** and **Confirm**. The message box is disabled. | **Cancel** returns to `input`; **Confirm** calls `handleTip`. |
+| `signing` | Picker and message box disabled, button shows "Waiting for signature…". The wallet prompt is open. | `client.tip()` resolves (`success`) or throws (`error`). |
+| `success` | `TipSuccess` replaces the whole form. `tipEvents` is emitted and the amount is saved to `localStorage`. | `onReset` returns to `input` with the last tip amount and an empty message. |
+| `error` | Red banner with the error message and a **Retry** button. | **Retry** (`handleRetry`) returns to `input` and clears the error. |
+
+A rejected wallet prompt, a failed simulation and a failed submission all land
+in `error`. The banner shows `err.message` as thrown; the form does not decode
+it (see [Error taxonomy](#error-taxonomy)).
+
+#### The $100 confirmation
+
+`handleCtaClick` sends the user to `confirm` when `isLargeTip(amount)` is true,
+and straight to `handleTip` otherwise. `isLargeTip` and its threshold,
+`LARGE_TIP_CONFIRM_USDC = 100`, live in `src/lib/tipAmount.ts`. The comparison
+is inclusive, so exactly 100 asks for confirmation. Presets stop at $25, so in
+practice only the custom field reaches it.
+
+#### Guards that stop a tip being signed
+
+Every guard below must hold before `client.tip()` is called, so before the
+wallet prompt opens. They are checked in two places: `canSubmit` decides
+whether the send button is enabled, and `handleTip` re-checks a subset when it
+runs.
+
+| Guard | Stops the tip when | Where it lives | Checked by |
+|---|---|---|---|
+| Wallet connected | No wallet is connected. The connect prompt replaces the button. | `isConnected` from `useWallet()`; `src/contexts/WalletContext` | `canSubmit`; the `isConnected ? … : …` branch of the CTA. `handleTip` also returns early without `publicKey`. |
+| Valid amount | The amount is not a positive number the SDK accepts. | `amountValid` = `isValidTipAmount(usdcToStroops(amount))` from `@novatip/sdk` | `canSubmit` and `handleTip` |
+| Jar has recipients | `splits` is empty, so the contract would have nobody to pay. The button reads "Jar not configured". | `hasRecipients` in `TipForm.tsx` | `canSubmit` and `handleTip` |
+| Enough balance | The amount is more than the supporter's USDC balance. Skipped while the balance is unknown. | `insufficientBalance`; balance from `getUsdcBalance` in `src/lib/balance.ts` | `canSubmit` only |
+| Message length | The trimmed message is over 280 **bytes** (not characters). | `utf8ByteLength` and `MAX_MESSAGE_BYTES` in `src/lib/tipMessage.ts` | `canSubmit` only |
+| Idle form | The form is in any step other than `input`, so a second submit cannot start while one is in flight. | `step === "input"` | `canSubmit` only |
+
+Not a blocker, but shown: when a collaborator's share would round to zero,
+`zeroPaidCount` drives a warning in the form. It does not disable the button.
+
+#### Gaps to know about
+
+These are how the code behaves today, not how it is meant to behave. Each is
+a candidate for its own issue.
+
+- **Retry cannot be clicked.** In `error`, the button is `disabled={!canSubmit}`
+  and `canSubmit` requires `step === "input"`, so the **Retry** button
+  (`handleRetry`) is always disabled. Nothing else resets `step`, so `error` is
+  a dead end until the page is reloaded.
+- **The wrong-account check is not applied to tips.** `TipForm` imports
+  `assertActiveAccount` but never calls it; only `src/lib/jar.ts` does (split
+  saves). `makeSignTransaction(publicKey)` only tells Freighter which address to
+  use; it does not compare it with the active account. A tip signed on the wrong
+  account fails at submission, and `TipForm` shows the raw error rather than the
+  `describeSubmissionError` text. See
+  [Wallet account requirements](#wallet-account-requirements).
+- **The $1000 ceiling is not checked in `TipForm`.** `isWithinTipCeiling`
+  (`MAX_CUSTOM_TIP_USDC`) is imported but unused here. `AmountPicker` uses it to
+  show its own error, and `lastTipAmount.ts` uses it to reject stored values,
+  but `canSubmit` relies on `isValidTipAmount` alone. `tipAmount.ts` notes the
+  real SDK has no upper bound of its own, so the ceiling only holds if the SDK
+  enforces one.
+- **`confirm` re-checks less than `input`.** The amount picker stays enabled in
+  `confirm` (only the message box is disabled), and **Confirm** calls
+  `handleTip`, which skips the balance, message-length and idle-form checks.
+  Changing the amount while the confirmation is open therefore bypasses them.
 
 ## Onboarding Flow
 
@@ -470,6 +593,37 @@ work. No IE11 or legacy-browser polyfills are included.
 
 ---
 
+## Browser storage keys
+
+The app stores the following keys in `localStorage`. This list is verified
+against the constants in `src/contexts/WalletContext.tsx`, `src/lib/theme.ts`,
+and `src/lib/lastTipAmount.ts`.
+
+| Key | Contents | Removed by | Sensitive? |
+|---|---|---|---|
+| `novatip_jwt` | Session JWT issued by the backend after wallet sign-in (SIWS). Used to authenticate creator dashboard requests. | Session expiry (detected client-side), any 401 response from the backend, or explicit disconnect. | **Yes** — grants read access to the creator's dashboard. Does not control funds or allow writes without a fresh wallet signature. |
+| `novatip_pk` | Connected wallet's public key (Stellar address). Identifies which account is connected for tipping and dashboard access. | Explicit disconnect or any 401 response. | No — public keys are inherently public. |
+| `novatip_theme` | User's explicit theme preference: `"light"`, `"dark"`, or absent (meaning "system"). | Switching back to system preference removes the key. | No. |
+| `novatip_last_tip_amount` | The last amount entered in the tip picker. Pre-fills the amount field on the next visit. | Never removed automatically. Invalid values (non-numeric, exceeds ceiling) are ignored on read. | No. |
+
+### Which keys to clear when debugging
+
+- **Stuck session or "unauthorized" loop:** Clear `novatip_jwt`. The next connect
+  will generate a fresh session.
+- **Testing a first-time visitor:** Clear all four keys. This resets the app to
+  the state of someone who has never connected or visited before.
+- **Freighter account mismatch errors:** Clear `novatip_pk` and `novatip_jwt`,
+  then reconnect with the correct account active in Freighter.
+
+### Sensitive data and session security
+
+Only `novatip_jwt` holds anything sensitive. See the [Session token storage:
+localStorage and its tradeoffs](#session-token-storage-localstorage-and-its-tradeoffs)
+section for why the session is stored in `localStorage` instead of an `httpOnly`
+cookie, what risks that carries, and what limits the damage.
+
+---
+
 ## Wallet account requirements
 
 Two conditions must be met before a tip or a split save can succeed. Both are
@@ -485,7 +639,9 @@ the submission as `txBAD_AUTH`. The app catches this before submitting and shows
 
 > `Freighter is currently on XXXX…XXXX but this action is for YYYY…YYYY. Switch accounts in Freighter, or reconnect your wallet to use the active one.`
 
-The guard lives in `src/lib/wallet.ts` (`assertActiveAccount`).
+The guard lives in `src/lib/wallet.ts` (`assertActiveAccount`). Split saves call
+it (`src/lib/jar.ts`); `TipForm` does not yet — see
+[TipForm states](#tipform-states).
 
 ### Every split recipient needs a USDC trustline
 

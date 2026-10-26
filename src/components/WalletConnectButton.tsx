@@ -7,8 +7,10 @@
  * Used in the Header and optionally on the tip page when a wallet is required.
  */
 
-import { useWallet } from "@/contexts/WalletContext";
+import { useWallet, type WalletErrorCode } from "@/contexts/WalletContext";
+import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { Button } from "@/components/ui/Button";
+import { cn } from "@/lib/utils";
 import { shortenAddress } from "@novatip/sdk";
 
 interface WalletConnectButtonProps {
@@ -16,20 +18,76 @@ interface WalletConnectButtonProps {
   className?: string;
 }
 
+// The connected-account chip in the header. A creator setting up splits or
+// pointing a collaborator at their account has no other way to get the full
+// address out of the shortened display, so the chip itself copies it.
+function AddressChip({ publicKey }: { publicKey: string }) {
+  const { copied, failed, copy } = useCopyToClipboard();
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copy(publicKey)}
+      className={cn(
+        "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors",
+        "focus:outline-none focus:ring-2 focus:ring-brand-500/50",
+        failed
+          ? "bg-danger/10 border-danger/20 text-danger"
+          : "bg-success/10 border-success/20 text-success hover:bg-success/15",
+      )}
+      aria-label={
+        copied
+          ? "Full address copied"
+          : failed
+            ? "Couldn't copy address — try again"
+            : `Copy full wallet address ${publicKey}`
+      }
+    >
+      <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow shrink-0" aria-hidden="true" />
+      {copied ? "Copied!" : failed ? "Copy failed" : shortenAddress(publicKey)}
+    </button>
+  );
+}
+
+// The not-installed error reads "Freighter wallet extension not found.
+// Install it from freighter.app, then reload this page." — this splits that
+// sentence around the bare domain so it can render as a real link instead of
+// unclickable text a first-time visitor has to retype.
+const FREIGHTER_NOT_INSTALLED_PREFIX = "Freighter wallet extension not found. Install it from ";
+const FREIGHTER_NOT_INSTALLED_SUFFIX = ", then reload this page.";
+
+function ConnectionError({ error, errorCode }: { error: string; errorCode: WalletErrorCode | null }) {
+  if (errorCode === "FREIGHTER_NOT_INSTALLED") {
+    return (
+      <p className="text-xs text-danger max-w-xs text-right">
+        {FREIGHTER_NOT_INSTALLED_PREFIX}
+        <a
+          href="https://freighter.app"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-danger/80"
+        >
+          freighter.app
+        </a>
+        {FREIGHTER_NOT_INSTALLED_SUFFIX}
+      </p>
+    );
+  }
+
+  return <p className="text-xs text-danger max-w-xs text-right">{error}</p>;
+}
+
 export function WalletConnectButton({ size = "md", className }: WalletConnectButtonProps) {
   const {
     publicKey, isConnected, isConnecting, isSigningIn,
-    error, connect, retrySignIn, disconnect,
+    error, errorCode, connect, retrySignIn, disconnect,
   } = useWallet();
 
   if (isConnected && publicKey) {
     return (
       <div className="flex flex-col items-end gap-1">
         <div className="flex shrink-0 items-center gap-2 whitespace-nowrap">
-          <span className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg bg-success/10 border border-success/20 text-success text-xs font-mono">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow" />
-            {shortenAddress(publicKey)}
-          </span>
+          <AddressChip publicKey={publicKey} />
           {(error || isSigningIn) && (
             <Button
               variant="secondary"
@@ -74,9 +132,7 @@ export function WalletConnectButton({ size = "md", className }: WalletConnectBut
       >
         {isConnecting ? "Connecting…" : "Connect Wallet"}
       </Button>
-      {error && (
-        <p className="text-xs text-danger max-w-xs text-right">{error}</p>
-      )}
+      {error && <ConnectionError error={error} errorCode={errorCode} />}
     </div>
   );
 }

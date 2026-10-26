@@ -18,6 +18,16 @@ import { ApiError, getErrorMessage, analyticsApi } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import {
+  getChartWindow,
+  getChartMode,
+  storeChartWindow,
+  storeChartMode,
+  DEFAULT_CHART_WINDOW,
+  DEFAULT_CHART_MODE,
+  type ChartWindow,
+  type ChartMode,
+} from "@/lib/tipChartPrefs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -212,11 +222,20 @@ const WINDOWS: { label: string; value: Window }[] = [
 ];
 
 export function TipChart({ jwt }: TipChartProps) {
-  const [window, setWindow] = useState<Window>(30);
-  const [mode, setMode] = useState<Mode>("count");
+  const [window, setWindow] = useState<Window>(DEFAULT_CHART_WINDOW);
+  const [mode, setMode] = useState<Mode>(DEFAULT_CHART_MODE);
   const [series, setSeries] = useState<DataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Restore the creator's saved window and mode after mount — not in the
+  // initial useState, so the server-rendered markup (which has no access to
+  // localStorage) matches the client's first paint and only then updates.
+  // Follows the same pattern as lib/lastTipAmount.ts in TipForm.
+  useEffect(() => {
+    setWindow(getChartWindow() as Window);
+    setMode(getChartMode() as Mode);
+  }, []);
 
   const abortRef = useRef<AbortController | null>(null);
   const gradId = useId().replace(/:/g, ""); // SVG id must not contain colons
@@ -284,7 +303,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    storeChartMode(m as ChartMode);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     mode === m
@@ -304,7 +326,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={w.value}
                   type="button"
-                  onClick={() => setWindow(w.value)}
+                  onClick={() => {
+                    setWindow(w.value);
+                    storeChartWindow(w.value as ChartWindow);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     window === w.value

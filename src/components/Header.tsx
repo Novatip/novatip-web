@@ -12,9 +12,12 @@ import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "./WalletConnectButton";
 import { ThemeToggle } from "./ThemeToggle";
+import { Badge } from "./ui/Badge";
+import { config } from "@/lib/config";
 
 export function Header() {
   const { isConnected } = useWallet();
+  const showNetworkBadge = config.stellar.network !== "mainnet";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-hairline bg-canvas/80 backdrop-blur-md">
@@ -41,6 +44,11 @@ export function Header() {
             <span className={`${isConnected ? "hidden sm:inline " : ""}font-semibold text-fg group-hover:text-accent transition-colors`}>
               Novatip
             </span>
+            {showNetworkBadge && (
+              <Badge variant="warning" className="ml-2">
+                {config.stellar.network}
+              </Badge>
+            )}
           </Link>
 
           {/* Nav */}

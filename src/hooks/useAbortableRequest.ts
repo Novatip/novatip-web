@@ -36,8 +36,15 @@ export function useAbortableRequest<T>(initialData: T): UseAbortableRequestResul
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const abort = useCallback(() => {
-    abortControllerRef.current?.abort();
+    const controller = abortControllerRef.current;
+    if (!controller) return;
+    controller.abort();
     abortControllerRef.current = null;
+    // The cancelled request's finally block skips its setLoading(false)
+    // because the controller no longer matches, so clear the flag here.
+    // Otherwise a consumer that only aborts (e.g. usePolling's onHidden)
+    // keeps reporting work that no longer exists.
+    setLoading(false);
   }, []);
 
   const run = useCallback((fetcher: (signal: AbortSignal) => Promise<T>) => {
