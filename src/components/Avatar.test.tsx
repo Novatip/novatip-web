@@ -34,6 +34,12 @@ describe("getInitials", () => {
     expect(getInitials("Alice")).toBe("AL");
   });
 
+  it("keeps Unicode code points intact in names and slug fallbacks", () => {
+    expect(getInitials("\u{10400}lice Smith")).toBe("\u{10400}S");
+    expect(getInitials("\u{10400}lice")).toBe("\u{10400}L");
+    expect(getInitials("", "\u{10400}lice")).toBe("\u{10400}L");
+  });
+
   it("strips a leading @ before taking initials", () => {
     expect(getInitials("@alice")).toBe("AL");
     expect(getInitials("  @alice  ")).toBe("AL");

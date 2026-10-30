@@ -19,6 +19,10 @@ vi.mock("next/image", () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }));
 
+vi.mock("@/components/NotificationPreferences", () => ({
+  NotificationPreferences: () => <div data-testid="notification-preferences" />,
+}));
+
 const mockWallet = vi.hoisted(() => ({
   publicKey:    "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
   jwt:          "mock.jwt.token",
@@ -50,9 +54,11 @@ vi.mock("@/lib/api", () => ({
   authApi: mockAuthApi,
   creatorApi: mockCreatorApi,
   ApiError: class ApiError extends Error {
+    status: number;
     code: string;
-    constructor(message: string, code: string) {
+    constructor(status: number, code: string, message: string) {
       super(message);
+      this.status = status;
       this.code = code;
     }
   },
@@ -79,27 +85,41 @@ beforeEach(() => {
   mockCreatorApi.getBySlug.mockResolvedValue({ creator: MOCK_CREATOR });
 });
 
+describe("SettingsPage – notification preferences", () => {
+  it("renders the card once the creator has loaded", async () => {
+    render(<SettingsPage />);
+    expect(await screen.findByTestId("notification-preferences")).toBeInTheDocument();
+  });
+
+  it("does not render the card when signed out", () => {
+    mockWallet.jwt = null as unknown as string;
+    render(<SettingsPage />);
+    expect(screen.queryByTestId("notification-preferences")).not.toBeInTheDocument();
+  });
+});
+
 describe("SettingsPage – rename button disabled until conditions met", () => {
   it("keeps the button disabled when slug is invalid", async () => {
     render(<SettingsPage />);
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
     
-    // Type an invalid slug (has uppercase letters)
-    await userEvent.type(slugInput, "InvalidSlug");
+    // A two-character slug stays invalid after input normalization.
+    await userEvent.type(slugInput, "ab");
 
     // Check the acknowledgement
     await userEvent.click(checkbox);
 
     // Button should still be disabled because slug is invalid
-    const renameButton = screen.getByRole("button", { name: /rename to @invalid-slug/i });
+    const renameButton = screen.getByRole("button", { name: /rename to @ab$/i });
     expect(renameButton).toBeDisabled();
+    expect(mockCreatorApi.checkSlug).not.toHaveBeenCalled();
   });
 
   it("keeps the button disabled when slug is not available", async () => {
@@ -109,7 +129,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
@@ -138,7 +158,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
@@ -163,7 +183,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
@@ -192,7 +212,7 @@ describe("SettingsPage – current slug reported as unchanged", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
@@ -233,7 +253,7 @@ describe("SettingsPage – successful rename clears inputs and shows confirmatio
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
@@ -280,7 +300,7 @@ describe("SettingsPage – rename error handling", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
@@ -308,6 +328,27 @@ describe("SettingsPage – rename error handling", () => {
 
     expect(mockCreatorApi.updateSlug).toHaveBeenCalledWith("mock.jwt.token", "errorslug");
   });
+
+  it("explains that slug renaming is unavailable when the route returns 404", async () => {
+    const { ApiError } = await import("@/lib/api");
+    mockCreatorApi.checkSlug.mockResolvedValue({ available: true });
+    mockCreatorApi.updateSlug.mockRejectedValue(
+      new ApiError(404, "NOT_FOUND", "Route PATCH:/creators/me/slug not found"),
+    );
+
+    render(<SettingsPage />);
+
+    const slugInput = await screen.findByLabelText(/new slug/i);
+    await userEvent.type(slugInput, "newslug");
+    await screen.findByText(/available/i);
+    await userEvent.click(screen.getByRole("checkbox"));
+    await userEvent.click(screen.getByRole("button", { name: /rename to @newslug/i }));
+
+    expect(
+      await screen.findByText("Slug renaming is not available yet."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/route patch:/i)).not.toBeInTheDocument();
+  });
 });
 
 describe("SettingsPage – slug validation", () => {
@@ -316,7 +357,7 @@ describe("SettingsPage – slug validation", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
@@ -333,7 +374,7 @@ describe("SettingsPage – slug validation", () => {
 
     // Wait for page to load
     await waitFor(() => {
-      expect(screen.getByLabelText(/new slug/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/new slug/i)).toBeEnabled();
     });
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;

@@ -22,12 +22,12 @@ interface AvatarProps {
  */
 export function getInitials(displayName: string, slug?: string): string {
   const name = displayName.trim().replace(/^@/, "");
-  if (!name) return (slug || "?").slice(0, 2).toUpperCase();
+  if (!name) return [...(slug || "?")].slice(0, 2).join("").toUpperCase();
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length >= 2) {
-    return (parts[0][0] + parts[1][0]).toUpperCase();
+    return ([...parts[0]][0] + [...parts[1]][0]).toUpperCase();
   }
-  return name.slice(0, 2).toUpperCase();
+  return [...name].slice(0, 2).join("").toUpperCase();
 }
 
 export function Avatar({ src, displayName, slug, className }: AvatarProps) {
@@ -52,6 +52,7 @@ export function Avatar({ src, displayName, slug, className }: AvatarProps) {
       </div>
     );
   }
+
   return (
     <Image
       src={src}

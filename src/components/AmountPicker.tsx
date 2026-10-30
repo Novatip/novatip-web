@@ -178,7 +178,15 @@ export function AmountPicker({
           USDC supports up to 7 decimal places.
         </p>
       )}
-      {amountValid && insufficientBalance && (
+      {amountValid && insufficientBalance && balance === 0n && (
+        <p className="text-xs text-danger">
+          Your wallet has no USDC on Stellar. The most common cause is a missing
+          USDC trustline — add one from your wallet, then fund it with USDC to
+          send a tip.
+        </p>
+      )}
+
+      {amountValid && insufficientBalance && balance !== 0n && (
         <p className="text-xs text-danger">
           That&apos;s more than your USDC balance.
         </p>

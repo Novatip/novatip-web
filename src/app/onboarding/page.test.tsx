@@ -77,7 +77,7 @@ describe("OnboardingPage – disconnected state", () => {
     render(<OnboardingPage />);
 
     expect(screen.getByText(/connect your stellar wallet to get started/i)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /connect freighter wallet/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /connect wallet/i })).toBeInTheDocument();
   });
 });
 

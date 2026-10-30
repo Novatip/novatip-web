@@ -105,6 +105,13 @@ describe("app/error", () => {
 
     expect(screen.getByRole("link", { name: /back to home/i })).toHaveAttribute("href", "/");
   });
+
+  it("renders one interactive element for the home action", () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const { container } = render(<ErrorPage error={makeError()} reset={vi.fn()} />);
+
+    expect(container.querySelector("a button")).not.toBeInTheDocument();
+  });
 });
 
 // ── Catch-all 404 ─────────────────────────────────────────────────────────────
@@ -132,5 +139,12 @@ describe("app/not-found", () => {
       "href",
       "/onboarding",
     );
+  });
+
+  it("renders one interactive element per recovery action", () => {
+    const { container } = render(<NotFound />);
+
+    expect(container.querySelector("a button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 });

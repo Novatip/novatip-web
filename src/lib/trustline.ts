@@ -71,7 +71,7 @@ export async function assertRecipientsCanReceive(
   const blocked = results.filter((r) => !r.ok).map((r) => r.address);
   if (blocked.length === 0) return;
 
-  const list = blocked.map(shortenAddress).join(", ");
+  const list = blocked.map((address) => shortenAddress(address)).join(", ");
   throw new Error(
     blocked.length === 1
       ? `${list} cannot receive USDC yet. That account needs to add a USDC ` +

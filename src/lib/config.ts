@@ -92,6 +92,41 @@ function requireContractId(key: string, raw: string | undefined): string {
   return val;
 }
 
+/** Testnet USDC Stellar Asset Contract address. */
+export const TESTNET_USDC_CONTRACT_ID = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA";
+
+/**
+ * Resolve the USDC contract ID with network-aware validation.
+ *
+ * - A provided value is validated as a well-formed contract ID regardless of network.
+ * - On mainnet the variable is required — the testnet address does not exist there,
+ *   so a silent fallback would produce broken balance reads and trustline checks.
+ * - On testnet and local the testnet USDC SAC is used when the variable is absent.
+ */
+export function resolveUsdcContractId(
+  raw: string | undefined,
+  network: StellarNetwork,
+): string {
+  if (raw) {
+    if (!StrKey.isValidContract(raw)) {
+      throw new Error(
+        `Invalid value for NEXT_PUBLIC_USDC_CONTRACT_ID: ${JSON.stringify(raw)}\n` +
+        `Expected a 56-character Soroban contract ID starting with "C" ` +
+        `(e.g. CAAAA…BSC4).`,
+      );
+    }
+    return raw;
+  }
+  if (network === "mainnet") {
+    throw new Error(
+      `Missing required environment variable: NEXT_PUBLIC_USDC_CONTRACT_ID\n` +
+      `On mainnet this variable is required — the testnet default does not exist ` +
+      `there. Copy .env.example to .env.local and set the mainnet USDC SAC address.`,
+    );
+  }
+  return TESTNET_USDC_CONTRACT_ID;
+}
+
 // ── Site URL ──────────────────────────────────────────────────────────────────
 
 /** Where the app runs when nothing says otherwise — i.e. `npm run dev`. */
@@ -140,6 +175,55 @@ export function resolveSiteUrl(raw: string | undefined): string {
   return url.href;
 }
 
+// ── API URL ───────────────────────────────────────────────────────────────────
+
+/** Localhost fallback used in development and test when NEXT_PUBLIC_API_URL is unset. */
+export const DEFAULT_API_URL = "http://localhost:3001/api/v1";
+
+/**
+ * Resolve the backend API base URL with environment-aware validation.
+ *
+ * - A provided value must be an absolute http(s) URL; anything else throws.
+ * - In production (NODE_ENV === "production") a missing value throws rather
+ *   than silently routing every request to the visitor's own machine.
+ * - In development and test the localhost default still applies so local
+ *   dev and CI work without setting the variable.
+ */
+export function resolveApiUrl(raw: string | undefined): string {
+  const value = raw?.trim();
+
+  if (!value) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(
+        `Missing required environment variable: NEXT_PUBLIC_API_URL\n` +
+        `Set it to the backend API base URL, ` +
+        `e.g. https://api.example.com/api/v1`,
+      );
+    }
+    return DEFAULT_API_URL;
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_API_URL: ${JSON.stringify(value)}. ` +
+      `Expected an absolute URL including the scheme, ` +
+      `e.g. https://api.example.com/api/v1`,
+    );
+  }
+
+  if (url.protocol !== "https:" && url.protocol !== "http:") {
+    throw new Error(
+      `Invalid NEXT_PUBLIC_API_URL: ${JSON.stringify(value)}. ` +
+      `Expected an http or https URL, got ${url.protocol.replace(":", "")}.`,
+    );
+  }
+
+  return value;
+}
+
 // ── API request timeout ───────────────────────────────────────────────────────
 
 /**
@@ -156,16 +240,21 @@ export const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 
 // ── Config object ─────────────────────────────────────────────────────────────
 
+// Resolved ahead of the config object so usdcContractId can depend on the
+// network value without a forward reference inside the same object literal.
+const stellarNetwork = requireNetwork(
+  "NEXT_PUBLIC_STELLAR_NETWORK",
+  process.env.NEXT_PUBLIC_STELLAR_NETWORK,
+  "testnet",
+);
+
 export const config = {
   /**
    * Backend API base URL.
-   * Defaults to localhost in development; set NEXT_PUBLIC_API_URL in
-   * production deployments.
+   * Defaults to localhost in development and test; required in production.
+   * See resolveApiUrl above.
    */
-  apiUrl: optionalPublic(
-    process.env.NEXT_PUBLIC_API_URL,
-    "http://localhost:3001/api/v1",
-  ),
+  apiUrl: resolveApiUrl(process.env.NEXT_PUBLIC_API_URL),
 
   /**
    * Public origin of this deployment — see resolveSiteUrl above.
@@ -184,11 +273,7 @@ export const config = {
      * An unrecognised value throws at build/boot naming the variable and the
      * accepted values — same fail-fast policy as requireContractId.
      */
-    network: requireNetwork(
-      "NEXT_PUBLIC_STELLAR_NETWORK",
-      process.env.NEXT_PUBLIC_STELLAR_NETWORK,
-      "testnet",
-    ),
+    network: stellarNetwork,
 
     /**
      * Soroban contract ID of the deployed tip_splitter contract.
@@ -202,11 +287,13 @@ export const config = {
 
     /**
      * USDC Stellar Asset Contract ID.
-     * Defaults to the well-known testnet/mainnet USDC SAC address.
+     * Required on mainnet; defaults to the well-known testnet USDC SAC address
+     * on testnet and local. A provided value is validated as a contract ID.
+     * See resolveUsdcContractId above.
      */
-    usdcContractId: optionalPublic(
+    usdcContractId: resolveUsdcContractId(
       process.env.NEXT_PUBLIC_USDC_CONTRACT_ID,
-      "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      stellarNetwork,
     ),
   },
 } as const;

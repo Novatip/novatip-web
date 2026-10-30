@@ -66,6 +66,22 @@ Before opening a pull request, check off each of the following:
 - Use [conventional commits](https://novatip-docs.pages.dev/contributing):
   `feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:`
 
+## Merging to main
+
+`main` is protected by a ruleset that requires:
+
+- The CI check (lint, typecheck, test, build) to pass
+- The branch to be up to date with `main` (see below)
+
+**Who can bypass it:** Organisation owners, repository admins, and maintainers
+can bypass this ruleset. Maintainers may only bypass it by merging a pull
+request — they cannot push directly to `main`.
+
+**When to bypass:** Treat the bypass as an emergency escape hatch, not a
+shortcut around review or CI. Only use it for something that cannot wait for a
+normal CI run (for example, reverting a breaking change already on `main`),
+and say why in the pull request so the bypass is traceable afterwards.
+
 ## Keeping your branch up to date
 
 This repository requires branches to be up to date with `main` before merging.
@@ -93,6 +109,25 @@ git push
 ```
 
 After updating, CI will run again and must pass before the PR can merge.
+
+## Editing the Open Graph image
+
+`src/app/[slug]/opengraph-image.tsx` runs on the edge runtime and is rendered
+by [Satori](https://github.com/vercel/satori), which enforces two rules that
+regular JSX/CSS does not:
+
+1. **Any `div` with more than one child must set `display: "flex"`** in its
+   style. Satori throws on a multi-child `div` without it — it does not fall
+   back to block layout.
+2. **A child that mixes literal text with an interpolated expression counts
+   as two child nodes, not one.** `` @{slug} `` is two children (the text
+   `"@"` and the expression `{slug}`); write it as a single template literal
+   instead: `` {`@${slug}`} ``.
+
+Both failures are render-time throws, not warnings, so breaking either rule
+takes out every creator's preview image, not just the one you were editing.
+If you add a field to the card, keep every multi-child `div` flexed and every
+mixed text/expression child collapsed into one template literal.
 
 ## Reporting security issues
 

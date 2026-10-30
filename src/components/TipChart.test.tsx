@@ -20,7 +20,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { TipChart } from "./TipChart";
+import { TipChart, fillSeries } from "./TipChart";
 
 const timeSeries = vi.hoisted(() => vi.fn());
 
@@ -43,6 +43,21 @@ function withToday() {
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  vi.useRealTimers();
+});
+
+describe("fillSeries", () => {
+  it("fills consecutive UTC dates across a daylight saving transition", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-09T04:30:00Z"));
+    const point = { date: "2026-03-08", tipCount: 2, amountRaw: "10000000" };
+
+    expect(fillSeries([point], 3)).toEqual([
+      { date: "2026-03-07", tipCount: 0, amountRaw: "0" },
+      point,
+      { date: "2026-03-09", tipCount: 0, amountRaw: "0" },
+    ]);
+  });
 });
 
 describe("TipChart – window control", () => {
@@ -76,6 +91,21 @@ describe("TipChart – window control", () => {
 });
 
 describe("TipChart – mode toggle", () => {
+  it("sums earnings exactly beyond the safe integer range", async () => {
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    timeSeries.mockResolvedValue({
+      series: [
+        { date: yesterday.toISOString().slice(0, 10), tipCount: 1, amountRaw: "9007199254799998" },
+        { date: todayKey(), tipCount: 1, amountRaw: "1" },
+      ],
+    });
+
+    render(<TipChart jwt="jwt" />);
+
+    expect(await screen.findByText("$900719925.47", { selector: "p" })).toBeInTheDocument();
+  });
+
   it("reflects the active mode through aria-pressed without refetching", async () => {
     timeSeries.mockResolvedValue(withToday());
     const user = userEvent.setup();
@@ -110,7 +140,7 @@ describe("TipChart – mode toggle", () => {
 
     // The summary is derived from the same series, so it stays meaningful
     // in both modes rather than collapsing when the unit changes.
-    expect(screen.getByText("$5.00")).toBeInTheDocument();
+    expect(screen.getByText("$5.00", { selector: "p" })).toBeInTheDocument();
   });
 });
 
