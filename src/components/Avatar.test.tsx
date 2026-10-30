@@ -62,11 +62,9 @@ describe("Avatar", () => {
   it("renders local initials when there is no src", () => {
     render(<Avatar displayName="Alice Smith" slug="alice" />);
 
-    expect(
-      screen.getByLabelText("Alice Smith avatar fallback"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("AS")).toBeInTheDocument();
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    const fallback = screen.getByRole("img", { name: "Alice Smith avatar" });
+    expect(fallback).toBeInTheDocument();
+    expect(screen.getByText("AS")).toHaveAttribute("aria-hidden", "true");
   });
 
   it("renders the image when src is present", () => {
@@ -86,20 +84,20 @@ describe("Avatar", () => {
     fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
 
     expect(
-      screen.getByLabelText("Alice Smith avatar fallback"),
+      screen.getByRole("img", { name: "Alice Smith avatar" }),
     ).toBeInTheDocument();
     expect(screen.getByText("AS")).toBeInTheDocument();
-    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(document.querySelector("img")).not.toBeInTheDocument();
   });
 
   it("resets the error when src changes so the new image is attempted", () => {
-    const { rerender } = render(
+    const { container, rerender } = render(
       <Avatar src={FIRST_SRC} displayName="Alice Smith" slug="alice" />,
     );
 
     fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
     expect(
-      screen.getByLabelText("Alice Smith avatar fallback"),
+      screen.getByRole("img", { name: "Alice Smith avatar" }),
     ).toBeInTheDocument();
 
     rerender(
@@ -110,7 +108,7 @@ describe("Avatar", () => {
       screen.getByRole("img", { name: "Alice Smith avatar" }),
     ).toHaveAttribute("src", SECOND_SRC);
     expect(
-      screen.queryByLabelText("Alice Smith avatar fallback"),
+      container.querySelector('div[role="img"]'),
     ).not.toBeInTheDocument();
   });
 });
