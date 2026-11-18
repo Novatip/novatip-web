@@ -7,9 +7,9 @@
     "node": ">=20 <21"
   },
   "scripts": {
-    "dev": "node init && next dev",
-    "build": "node init && next build",
-    "start": "node init && next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write src",
