@@ -42,6 +42,15 @@ type Mode = "count" | "amount";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
 /** Format "YYYY-MM-DD" → short month + day, e.g. "Jun 3" */
 function fmtDate(iso: string): string {
   const [, m, d] = iso.split("-");
@@ -101,7 +110,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   const values =
     mode === "count"
       ? series.map((p) => p.tipCount)
-      : series.map((p) => Number(BigInt(p.amountRaw)));
+      : series.map((p) => Number(parseAmount(p.amountRaw) ?? 0n));
 
   const ys = toYCoords(values, height);
   const step = width / Math.max(n - 1, 1);
@@ -125,7 +134,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       label:
         mode === "count"
           ? String(p.tipCount)
-          : `$${formatUsdc(BigInt(p.amountRaw), 2)}`,
+          : `$${formatUsdc(parseAmount(p.amountRaw) ?? 0n, 2)}`,
       date: p.date,
     }))
     .filter((d) => d.value > 0);
@@ -273,7 +282,7 @@ export function TipChart({ jwt }: TipChartProps) {
 
   // ── Derived summary ────────────────────────────────────────────────────────
   const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
-  const totalAmount = series?.reduce((s, p) => s + BigInt(p.amountRaw), BigInt(0)) ?? BigInt(0);
+  const totalAmount = series?.reduce((s, p) => s + (parseAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
   const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -425,7 +434,7 @@ export function TipChart({ jwt }: TipChartProps) {
                   <td>
                     {mode === "count"
                       ? point.tipCount.toLocaleString()
-                      : `$${formatUsdc(BigInt(point.amountRaw), 2)} USDC`}
+                      : `$${formatUsdc(parseAmount(point.amountRaw) ?? 0n, 2)} USDC`}
                   </td>
                 </tr>
               ))}

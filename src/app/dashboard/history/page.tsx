@@ -20,6 +20,15 @@ import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
 
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
 interface Tip {
   id:          string;
   fromAddress: string;
@@ -104,11 +113,10 @@ export default function HistoryPage() {
         else setPageError("Couldn't load more tips. Try again.");
       })
       .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
           setLoading(false);
+          setLoadingMore(false);
         }
       });
   }, [jwt]);
@@ -211,7 +219,10 @@ export default function HistoryPage() {
 
                   {/* Amount */}
                   <span role="cell" className="col-span-2 text-right text-sm font-semibold text-accent">
-                    ${formatUsdc(BigInt(tip.amount), 2)}
+                    {(() => {
+                      const amount = parseAmount(tip.amount);
+                      return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
+                    })()}
                   </span>
 
                   {/* Message */}
@@ -251,9 +262,7 @@ export default function HistoryPage() {
 
         {!hasMore && tips.length > 0 && (
           <p className="pt-4 text-center text-xs text-fg-faint">
-            {tips.length >= RECENT_TIPS_MAX_LIMIT
-              ? `Showing all tips (${RECENT_TIPS_MAX_LIMIT} max)`
-              : "That\u2019s all your tips."}
+            That&rsquo;s all your tips.
           </p>
         )}
       </Card>
