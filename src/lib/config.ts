@@ -221,7 +221,7 @@ export function resolveApiUrl(raw: string | undefined): string {
     );
   }
 
-  return value;
+  return value.replace(/\/+$/, "");
 }
 
 // ── API request timeout ───────────────────────────────────────────────────────

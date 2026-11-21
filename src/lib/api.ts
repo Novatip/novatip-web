@@ -55,7 +55,7 @@ async function request<T>(
   jwt?: string,
 ): Promise<T> {
   const headers: Record<string, string> = {
-    "Content-Type": "application/json",
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
     ...(init.headers as Record<string, string>),
   };
 
@@ -197,10 +197,10 @@ export interface CreatorProfile {
 
 export const creatorApi = {
   getBySlug: (slug: string, options?: RequestOptions) =>
-    request<{ creator: CreatorProfile }>(`/creators/${slug}`, options),
+    request<{ creator: CreatorProfile }>(`/creators/${encodeURIComponent(slug)}`, options),
 
   checkSlug: (slug: string, options?: RequestOptions) =>
-    request<{ slug: string; available: boolean }>(`/creators/check/${slug}`, options),
+    request<{ slug: string; available: boolean }>(`/creators/check/${encodeURIComponent(slug)}`, options),
 
   claim: (
     jwt: string,
@@ -271,7 +271,7 @@ export interface ResolvedPage {
 
 export const resolverApi = {
   resolve: (slug: string, options?: RequestOptions) =>
-    request<ResolvedPage>(`/resolve/${slug}`, options),
+    request<ResolvedPage>(`/resolve/${encodeURIComponent(slug)}`, options),
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
@@ -380,25 +380,25 @@ export const webhookApi = {
     ),
 
   remove: (jwt: string, id: string, options?: RequestOptions) =>
-    request<void>(`/webhooks/${id}`, { ...options, method: "DELETE" }, jwt),
+    request<void>(`/webhooks/${encodeURIComponent(id)}`, { ...options, method: "DELETE" }, jwt),
 
   deliveries: (jwt: string, id: string, options?: RequestOptions) =>
     request<{ deliveries: WebhookDelivery[] }>(
-      `/webhooks/${id}/deliveries`,
+      `/webhooks/${encodeURIComponent(id)}/deliveries`,
       options,
       jwt,
     ),
 
   rotateSecret: (jwt: string, id: string, options?: RequestOptions) =>
     request<{ secret: string }>(
-      `/webhooks/${id}/secret`,
+      `/webhooks/${encodeURIComponent(id)}/secret`,
       { ...options, method: "POST" },
       jwt,
     ),
 
   update: (jwt: string, id: string, data: { enabled: boolean }, options?: RequestOptions) =>
     request<{ webhook: { id: string; url: string; enabled: boolean } }>(
-      `/webhooks/${id}`,
+      `/webhooks/${encodeURIComponent(id)}`,
       { ...options, method: "PATCH", body: JSON.stringify(data) },
       jwt,
     ),
