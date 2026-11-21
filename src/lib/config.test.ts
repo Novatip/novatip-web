@@ -56,6 +56,15 @@ describe("resolveApiUrl – accepting valid URLs", () => {
       "http://192.168.1.5:3001/api/v1",
     );
   });
+
+  it("strips one or more trailing slashes", () => {
+    expect(resolveApiUrl("https://api.example.com/api/v1/")).toBe(
+      "https://api.example.com/api/v1",
+    );
+    expect(resolveApiUrl("https://api.example.com/api/v1///")).toBe(
+      "https://api.example.com/api/v1",
+    );
+  });
 });
 
 describe("resolveApiUrl – rejecting invalid URLs", () => {
