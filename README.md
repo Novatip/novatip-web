@@ -231,6 +231,22 @@ the deployment.
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Only to deploy against Mainnet. | Defaults to `testnet`, which is correct for a staging/preview deployment. Production against real funds needs `mainnet`. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | Rarely. | The default is the well-known SAC address for both Testnet and Mainnet. Only override for a custom network (e.g. a private Futurenet node). |
 
+### Security headers
+
+`next.config.mjs` defines a `headers()` function that sends these headers on
+every route:
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | Stops browsers guessing a response's content type. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends only the origin on cross-origin requests, never full tip-page paths. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()` | Disables browser features the app does not use. |
+| `X-Frame-Options` | `DENY` | The tip page handles a wallet connection and keeps a session token in `localStorage`, so no other site may frame it. |
+
+A full `Content-Security-Policy` is not set yet and is left for a later
+change. The list is exported as `securityHeaders` from `next.config.mjs` and
+asserted in `src/lib/securityHeaders.test.ts`; update both when changing it.
+
 ### Why `vercel.json` pins the install command
 
 ```json

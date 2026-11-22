@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accessibility features including ARIA labels, keyboard navigation, and screen reader support
 
 ### Changed
+- Send `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and `X-Frame-Options` headers on every route via `next.config.mjs`
 - Pinned @novatip/sdk to exact commit SHA to prevent stale deployment cache issues
 - Configured Vercel builds to use `npm ci` instead of `npm install` for reproducible deployments
 - Validated required environment variables at build time to catch configuration errors early
