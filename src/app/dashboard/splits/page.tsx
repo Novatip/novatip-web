@@ -98,9 +98,9 @@ export default function SplitsPage() {
 
       <div className="rounded-xl bg-surface-strong border border-hairline px-4 py-3">
         <p className="text-xs text-fg-faint">
-          Changes are saved to the backend immediately. To update your on-chain splits,
-          call <code className="text-accent">update_splits</code> on the tip_splitter
-          contract using the Novatip SDK or the Stellar CLI.
+          Saving updates your splits on-chain first, then in Novatip. Your wallet will
+          ask you to sign the transaction, and the Stellar network charges a small XLM
+          fee for it. The new splits apply to tips once the transaction is confirmed.
         </p>
       </div>
     </div>

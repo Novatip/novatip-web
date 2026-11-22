@@ -7,6 +7,7 @@
  *   - The on-chain sync is called before the backend update
  *   - A failed sync never calls the backend
  *   - A successful save updates the displayed splits
+ *   - The note describes the signature and fee, not a manual contract call
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
@@ -236,5 +237,17 @@ describe("SplitsPage – initial load", () => {
       const addressInput = screen.getByDisplayValue(mockWallet.publicKey);
       expect(addressInput).toBeInTheDocument();
     });
+  });
+});
+
+describe("SplitsPage – save note", () => {
+  it("mentions the wallet signature and the XLM fee, and not a manual contract call", async () => {
+    render(<SplitsPage />);
+
+    const note = await screen.findByText(/wallet will\s+ask you to sign/i);
+    expect(note).toHaveTextContent(/sign/i);
+    expect(note).toHaveTextContent(/XLM fee/i);
+    expect(document.body).not.toHaveTextContent(/update_splits/);
+    expect(document.body).not.toHaveTextContent(/Stellar CLI/i);
   });
 });
