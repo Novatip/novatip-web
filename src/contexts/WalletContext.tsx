@@ -95,6 +95,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // Follow connects and disconnects made in other tabs. The `storage` event
+  // only fires in documents other than the one that wrote, so this never
+  // echoes this tab's own changes back at it. Only the two session keys matter;
+  // key === null means localStorage was cleared wholesale, which is a
+  // disconnect for both of them.
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      const cleared = event.key === null;
+      if (!cleared && event.key !== PK_STORAGE_KEY && event.key !== JWT_STORAGE_KEY) return;
+
+      if (cleared || event.key === PK_STORAGE_KEY) {
+        setPublicKey(cleared ? null : event.newValue);
+      }
+      if (cleared || event.key === JWT_STORAGE_KEY) {
+        // Same rule as rehydration: an already-expired token is not a session.
+        const token = cleared ? null : event.newValue;
+        setJwt(token && !isJwtExpired(token) ? token : null);
+      }
+
+      // A message about this tab's own attempt is stale once another tab has
+      // changed who is connected.
+      setError(null);
+      setErrorCode(null);
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   /**
    * Exchange a wallet signature for a creator session (SIWS).
    *

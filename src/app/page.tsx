@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { ConnectPrompt } from "@/components/ConnectPrompt";
 
@@ -24,6 +25,7 @@ export default function HomePage() {
           <LinkButton href="/demo" size="lg" variant="secondary">See a demo page</LinkButton>
         </div>
       </main>
+      <Footer />
     </>
   );
 }

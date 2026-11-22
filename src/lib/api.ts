@@ -5,7 +5,7 @@
  * All methods throw ApiError on non-2xx responses.
  */
 
-import { config, DEFAULT_REQUEST_TIMEOUT_MS } from "./config";
+import { config, DEFAULT_REQUEST_TIMEOUT_MS, RETRY_DELAY_MS } from "./config";
 import { emitUnauthorized } from "./authEvents";
 import { emitConnectionFailure, emitConnectionSuccess } from "./connectionEvents";
 
@@ -49,18 +49,50 @@ export function getErrorMessage(err: unknown, fallback = "Something went wrong."
 
 // ── Base fetch ────────────────────────────────────────────────────────────────
 
-async function request<T>(
+/** Statuses a sleeping or restarting backend answers with while it comes up. */
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+/**
+ * Only a GET with no body is safe to send twice. Anything that carries a body
+ * (POST, PATCH, PUT, DELETE with a payload) may already have taken effect when
+ * the response is lost, and sending it again could apply it twice.
+ */
+function isRetryable(init: RequestOptions): boolean {
+  return (init.method ?? "GET").toUpperCase() === "GET" && init.body == null;
+}
+
+/** Wait before the retry, but stop waiting the moment the caller aborts. */
+function waitBeforeRetry(signal: AbortSignal | null | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const aborted = () => new ApiError(0, "ABORTED", "Request aborted");
+    if (signal?.aborted) return reject(aborted());
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(aborted());
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, RETRY_DELAY_MS);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * One attempt: builds the timeout/abort signal and calls fetch().
+ *
+ * Resolves with whatever response came back, whatever its status. Rejects with
+ * an ApiError for a timeout or a caller abort, and with the raw error for a
+ * network failure. `willRetry` says another attempt follows a network failure,
+ * so the connection banner is not told about one that is about to be retried.
+ */
+async function fetchOnce(
   path: string,
-  init: RequestOptions = {},
-  jwt?: string,
-): Promise<T> {
-  const headers: Record<string, string> = {
-    ...(init.body ? { "Content-Type": "application/json" } : {}),
-    ...(init.headers as Record<string, string>),
-  };
-
-  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
-
+  init: RequestOptions,
+  headers: Record<string, string>,
+  willRetry: boolean,
+): Promise<Response> {
   const timeoutMs = init.timeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const callerSignal = init.signal;
@@ -93,14 +125,14 @@ async function request<T>(
     signal = timeoutSignal;
   }
 
-  let res: Response;
   try {
-    res = await fetch(`${config.apiUrl}${path}`, {
+    const res = await fetch(`${config.apiUrl}${path}`, {
       ...init,
       headers,
       signal,
     });
     cleanup?.();
+    return res;
   } catch (err: unknown) {
     cleanup?.();
     // fetch() rejects with a DOMException (AbortError) or a TypeError
@@ -124,8 +156,43 @@ async function request<T>(
       // A caller-initiated abort says nothing about the backend's health.
       throw new ApiError(0, "ABORTED", "Request aborted");
     }
-    emitConnectionFailure();
+    // A failure that is about to be retried is not yet news about the
+    // backend's health; only the final outcome is reported.
+    if (!willRetry) emitConnectionFailure();
     throw err;
+  }
+}
+
+async function request<T>(
+  path: string,
+  init: RequestOptions = {},
+  jwt?: string,
+): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(init.headers as Record<string, string>),
+  };
+
+  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
+
+  const canRetry = isRetryable(init);
+  let retried = false;
+
+  let res: Response;
+  try {
+    res = await fetchOnce(path, init, headers, canRetry);
+  } catch (err: unknown) {
+    // An ApiError here is a timeout or an abort: neither is retried. Anything
+    // else is a network failure, which is what a sleeping backend looks like.
+    if (!canRetry || err instanceof ApiError) throw err;
+    await waitBeforeRetry(init.signal);
+    retried = true;
+    res = await fetchOnce(path, init, headers, false);
+  }
+
+  if (canRetry && !retried && RETRYABLE_STATUSES.has(res.status)) {
+    await waitBeforeRetry(init.signal);
+    res = await fetchOnce(path, init, headers, false);
   }
 
   // Any HTTP response, even an error status, proves the backend is reachable.

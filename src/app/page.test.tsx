@@ -19,6 +19,7 @@
  *   - The page has accessible main content region
  *   - The heading "Tip any creator in 2 seconds" is displayed
  *   - The value proposition text is present
+ *   - The project-links footer is rendered after the main content
  */
 
 import { describe, it, expect, afterEach, vi } from "vitest";
@@ -68,6 +69,21 @@ describe("HomePage (/)", () => {
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", "main-content");
     expect(main).toHaveAttribute("tabIndex", "-1");
+  });
+
+  it("renders the project-links footer after the main content", () => {
+    render(<HomePage />);
+
+    const footer = screen.getByRole("contentinfo");
+    const main = screen.getByRole("main");
+    expect(footer).toBeInTheDocument();
+    expect(
+      main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^GitHub/ })).toHaveAttribute(
+      "href",
+      "https://github.com/Novatip",
+    );
   });
 
   // ── Heading and Value Proposition ──────────────────────────────────────────

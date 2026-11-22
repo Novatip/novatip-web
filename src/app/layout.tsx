@@ -4,6 +4,7 @@ import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { AccountChangeBanner } from "@/components/AccountChangeBanner";
 import { SkipLink } from "@/components/SkipLink";
 import { config } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -83,6 +84,7 @@ export default function RootLayout({
         <ConnectionProvider>
           <ConnectionBanner />
           <WalletProvider>
+            <AccountChangeBanner />
             {children}
           </WalletProvider>
         </ConnectionProvider>
