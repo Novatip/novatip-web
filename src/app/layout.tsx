@@ -41,13 +41,14 @@ export const metadata: Metadata = {
                                SVG favicons (Firefox, Chrome 80+) use the
                                media-query-aware version that adapts to dark
                                browser chrome.
-      apple-icon.svg — served by Next.js at /apple-icon.svg for iOS home screen.
+      apple-touch-icon.png in public/ — 180×180 PNG for the iOS home screen,
+                               which does not use SVG icons.
     */
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml" },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- PNG icons (192, 512, maskable 512 and 180 Apple touch) for the web app manifest and iOS home screen
 - Next.js 14 App Router frontend for Novatip tipping platform
 - Freighter wallet integration via @novatip/sdk for Stellar blockchain
 - Creator onboarding flow with slug claiming and split configuration
