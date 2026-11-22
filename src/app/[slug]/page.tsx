@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import { ApiError, resolverApi, type ResolvedPage } from "@/lib/api";
 import { normalizeSlug } from "@/lib/slug";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { TipForm } from "@/components/TipForm";
 import { Badge } from "@/components/ui/Badge";
 import { QRDownload } from "@/components/QRDownload";
@@ -153,6 +154,7 @@ export default async function TipPage({ params }: Props) {
 
         </div>
       </main>
+      <Footer />
     </>
   );
 }
