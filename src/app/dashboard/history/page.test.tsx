@@ -14,6 +14,8 @@
  *     RECENT_TIPS_MAX_LIMIT
  *   - hasMore (and the Load more button) goes away once a page shorter than
  *     the page size comes back
+ *   - A long message can be read in full: title carries the full text and the
+ *     cell expands on click and on Enter
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
@@ -214,5 +216,50 @@ describe("HistoryPage – pagination", () => {
       expect(screen.getByText(/that.s all your tips/i)).toBeInTheDocument(),
     );
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
+  });
+});
+
+
+describe("HistoryPage – long messages", () => {
+  const LONG = "This is a very long thank-you message. ".repeat(12).trim();
+
+  function renderLong() {
+    recent.mockResolvedValueOnce({
+      tips: [{ ...makeTips(1, 0)[0], message: LONG }],
+    });
+    render(<HistoryPage />);
+  }
+
+  it("exposes the full text as a title", async () => {
+    renderLong();
+    const cell = await screen.findByTitle(LONG);
+    expect(cell).toHaveTextContent(LONG);
+    expect(cell).toHaveAttribute("aria-expanded", "false");
+    expect(cell.className).toContain("truncate");
+  });
+
+  it("expands on click and collapses again", async () => {
+    const user = userEvent.setup();
+    renderLong();
+    const cell = await screen.findByTitle(LONG);
+
+    await user.click(cell);
+    expect(cell).toHaveAttribute("aria-expanded", "true");
+    expect(cell.className).not.toContain("truncate");
+
+    await user.click(cell);
+    expect(cell).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("expands from the keyboard with Enter", async () => {
+    const user = userEvent.setup();
+    renderLong();
+    const cell = await screen.findByTitle(LONG);
+
+    await user.tab();
+    // Focus may land on the cell directly; tab until it does.
+    while (document.activeElement !== cell) await user.tab();
+    await user.keyboard("{Enter}");
+    expect(cell).toHaveAttribute("aria-expanded", "true");
   });
 });
