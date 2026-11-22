@@ -312,3 +312,22 @@ describe("SplitsManager – field editing", () => {
     expect(screen.getAllByText("50%")).toHaveLength(2);
   });
 });
+
+// ── Split equally ─────────────────────────────────────────────────────────────
+
+describe("SplitsManager – split equally", () => {
+  it("fills every row so the total is exactly 10,000", async () => {
+    const user = userEvent.setup();
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: VALID_ADDR_2, bps: 0 },
+    ]);
+    await user.click(screen.getByRole("button", { name: /add collaborator/i }));
+    await user.click(screen.getByRole("button", { name: /split equally/i }));
+
+    expect(screen.getByRole("textbox", { name: /recipient 1 basis points/i })).toHaveValue("3334");
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveValue("3333");
+    expect(screen.getByRole("textbox", { name: /recipient 3 basis points/i })).toHaveValue("3333");
+    expect(screen.getByText(/10,000 \/ 10,000 bps/)).toBeInTheDocument();
+  });
+});

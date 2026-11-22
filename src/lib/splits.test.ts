@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { formatBps } from "./splits";
+import { formatBps, splitEqually } from "./splits";
 
 describe("formatBps", () => {
   it("formats 1 bps as 0.01% instead of 0.0%", () => {
@@ -41,5 +41,30 @@ describe("formatBps", () => {
 
   it("formats 3334 bps as 33.34%", () => {
     expect(formatBps(3334)).toBe("33.34%");
+  });
+});
+
+describe("splitEqually", () => {
+  for (let n = 1; n <= 20; n++) {
+    it(`splits across ${n} row(s) to exactly 10,000 bps`, () => {
+      const result = splitEqually(n);
+      expect(result).toHaveLength(n);
+      expect(result.reduce((a, b) => a + b, 0)).toBe(10_000);
+      // Shares differ by at most 1 bps and the larger ones come first.
+      expect(Math.max(...result) - Math.min(...result)).toBeLessThanOrEqual(1);
+      expect([...result].sort((a, b) => b - a)).toEqual(result);
+      expect(result.every((v) => Number.isInteger(v) && v > 0)).toBe(true);
+    });
+  }
+
+  it("gives the remainder to the first rows", () => {
+    expect(splitEqually(3)).toEqual([3334, 3333, 3333]);
+    expect(splitEqually(7)).toEqual([1429, 1429, 1429, 1429, 1428, 1428, 1428]);
+  });
+
+  it("returns an empty array for invalid counts", () => {
+    expect(splitEqually(0)).toEqual([]);
+    expect(splitEqually(-1)).toEqual([]);
+    expect(splitEqually(1.5)).toEqual([]);
   });
 });
