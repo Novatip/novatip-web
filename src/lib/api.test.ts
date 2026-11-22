@@ -8,6 +8,7 @@
  *   - request() throws ApiError with correct status/code/message on non-2xx
  *   - request() falls back to "UNKNOWN" / statusText when body is missing
  *   - request() returns undefined for 204 No Content
+ *   - request() throws ApiError INVALID_RESPONSE for a 200 with a non-JSON body
  *   - request() attaches the Authorization header when a JWT is provided
  */
 
@@ -108,6 +109,23 @@ describe("request() error handling", () => {
 
     // The 204 branch is internal; test via the webhookApi.remove which expects void
     expect(jsonSpy).not.toHaveBeenCalled();
+  });
+
+  it("throws ApiError INVALID_RESPONSE when a 200 response body is not JSON", async () => {
+    fetchSpy.mockResolvedValueOnce(
+      new Response("<html><body>Bad gateway</body></html>", {
+        status: 200,
+        headers: { "Content-Type": "text/html" },
+      }),
+    );
+
+    const err = await analyticsApi.totals("tok").catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).not.toBeInstanceOf(SyntaxError);
+    expect((err as ApiError).code).toBe("INVALID_RESPONSE");
+    expect((err as ApiError).status).toBe(200);
+    expect((err as ApiError).message).not.toMatch(/position|JSON|token/i);
   });
 
   it("attaches Authorization header when JWT is provided", async () => {

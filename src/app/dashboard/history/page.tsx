@@ -29,6 +29,42 @@ function parseAmount(raw: string): bigint | null {
   }
 }
 
+/**
+ * One message cell. A message is truncated to a single line by default; the
+ * full text is available as a tooltip (title) and the cell toggles open on
+ * click, Enter or Space — a native button, so touch and keyboard users can
+ * read it too.
+ */
+function MessageCell({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!message) {
+    return (
+      <span role="cell" className="col-span-4 text-sm text-fg-dim italic">
+        No message
+      </span>
+    );
+  }
+
+  return (
+    <span role="cell" className="col-span-4 min-w-0 text-sm">
+      <button
+        type="button"
+        title={message}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        className={cn(
+          "block w-full text-left text-fg-muted rounded",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
+          expanded ? "whitespace-pre-wrap break-words" : "truncate",
+        )}
+      >
+        {message}
+      </button>
+    </span>
+  );
+}
+
 interface Tip {
   id:          string;
   fromAddress: string;
@@ -226,12 +262,7 @@ export default function HistoryPage() {
                   </span>
 
                   {/* Message */}
-                  <span role="cell" className={cn(
-                    "col-span-4 text-sm truncate",
-                    tip.message ? "text-fg-muted" : "text-fg-dim italic",
-                  )}>
-                    {tip.message || "No message"}
-                  </span>
+                  <MessageCell message={tip.message} />
 
                   {/* Time */}
                   <TimeAgo

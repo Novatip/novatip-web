@@ -150,7 +150,21 @@ async function request<T>(
   // 204 No Content
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  try {
+    return (await res.json()) as T;
+  } catch (err: unknown) {
+    // A proxy or error page can answer 200 with HTML. json() then rejects with
+    // a SyntaxError about a parse position, which means nothing to a creator.
+    // Anything else (e.g. an abort while the body streams) is passed through.
+    if (err instanceof SyntaxError) {
+      throw new ApiError(
+        res.status,
+        "INVALID_RESPONSE",
+        "The server sent a response we couldn't read. Please try again in a moment.",
+      );
+    }
+    throw err;
+  }
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────

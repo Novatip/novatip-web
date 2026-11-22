@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/Badge";
 import { shortenAddress, validateSplitsBps } from "@novatip/sdk";
 import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
-import { formatBps } from "@/lib/splits";
+import { formatBps, splitEqually } from "@/lib/splits";
 
 export interface SplitRow {
   to: string;
@@ -123,6 +123,13 @@ export function SplitsManager({
   function addRow() {
     setConfirmingMissingWallet(false);
     setRows((prev) => [...prev, { id: crypto.randomUUID(), to: "", bps: "" }]);
+  }
+
+  function splitEvenly() {
+    setSuccess(false);
+    setConfirmingMissingWallet(false);
+    const shares = splitEqually(rows.length);
+    setRows((prev) => prev.map((row, i) => ({ ...row, bps: String(shares[i]) })));
   }
 
   function removeRow(index: number) {
@@ -242,19 +249,29 @@ export function SplitsManager({
         ))}
       </div>
 
-      {/* Add row */}
-      {rows.length < MAX_RECIPIENTS && (
+      {/* Add row / split equally */}
+      <div className="flex flex-wrap items-center gap-2">
+        {rows.length < MAX_RECIPIENTS && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addRow}
+            disabled={saving || disabled}
+          >
+            + Add collaborator
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={addRow}
+          onClick={splitEvenly}
           disabled={saving || disabled}
-          className="self-start"
         >
-          + Add collaborator
+          Split equally
         </Button>
-      )}
+      </div>
 
       {/* BPS total indicator */}
       <div className="flex items-center justify-between rounded-xl bg-surface-strong border border-hairline px-4 py-3">
