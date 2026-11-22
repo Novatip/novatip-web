@@ -1,7 +1,7 @@
 /**
  * src/lib/wallet.test.ts
  *
- * Unit tests for assertActiveAccount.
+ * Unit tests for assertActiveAccount and signNonce.
  *
  * Without this guard, a mismatch between the account Freighter has selected
  * and the one a transaction was built for is only discovered by the network,
@@ -15,11 +15,15 @@
  *     expected address
  *   - The wallet declining to report an address does not block (fails open,
  *     since there is nothing to compare against)
+ *   - signNonce converts a base64 signature to hex
+ *   - signNonce hex-encodes a byte-array signature (freighter-api v3)
+ *   - signNonce throws the wallet's error, or a fallback, on an error result
+ *   - signNonce throws when the wallet returns no signature
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getAddress } from "@stellar/freighter-api";
-import { assertActiveAccount } from "./wallet";
+import { getAddress, signMessage } from "@stellar/freighter-api";
+import { assertActiveAccount, signNonce } from "./wallet";
 
 vi.mock("@stellar/freighter-api", () => ({
   getAddress:      vi.fn(),
@@ -30,6 +34,7 @@ vi.mock("@stellar/freighter-api", () => ({
 }));
 
 const mockedGetAddress = vi.mocked(getAddress);
+const mockedSignMessage = vi.mocked(signMessage);
 
 afterEach(() => {
   vi.clearAllMocks();
@@ -71,5 +76,59 @@ describe("assertActiveAccount", () => {
     mockedGetAddress.mockResolvedValue({ address: "" });
 
     await expect(assertActiveAccount(EXPECTED)).resolves.toBeUndefined();
+  });
+});
+
+describe("signNonce", () => {
+  it("converts a base64 signature to hex", async () => {
+    // base64 "AQID/w==" decodes to the bytes 01 02 03 ff
+    mockedSignMessage.mockResolvedValue({ signedMessage: "AQID/w==", signerAddress: ACTIVE });
+
+    await expect(signNonce("nonce-1", ACTIVE)).resolves.toBe("010203ff");
+    expect(mockedSignMessage).toHaveBeenCalledWith("nonce-1", { address: ACTIVE });
+  });
+
+  it("zero-pads single-digit bytes when converting base64", async () => {
+    // base64 "AAEC" decodes to 00 01 02
+    mockedSignMessage.mockResolvedValue({ signedMessage: "AAEC", signerAddress: ACTIVE });
+
+    await expect(signNonce("nonce-1", ACTIVE)).resolves.toBe("000102");
+  });
+
+  it("hex-encodes a byte-array signature", async () => {
+    mockedSignMessage.mockResolvedValue({
+      signedMessage: Buffer.from([0xde, 0xad, 0xbe, 0xef]),
+      signerAddress: ACTIVE,
+    });
+
+    await expect(signNonce("nonce-1", ACTIVE)).resolves.toBe("deadbeef");
+  });
+
+  it("throws the wallet's message when it returns an error", async () => {
+    mockedSignMessage.mockResolvedValue({
+      signedMessage: null,
+      signerAddress: "",
+      error: { message: "User declined access" } as any,
+    });
+
+    await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow("User declined access");
+  });
+
+  it("falls back to a generic message when the error has no readable text", async () => {
+    mockedSignMessage.mockResolvedValue({
+      signedMessage: null,
+      signerAddress: "",
+      error: {} as any,
+    });
+
+    await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow("Message signing failed.");
+  });
+
+  it("throws when the wallet returns no signature", async () => {
+    mockedSignMessage.mockResolvedValue({ signedMessage: null, signerAddress: ACTIVE });
+
+    await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow(
+      "Wallet did not return a signature.",
+    );
   });
 });
