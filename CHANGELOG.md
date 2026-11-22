@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Validated required environment variables at build time to catch configuration errors early
 
 ### Fixed
+- Badge `usdc` variant now uses `usdc-fg` / `usdc-border` theme tokens instead of raw `blue-300` / `blue-500` palette classes; appearance is unchanged in both themes.
 - Restored the avatar and analytics chart implementations, including Unicode initials, UTC dates, and exact earnings totals, after duplicate code broke typechecking.
 - Corrected the robots metadata configuration, backend connection context import, and recipient address formatting callback.
 - Kept webhook validation outside the Next.js page exports so production builds pass, and normalized encoded @ prefixes in malformed tip links.

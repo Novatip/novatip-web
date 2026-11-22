@@ -7,8 +7,9 @@ const variants: Record<BadgeVariant, string> = {
   success: "bg-success/20 text-success border border-success/30",
   warning: "bg-warning/20 text-warning border border-warning/30",
   error:   "bg-danger/20 text-danger border border-danger/30",
-  // USDC keeps its own brand blue; the dark variant lifts it for contrast.
-  usdc:    "bg-usdc/20 text-usdc border border-usdc/30 dark:text-blue-300 dark:border-blue-500/30",
+  // USDC keeps its own brand blue; the usdc-fg / usdc-border tokens lift it
+  // for contrast in dark mode (see globals.css).
+  usdc:    "bg-usdc/20 text-usdc-fg border border-usdc-border/30",
 };
 
 interface BadgeProps {
