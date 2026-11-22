@@ -238,6 +238,14 @@ export function resolveApiUrl(raw: string | undefined): string {
  */
 export const DEFAULT_REQUEST_TIMEOUT_MS = 10_000;
 
+/**
+ * How long request() waits before retrying a GET that failed because the
+ * backend was asleep (a network failure, or a 502, 503 or 504). Short on
+ * purpose: the retry is a second chance for a request that is expected to
+ * succeed once the backend is up, not a back-off schedule.
+ */
+export const RETRY_DELAY_MS = 1_000;
+
 // ── Config object ─────────────────────────────────────────────────────────────
 
 // Resolved ahead of the config object so usdcContractId can depend on the
