@@ -60,8 +60,7 @@ export default function WebhooksPage() {
   const [urlTouched, setUrlTouched] = useState(false);
 
   // ── Secret reveal state (shown once after creation) ────────────────────────
-  const [newSecret, setNewSecret] = useState<string | null>(null);
-  const [secretCopied, setSecretCopied] = useState(false);
+  const [newSecret, setNewSecret] = useState<RevealedSecret | null>(null);
   const [secretContext, setSecretContext] = useState<"created" | "rotated">("created");
 
   // ── Remove state ───────────────────────────────────────────────────────────
@@ -92,6 +91,7 @@ export default function WebhooksPage() {
 
   const abortRef = useRef<AbortController | null>(null);
 
+  const { copy, copied, failed: copyFailed, reset: resetCopy } = useCopyToClipboard();
   // ── Fetch list ─────────────────────────────────────────────────────────────
   const fetchWebhooks = useCallback(() => {
     if (!jwt) return;
@@ -140,7 +140,7 @@ export default function WebhooksPage() {
     try {
       const r = await webhookApi.create(jwt, trimmedUrl);
       setWebhooks((prev) => [...prev, { id: r.webhook.id, url: r.webhook.url, enabled: true }]);
-      setNewSecret(r.webhook.secret);
+      setNewSecret({ webhookId: r.webhook.id, secret: r.webhook.secret });
       setSecretContext("created");
       setUrl("");
       setUrlTouched(false);
@@ -258,7 +258,7 @@ export default function WebhooksPage() {
 
     try {
       const r = await webhookApi.rotateSecret(jwt, id);
-      setNewSecret(r.secret);
+      setNewSecret({ webhookId: id, secret: r.secret });
       setSecretContext("rotated");
     } catch (e: unknown) {
       setRotateErrors((prev) => ({

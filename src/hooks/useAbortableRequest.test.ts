@@ -16,7 +16,7 @@
  *   - A stale request resolving after a newer one started does not clobber state
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { useAbortableRequest } from "./useAbortableRequest";
 import { ApiError } from "@/lib/api";
@@ -80,7 +80,7 @@ describe("useAbortableRequest", () => {
     act(() => {
       result.current.run(
         (signal) =>
-          new Promise((resolve) => {
+          new Promise((_resolve) => {
             firstSignal = signal;
             // Never resolves on its own — only the abort should end it.
           }),

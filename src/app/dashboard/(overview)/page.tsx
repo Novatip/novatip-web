@@ -15,7 +15,7 @@ import { analyticsApi, authApi, creatorApi, type CreatorProfile } from "@/lib/ap
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { formatUsdc } from "@novatip/sdk";
 import { getTipUrl } from "@/lib/tipUrl";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { JarStatusBanner } from "@/components/JarStatusBanner";
