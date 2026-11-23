@@ -11,7 +11,8 @@
 
 import { useCallback, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { analyticsApi, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
+import { useCreator } from "@/contexts/CreatorContext";
+import { analyticsApi } from "@/lib/api";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { formatUsdc } from "@novatip/sdk";
 import { getTipUrl } from "@/lib/tipUrl";
@@ -53,10 +54,10 @@ export default function DashboardPage() {
   const { jwt } = useWallet();
   const { data: totals, loading, error, run } = useAbortableRequest<Totals | null>(null);
 
-  // Only feeds the jar-registration check below. Its own failure isn't
-  // surfaced — the rest of the page has already loaded via `totals` above,
-  // and this is a nice-to-have on top of it, not a prerequisite for it.
-  const { data: creator, run: runCreator } = useAbortableRequest<CreatorProfile | null>(null);
+  // Loaded once by the dashboard layout. Only feeds the jar-registration
+  // check below; a failure to load it isn't surfaced here — the rest of the
+  // page loads via `totals`, and this is a nice-to-have on top of it.
+  const { creator } = useCreator();
 
   const fetchTotals = useCallback(() => {
     if (!jwt) return;
@@ -66,16 +67,6 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchTotals();
   }, [fetchTotals]);
-
-  useEffect(() => {
-    if (!jwt) return;
-    runCreator((signal) =>
-      authApi
-        .me(jwt, { signal })
-        .then((r) => creatorApi.getBySlug(r.user.slug, { signal }))
-        .then((r) => r.creator),
-    );
-  }, [jwt, runCreator]);
 
   const totalAmount = totals ? parseAmount(totals.totalAmountRaw) : null;
   const totalUsdc = totalAmount !== null ? formatUsdc(totalAmount, 2) : "—";

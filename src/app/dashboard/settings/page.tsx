@@ -24,7 +24,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
+import { useCreator } from "@/contexts/CreatorContext";
+import { ApiError, creatorApi } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
 import { isValidSlug } from "@/lib/slug";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
@@ -77,15 +78,15 @@ export default function SettingsPage() {
   const { jwt } = useWallet();
 
   // ── Loaded creator ─────────────────────────────────────────────────────────
-  const [creator, setCreator] = useState<CreatorProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  // Loaded once by the dashboard layout and shared with every page, so a save
+  // here is also reflected everywhere else.
+  const { creator, loading, error: loadError, setCreator } = useCreator();
 
   // ── Profile form state ─────────────────────────────────────────────────────
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState(creator?.displayName ?? "");
+  const [bio, setBio] = useState(creator?.bio ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(creator?.avatarUrl ?? "");
+  const [email, setEmail] = useState(creator?.email ?? "");
   // Track which fields have been blurred so errors only appear after
   // interaction, not the moment the page loads with a long existing value.
   const [touched, setTouched] = useState({
@@ -107,47 +108,18 @@ export default function SettingsPage() {
   const [renameError, setRenameError] = useState<string | null>(null);
   const [renameSaved, setRenameSaved] = useState(false);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
-
+  // Fill the form once the profile arrives (it may still be loading when the
+  // page mounts). Keyed on the creator's id so a later save or rename, which
+  // replaces the profile in the context, doesn't overwrite unsaved edits.
+  const populatedFor = useRef<string | null>(creator?.id ?? null);
   useEffect(() => {
-    if (!jwt) return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    authApi
-      .me(jwt, { signal: controller.signal })
-      .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
-      .then((r) => {
-        const loaded = r.creator;
-        setCreator(loaded);
-        setDisplayName(loaded.displayName ?? "");
-        setBio(loaded.bio ?? "");
-        setAvatarUrl(loaded.avatarUrl ?? "");
-        setEmail(loaded.email ?? "");
-        setLoadError(null);
-      })
-      .catch((e: unknown) => {
-        if (e instanceof ApiError && e.code === "ABORTED") return;
-        setLoadError(e instanceof Error ? e.message : "Failed to load your profile.");
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [jwt]);
+    if (!creator || populatedFor.current === creator.id) return;
+    populatedFor.current = creator.id;
+    setDisplayName(creator.displayName ?? "");
+    setBio(creator.bio ?? "");
+    setAvatarUrl(creator.avatarUrl ?? "");
+    setEmail(creator.email ?? "");
+  }, [creator]);
 
   // ── Profile validation ─────────────────────────────────────────────────────
 

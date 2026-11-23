@@ -9,33 +9,18 @@
  * then to the backend.
  */
 
-import { useCallback, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { creatorApi, authApi, type CreatorProfile } from "@/lib/api";
+import { useCreator } from "@/contexts/CreatorContext";
+import { creatorApi } from "@/lib/api";
 import { syncJarToChain } from "@/lib/jar";
-import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 
 export default function SplitsPage() {
   const { jwt, publicKey } = useWallet();
-  const { data: creator, loading, error, run } = useAbortableRequest<CreatorProfile | null>(null);
-
-  const fetchCreator = useCallback(() => {
-    if (!jwt) return;
-    // Fetch the creator profile via the auth/me + creator slug
-    run((signal) =>
-      authApi
-        .me(jwt, { signal })
-        .then((r) => creatorApi.getBySlug(r.user.slug, { signal }))
-        .then((r) => r.creator),
-    );
-  }, [jwt, run]);
-
-  useEffect(() => {
-    fetchCreator();
-  }, [fetchCreator]);
+  // The profile is loaded once by the dashboard layout.
+  const { creator, loading, error, refresh: fetchCreator, setCreator } = useCreator();
 
   /**
    * Splits are written to the contract before the backend, because the
@@ -55,7 +40,7 @@ export default function SplitsPage() {
       splits,
     });
     const result = await creatorApi.updateSplits(jwt, splits);
-    run(async () => result.creator);
+    setCreator(result.creator);
   }
 
   return (

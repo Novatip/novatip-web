@@ -10,11 +10,12 @@
  * control so they never have to navigate to the QR page just to grab it.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
-import { ApiError, authApi } from "@/lib/api";
+import { CreatorContext } from "@/contexts/CreatorContext";
+import { ApiError, authApi, creatorApi, type CreatorProfile } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { CopyFallback } from "@/components/CopyFallback";
@@ -109,7 +110,9 @@ function TipLinkCopy({ slug }: { slug: string }) {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isConnected, publicKey, jwt, isSigningIn, retrySignIn, error: walletError } = useWallet();
   const [sessionKey, setSessionKey] = useState(0);
-  const [slug, setSlug] = useState<string | null>(null);
+  const [creator, setCreator] = useState<CreatorProfile | null>(null);
+  const [creatorLoading, setCreatorLoading] = useState(true);
+  const [creatorError, setCreatorError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -134,40 +137,62 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // is the better choice because it gives the user a clear, immediate action
   // and does not navigate them away from a page they deliberately opened.
 
-  // Fetch the creator's slug once per session so the copy control in the
-  // header always reflects the current wallet without hitting /auth/me on
-  // every page navigation.
-  useEffect(() => {
-    if (!jwt) {
-      setSlug(null);
-      return;
-    }
+  // Load the creator's profile once per session. This is the only place the
+  // dashboard calls /auth/me: the header's copy control and every page read the
+  // result from CreatorContext, so navigating between pages costs no requests.
+  const loadCreator = useCallback(() => {
+    if (!jwt) return;
 
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
+    setCreatorLoading(true);
     authApi
       .me(jwt, { signal: controller.signal })
+      .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
       .then((r) => {
         if (abortControllerRef.current === controller) {
-          setSlug(r.user.slug);
+          setCreator(r.creator);
+          setCreatorError(null);
         }
       })
       .catch((e: unknown) => {
         if (e instanceof ApiError && e.code === "ABORTED") return;
-        setSlug(null);
+        if (abortControllerRef.current === controller) {
+          setCreator(null);
+          setCreatorError(e instanceof Error ? e.message : "Failed to load your profile.");
+        }
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
+          setCreatorLoading(false);
         }
       });
+  }, [jwt]);
+
+  useEffect(() => {
+    // A new session must never see the previous creator's profile.
+    setCreator(null);
+    setCreatorError(null);
+    loadCreator();
 
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [jwt]);
+  }, [loadCreator]);
+
+  const creatorValue = useMemo(
+    () => ({
+      creator,
+      loading: creatorLoading,
+      error: creatorError,
+      refresh: loadCreator,
+      setCreator: (next: CreatorProfile) => setCreator(next),
+    }),
+    [creator, creatorLoading, creatorError, loadCreator],
+  );
 
   if (!isConnected) {
     return (
@@ -237,9 +262,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
 
           {/* Tip-link copy — only rendered once the slug is known */}
-          {slug && (
+          {creator && (
             <div className="flex-1 flex justify-center">
-              <TipLinkCopy slug={slug} />
+              <TipLinkCopy slug={creator.slug} />
             </div>
           )}
 
@@ -264,7 +289,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           className="flex-1 min-w-0 outline-none"
           key={sessionKey}
         >
-          {children}
+          <CreatorContext.Provider value={creatorValue}>{children}</CreatorContext.Provider>
         </main>
       </div>
     </div>
