@@ -123,6 +123,12 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
       aria-live="polite"
     >
       <div className="flex flex-col items-center gap-5 py-4">
+        {/* The copy buttons are named by their visible text, so the outcome is
+            announced here, through this card's polite status region. */}
+        <span className="sr-only">
+          {failed ? "Couldn't copy the link." : copied ? "Link copied to the clipboard." : ""}
+        </span>
+
         {/* Success icon */}
         <div
           className={cn(
@@ -172,7 +178,6 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
                 variant={failed ? "danger" : "secondary"}
                 className="w-full"
                 onClick={() => copy(shareMessage)}
-                aria-label="Copy link to clipboard"
               >
                 {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link"}
               </Button>
@@ -183,7 +188,6 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
               variant={failed ? "danger" : "secondary"}
               className="w-full"
               onClick={handleShare}
-              aria-label="Copy link to clipboard"
             >
               {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link 🔗"}
             </Button>
