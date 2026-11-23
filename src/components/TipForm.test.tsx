@@ -219,3 +219,34 @@ describe("TipForm – failed transaction", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Transaction rejected");
   });
 });
+
+// ── Message byte counter ──────────────────────────────────────────────────────
+
+describe("TipForm – message byte counter", () => {
+  it("describes the textarea with the counter and is valid within the limit", async () => {
+    renderForm({ amount: "2", balance: 100n * USDC });
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+
+    const textarea = screen.getByRole("textbox", { name: /optional tip message/i });
+    expect(textarea).toHaveAccessibleDescription("0/280 bytes");
+    expect(textarea).toHaveAttribute("aria-invalid", "false");
+    expect(statusWith(/byte limit/i)).toBeUndefined();
+  });
+
+  it("flags the textarea invalid and announces the overflow once above 280 bytes", async () => {
+    renderForm({ amount: "2", balance: 100n * USDC });
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+
+    const textarea = screen.getByRole("textbox", { name: /optional tip message/i });
+    fireEvent.change(textarea, { target: { value: "a".repeat(281) } });
+
+    expect(textarea).toHaveAttribute("aria-invalid", "true");
+    expect(textarea).toHaveAccessibleDescription("281/280 bytes");
+    expect(screen.getAllByRole("status").filter((el) => /byte limit/i.test(el.textContent ?? ""))).toHaveLength(1);
+    expect(statusWith(/over the 280 byte limit/i)).toBeDefined();
+
+    // Typing further does not add another announcement.
+    fireEvent.change(textarea, { target: { value: "a".repeat(290) } });
+    expect(screen.getAllByRole("status").filter((el) => /byte limit/i.test(el.textContent ?? ""))).toHaveLength(1);
+  });
+});
