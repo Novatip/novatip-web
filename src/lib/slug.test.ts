@@ -7,10 +7,13 @@
  * Covers:
  *   - Valid slugs: minimum length, maximum length, all allowed characters
  *   - Invalid slugs: too short, too long, disallowed characters, empty
+ *
+ * Also covers normalizeSlug's case folding: mixed case with and without an @
+ * prefix, percent-encoded prefixes, and the malformed-sequence fallback.
  */
 
 import { describe, it, expect } from "vitest";
-import { SLUG_REGEX, isValidSlug } from "./slug";
+import { SLUG_REGEX, isValidSlug, normalizeSlug } from "./slug";
 
 describe("isValidSlug – valid slugs", () => {
   it("accepts a minimal 3-character slug", () => {
@@ -80,5 +83,40 @@ describe("SLUG_REGEX", () => {
   it("is the same rule isValidSlug uses", () => {
     const slug = "valid-slug_99";
     expect(SLUG_REGEX.test(slug)).toBe(isValidSlug(slug));
+  });
+});
+
+describe("normalizeSlug – case folding", () => {
+  it("lowercases a mixed-case slug", () => {
+    expect(normalizeSlug("Alice")).toBe("alice");
+    expect(normalizeSlug("ALICE")).toBe("alice");
+    expect(normalizeSlug("aLiCe_99")).toBe("alice_99");
+  });
+
+  it("lowercases a mixed-case slug with an @ prefix", () => {
+    expect(normalizeSlug("@Alice")).toBe("alice");
+  });
+
+  it("lowercases a mixed-case slug with a percent-encoded @ prefix", () => {
+    expect(normalizeSlug("%40Alice")).toBe("alice");
+  });
+
+  it("lowercases a percent-encoded uppercase letter", () => {
+    expect(normalizeSlug("%41lice")).toBe("alice");
+  });
+
+  it("leaves an already-lowercase slug unchanged", () => {
+    expect(normalizeSlug("alice")).toBe("alice");
+    expect(normalizeSlug("@alice")).toBe("alice");
+  });
+
+  it("lowercases the malformed-sequence fallback, with and without a prefix", () => {
+    expect(normalizeSlug("Al%zz")).toBe("al%zz");
+    expect(normalizeSlug("@Al%zz")).toBe("al%zz");
+    expect(normalizeSlug("%40Al%zz")).toBe("al%zz");
+  });
+
+  it("produces a slug that isValidSlug accepts for a mixed-case link", () => {
+    expect(isValidSlug(normalizeSlug("@Alice"))).toBe(true);
   });
 });
