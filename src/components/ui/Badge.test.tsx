@@ -53,16 +53,17 @@ describe("Badge – variants", () => {
     );
   });
 
-  it("applies the usdc variant's classes, including the dark-mode contrast lift", () => {
+  it("applies the usdc variant's theme-aware token classes", () => {
     render(<Badge variant="usdc">Label</Badge>);
-    expect(screen.getByText("Label")).toHaveClass(
+    const badge = screen.getByText("Label");
+    expect(badge).toHaveClass(
       "bg-usdc/20",
-      "text-usdc",
+      "text-usdc-fg",
       "border",
-      "border-usdc/30",
-      "dark:text-blue-300",
-      "dark:border-blue-500/30",
+      "border-usdc-border/30",
     );
+    // No raw palette classes — dark values come from the tokens.
+    expect(badge.className).not.toMatch(/blue-\d+/);
   });
 
   it("defaults to the default variant when none is given", () => {

@@ -64,14 +64,20 @@ function SplitRow({ address, bps, isYou }: SplitRowProps) {
         <span className="text-xs">👤</span>
       </div>
       <span className="flex-1 min-w-0 flex items-center gap-1.5">
-        <a
-          href={explorerUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="font-mono text-sm text-fg-subtle hover:text-accent transition-colors underline decoration-dotted underline-offset-2 truncate"
-        >
-          {shortenAddress(address)}
-        </a>
+        {explorerUrl ? (
+          <a
+            href={explorerUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-sm text-fg-subtle hover:text-accent transition-colors underline decoration-dotted underline-offset-2 truncate"
+          >
+            {shortenAddress(address)}
+          </a>
+        ) : (
+          <span className="font-mono text-sm text-fg-subtle truncate">
+            {shortenAddress(address)}
+          </span>
+        )}
         {isYou && (
           <span className="text-xs font-semibold text-brand-500 shrink-0">
             You
