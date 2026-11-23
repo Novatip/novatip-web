@@ -7,7 +7,8 @@
  * Real rules reproduced faithfully so unit tests exercise the same
  * constraints as production code:
  *   - usdcToStroops: 1 USDC = 10_000_000 stroops (7 decimal places)
- *   - isValidTipAmount: amount must be > 0 and <= 1_000 USDC in stroops
+ *   - isValidTipAmount: amount must be > 0 stroops (the SDK has no upper
+ *     bound — the app's own ceiling lives in lib/tipAmount.ts)
  *   - formatUsdc: divide by 10^7, format to `decimals` places
  *   - shortenAddress: first 4 + last 4 characters, joined by an ellipsis
  *   - validateSplitsBps: array must sum to exactly 10_000
@@ -23,10 +24,8 @@ export function usdcToStroops(usd: string): bigint {
   return BigInt(integer) * 10_000_000n + BigInt(paddedFraction);
 }
 
-const MAX_STROOPS = 1_000n * 10_000_000n; // 1 000 USDC
-
 export function isValidTipAmount(stroops: bigint): boolean {
-  return stroops > 0n && stroops <= MAX_STROOPS;
+  return stroops > 0n;
 }
 
 export function formatUsdc(stroops: bigint, decimals = 2): string {
