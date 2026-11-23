@@ -41,9 +41,7 @@ function dashboardPageRoutes(routeDir: string, href = "/dashboard"): string[] {
 
   for (const entry of readdirSync(routeDir, { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
-    const segment = entry.name.startsWith("(") && entry.name.endsWith(")")
-      ? ""
-      : `/${entry.name}`;
+    const segment = entry.name.startsWith("(") && entry.name.endsWith(")") ? "" : `/${entry.name}`;
     routes.push(...dashboardPageRoutes(join(routeDir, entry.name), `${href}${segment}`));
   }
 

@@ -70,10 +70,7 @@ describe("PublicSupportersFeed – empty list", () => {
   it("does not render the empty card when at least one row is usable", () => {
     render(
       <PublicSupportersFeed
-        tips={[
-          makeTip({ id: "bad", amount: "not-a-number" }),
-          makeTip({ id: "good" }),
-        ]}
+        tips={[makeTip({ id: "bad", amount: "not-a-number" }), makeTip({ id: "good" })]}
       />,
     );
 
@@ -98,12 +95,8 @@ describe("PublicSupportersFeed – populated list", () => {
       />,
     );
 
-    expect(
-      screen.getByRole("heading", { name: "Recent Supporters" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("list", { name: "Recent supporters" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent Supporters" })).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Recent supporters" })).toBeInTheDocument();
     expect(screen.getAllByRole("listitem")).toHaveLength(2);
 
     // Amounts are stroops rendered as USDC, not raw integers.
@@ -121,11 +114,7 @@ describe("PublicSupportersFeed – populated list", () => {
   });
 
   it("renders no quote for a tip without a message", () => {
-    const { container } = render(
-      <PublicSupportersFeed
-        tips={[makeTip({ message: "" })]}
-      />,
-    );
+    const { container } = render(<PublicSupportersFeed tips={[makeTip({ message: "" })]} />);
 
     // The row itself is still rendered — a silent supporter is still a
     // supporter.

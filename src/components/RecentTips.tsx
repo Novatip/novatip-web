@@ -156,8 +156,13 @@ interface RecentTipsProps {
 }
 
 export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
-  const { data: indexedTips, loading, error, run, abort: abortInFlight } =
-    useAbortableRequest<IndexedTip[]>([]);
+  const {
+    data: indexedTips,
+    loading,
+    error,
+    run,
+    abort: abortInFlight,
+  } = useAbortableRequest<IndexedTip[]>([]);
   const [pendingTips, setPendingTips] = useState<PendingTip[]>([]);
   const [intervalMs, setIntervalMs] = useState(NORMAL_INTERVAL);
 
@@ -172,7 +177,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
   // Keep a ref to pendingTips so the fetch callback can read the latest value
   // without being re-created every time pendingTips changes.
   const pendingRef = useRef<PendingTip[]>([]);
-  useEffect(() => { pendingRef.current = pendingTips; }, [pendingTips]);
+  useEffect(() => {
+    pendingRef.current = pendingTips;
+  }, [pendingTips]);
 
   const fetchTips = useCallback(() => {
     run((signal) =>
@@ -181,20 +188,14 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
         // Drop optimistic entries whose indexed counterpart has arrived,
         // matched by both address AND amount — not just address alone.
-        setPendingTips((prev) =>
-          prev.filter((p) => !fresh.some((t) => isMatch(t, p))),
-        );
+        setPendingTips((prev) => prev.filter((p) => !fresh.some((t) => isMatch(t, p))));
 
         // Announce newly-arrived tips, skipping the very first fetch so the
         // initial page load isn't read out as an "arrival".
         if (previousIndexedIdsRef.current !== null) {
-          const newCount = fresh.filter(
-            (t) => !previousIndexedIdsRef.current!.has(t.id),
-          ).length;
+          const newCount = fresh.filter((t) => !previousIndexedIdsRef.current!.has(t.id)).length;
           if (newCount > 0) {
-            setAnnouncement(
-              `${newCount} new tip${newCount !== 1 ? "s" : ""} received`,
-            );
+            setAnnouncement(`${newCount} new tip${newCount !== 1 ? "s" : ""} received`);
           }
         }
         previousIndexedIdsRef.current = new Set(fresh.map((t) => t.id));
@@ -281,7 +282,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
       {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">
+          {error}
+        </p>
       )}
 
       {!loading && feed.length === 0 && (
@@ -318,18 +321,13 @@ function IndexedTipRow({ tip }: { tip: IndexedTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
           <span className="font-semibold text-accent">
             {amount !== null ? `$${formatUsdc(amount, 2)} USDC` : "—"}
           </span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
       <TimeAgo iso={tip.ledgerAt} className="text-xs text-fg-dim shrink-0 mt-0.5">
@@ -348,18 +346,11 @@ function PendingTipRow({ tip }: { tip: PendingTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
-          <span className="font-semibold text-accent">
-            ${tip.displayAmount} USDC
-          </span>
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
+          <span className="font-semibold text-accent">${tip.displayAmount} USDC</span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
       {/* Confirming badge instead of a timestamp */}
@@ -387,18 +378,11 @@ function UnconfirmedTipRow({ tip }: { tip: UnconfirmedTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
-          <span className="font-semibold text-accent">
-            ${tip.displayAmount} USDC
-          </span>
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
+          <span className="font-semibold text-accent">${tip.displayAmount} USDC</span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
       {/* Unconfirmed badge — no pulse, dimmer colour */}

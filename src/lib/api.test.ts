@@ -39,11 +39,7 @@ describe("ApiError", () => {
 
 // ── fetch helpers ─────────────────────────────────────────────────────────────
 
-function makeFetchResponse(
-  status: number,
-  body: unknown,
-  statusText = "Error",
-): Response {
+function makeFetchResponse(status: number, body: unknown, statusText = "Error"): Response {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -67,50 +63,50 @@ describe("request() error handling", () => {
     );
 
     await expect(authApi.challenge("G_FAKE")).rejects.toMatchObject({
-      status:  400,
-      code:    "INVALID_SLUG",
+      status: 400,
+      code: "INVALID_SLUG",
       message: "Slug already taken",
     });
   });
 
   it("falls back to UNKNOWN/statusText when error body is empty", async () => {
-    fetchSpy.mockResolvedValueOnce(
-      makeFetchResponse(500, {}, "Internal Server Error"),
-    );
+    fetchSpy.mockResolvedValueOnce(makeFetchResponse(500, {}, "Internal Server Error"));
 
     await expect(authApi.challenge("G_FAKE")).rejects.toMatchObject({
-      status:  500,
-      code:    "UNKNOWN",
+      status: 500,
+      code: "UNKNOWN",
       message: "Internal Server Error",
     });
   });
 
   it("falls back to UNKNOWN when JSON parsing fails", async () => {
     fetchSpy.mockResolvedValueOnce({
-      ok:         false,
-      status:     503,
+      ok: false,
+      status: 503,
       statusText: "Service Unavailable",
-      json:       () => Promise.reject(new Error("not json")),
+      json: () => Promise.reject(new Error("not json")),
     } as unknown as Response);
 
     await expect(authApi.challenge("G_FAKE")).rejects.toMatchObject({
       status: 503,
-      code:   "UNKNOWN",
+      code: "UNKNOWN",
     });
   });
 
   it("returns undefined for 204 No Content without calling .json()", async () => {
     const jsonSpy = vi.fn();
     fetchSpy.mockResolvedValueOnce({
-      ok:     true,
+      ok: true,
       status: 204,
-      json:   jsonSpy,
+      json: jsonSpy,
     } as unknown as Response);
 
     // analyticsApi.totals would normally return data; here we confirm 204 path
-    const result = await (analyticsApi as unknown as {
-      _request: (path: string, jwt: string) => Promise<unknown>;
-    })._request?.("/stub", "tok");
+    const result = await (
+      analyticsApi as unknown as {
+        _request: (path: string, jwt: string) => Promise<unknown>;
+      }
+    )._request?.("/stub", "tok");
 
     // The 204 branch is internal; test via the webhookApi.remove which expects void
     expect(jsonSpy).not.toHaveBeenCalled();
@@ -135,24 +131,22 @@ describe("request() error handling", () => {
 
   it("attaches Authorization header when JWT is provided", async () => {
     fetchSpy.mockResolvedValueOnce({
-      ok:     true,
+      ok: true,
       status: 200,
-      json:   () => Promise.resolve({ totalTips: 1, totalAmountRaw: "0", uniqueSupporters: 1 }),
+      json: () => Promise.resolve({ totalTips: 1, totalAmountRaw: "0", uniqueSupporters: 1 }),
     } as unknown as Response);
 
     await analyticsApi.totals("my-jwt-token");
 
     const [, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
-    expect((init.headers as Record<string, string>)["Authorization"]).toBe(
-      "Bearer my-jwt-token",
-    );
+    expect((init.headers as Record<string, string>)["Authorization"]).toBe("Bearer my-jwt-token");
   });
 
   it("does not attach Authorization header when no JWT", async () => {
     fetchSpy.mockResolvedValueOnce({
-      ok:     true,
+      ok: true,
       status: 200,
-      json:   () => Promise.resolve({ nonce: "abc123" }),
+      json: () => Promise.resolve({ nonce: "abc123" }),
     } as unknown as Response);
 
     await authApi.challenge("GFAKE_ADDRESS");
@@ -161,7 +155,6 @@ describe("request() error handling", () => {
     expect((init.headers as Record<string, string>)["Authorization"]).toBeUndefined();
   });
 });
-
 
 // ── AbortSignal.any fallback ──────────────────────────────────────────────────
 
@@ -183,11 +176,14 @@ describe("AbortSignal.any fallback", () => {
     const controller = new AbortController();
     const removeSpy = vi.spyOn(controller.signal, "removeEventListener");
 
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: () => Promise.resolve({ nonce: "abc" }),
-    }));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({ nonce: "abc" }),
+      }),
+    );
 
     await authApi.challenge("GABC", { signal: controller.signal });
 
@@ -198,13 +194,18 @@ describe("AbortSignal.any fallback", () => {
     const controller = new AbortController();
     controller.abort();
 
-    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(
-      Object.assign(new Error("The operation was aborted"), { name: "AbortError" }),
-    ));
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValue(
+          Object.assign(new Error("The operation was aborted"), { name: "AbortError" }),
+        ),
+    );
 
-    await expect(
-      authApi.challenge("GABC", { signal: controller.signal }),
-    ).rejects.toMatchObject({ code: "ABORTED" });
+    await expect(authApi.challenge("GABC", { signal: controller.signal })).rejects.toMatchObject({
+      code: "ABORTED",
+    });
   });
 });
 
@@ -300,19 +301,14 @@ describe("request() retry", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it.each([502, 503, 504])(
-    "resolves a GET that gets a %i and then succeeds",
-    async (status) => {
-      fetchMock
-        .mockResolvedValueOnce(makeFetchResponse(status, {}))
-        .mockResolvedValueOnce(ok());
+  it.each([502, 503, 504])("resolves a GET that gets a %i and then succeeds", async (status) => {
+    fetchMock.mockResolvedValueOnce(makeFetchResponse(status, {})).mockResolvedValueOnce(ok());
 
-      const outcome = await settle(creatorApi.getBySlug("alice"));
+    const outcome = await settle(creatorApi.getBySlug("alice"));
 
-      expect(outcome).toEqual({ value: profile });
-      expect(fetchMock).toHaveBeenCalledTimes(2);
-    },
-  );
+    expect(outcome).toEqual({ value: profile });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 
   it("waits before sending the retry", async () => {
     fetchMock.mockRejectedValueOnce(networkError()).mockResolvedValueOnce(ok());
@@ -346,9 +342,7 @@ describe("request() retry", () => {
   });
 
   it("makes at most two attempts when a network failure is followed by a 503", async () => {
-    fetchMock
-      .mockRejectedValueOnce(networkError())
-      .mockResolvedValue(makeFetchResponse(503, {}));
+    fetchMock.mockRejectedValueOnce(networkError()).mockResolvedValue(makeFetchResponse(503, {}));
 
     const outcome = await settle(creatorApi.getBySlug("alice"));
 
@@ -397,9 +391,7 @@ describe("request() retry", () => {
     const failure = networkError();
     fetchMock.mockRejectedValue(failure);
 
-    const outcome = await settle(
-      creatorApi.claim("jwt", { slug: "alice", jarId: "jar-1" }),
-    );
+    const outcome = await settle(creatorApi.claim("jwt", { slug: "alice", jarId: "jar-1" }));
 
     expect(outcome).toEqual({ error: failure });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -408,9 +400,7 @@ describe("request() retry", () => {
   it("never retries a POST that gets a 503", async () => {
     fetchMock.mockResolvedValue(makeFetchResponse(503, {}));
 
-    const outcome = await settle(
-      creatorApi.claim("jwt", { slug: "alice", jarId: "jar-1" }),
-    );
+    const outcome = await settle(creatorApi.claim("jwt", { slug: "alice", jarId: "jar-1" }));
 
     expect(outcome).toMatchObject({ error: { status: 503 } });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -444,9 +434,7 @@ describe("request() retry", () => {
       Object.assign(new Error("The operation was aborted"), { name: "AbortError" }),
     );
 
-    const outcome = await settle(
-      creatorApi.getBySlug("alice", { signal: controller.signal }),
-    );
+    const outcome = await settle(creatorApi.getBySlug("alice", { signal: controller.signal }));
 
     expect(outcome).toMatchObject({ error: { code: "ABORTED" } });
     expect(fetchMock).toHaveBeenCalledTimes(1);

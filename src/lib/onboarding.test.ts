@@ -15,17 +15,11 @@ describe("isTempSlug", () => {
     expect(isTempSlug("alice")).toBe(false);
   });
 
-  it.each(["user_1234abc", "user_1234abcde"])(
-    "rejects the wrong-length placeholder %s",
-    (slug) => {
-      expect(isTempSlug(slug)).toBe(false);
-    },
-  );
+  it.each(["user_1234abc", "user_1234abcde"])("rejects the wrong-length placeholder %s", (slug) => {
+    expect(isTempSlug(slug)).toBe(false);
+  });
 
-  it.each(["user_1234abcg", "user_1234ab_z"])(
-    "rejects non-hex characters in %s",
-    (slug) => {
-      expect(isTempSlug(slug)).toBe(false);
-    },
-  );
+  it.each(["user_1234abcg", "user_1234ab_z"])("rejects non-hex characters in %s", (slug) => {
+    expect(isTempSlug(slug)).toBe(false);
+  });
 });

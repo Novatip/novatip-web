@@ -32,8 +32,7 @@ vi.mock("@/lib/api", () => ({
       this.code = code;
     }
   },
-  getErrorMessage: (e: unknown, fallback: string) =>
-    e instanceof Error ? e.message : fallback,
+  getErrorMessage: (e: unknown, fallback: string) => (e instanceof Error ? e.message : fallback),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -118,18 +117,12 @@ describe("WebhooksPage – Issue #208: List load error and retry control", () =>
 
     // Resolve second request
     resolveSecond?.({
-      webhooks: [
-        { id: "hook-1", url: "https://example.com/webhook1", enabled: true },
-      ],
+      webhooks: [{ id: "hook-1", url: "https://example.com/webhook1", enabled: true }],
     });
 
     await waitFor(() => {
-      expect(
-        screen.queryByText("Network connection dropped."),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.getByText("https://example.com/webhook1"),
-      ).toBeInTheDocument();
+      expect(screen.queryByText("Network connection dropped.")).not.toBeInTheDocument();
+      expect(screen.getByText("https://example.com/webhook1")).toBeInTheDocument();
     });
   });
 });
@@ -145,18 +138,13 @@ describe("WebhooksPage – Issue #209: URL trimming before validation and sendin
     await user.type(input, "   https://example.com/webhook3   ");
     await user.tab(); // trigger blur
 
-    expect(
-      screen.queryByText("Must be a valid HTTPS URL"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Must be a valid HTTPS URL")).not.toBeInTheDocument();
 
     const submitBtn = screen.getByRole("button", { name: "Add webhook" });
     expect(submitBtn).not.toBeDisabled();
     await user.click(submitBtn);
 
-    expect(createMock).toHaveBeenCalledWith(
-      "mock-jwt",
-      "https://example.com/webhook3",
-    );
+    expect(createMock).toHaveBeenCalledWith("mock-jwt", "https://example.com/webhook3");
   });
 });
 
@@ -193,9 +181,7 @@ describe("WebhooksPage – Issue #206: One-time secret dismissal scoping", () =>
   });
 
   it("does not dismiss secret if the removal request fails", async () => {
-    removeMock.mockRejectedValueOnce(
-      new Error("Server error deleting webhook"),
-    );
+    removeMock.mockRejectedValueOnce(new Error("Server error deleting webhook"));
     const user = userEvent.setup();
     render(<WebhooksPage />);
 
@@ -239,9 +225,7 @@ describe("WebhooksPage – Issue #206: One-time secret dismissal scoping", () =>
     await user.click(removeBtn3);
 
     await waitFor(() => {
-      expect(
-        screen.queryByText("whsec_testsecret12345"),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText("whsec_testsecret12345")).not.toBeInTheDocument();
     });
   });
 });

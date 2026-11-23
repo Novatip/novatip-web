@@ -14,7 +14,7 @@ import { QRDownload } from "@/components/QRDownload";
 import { getQrPngUrl } from "@/lib/tipUrl";
 
 export default function QRPage() {
-  const { jwt }  = useWallet();
+  const { jwt } = useWallet();
   const { data: slug, loading, error, run } = useAbortableRequest<string | null>(null);
 
   const fetchSlug = useCallback(() => {
@@ -47,9 +47,7 @@ export default function QRPage() {
       {/* A failed lookup is shown as an error, distinct from simply having no slug yet. */}
       {!loading && error && (
         <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex flex-col gap-3">
-          <p className="text-sm text-danger">
-            Failed to load your QR code: {error}
-          </p>
+          <p className="text-sm text-danger">Failed to load your QR code: {error}</p>
           <button
             onClick={fetchSlug}
             className="self-start text-sm font-medium text-brand-400 hover:text-brand-300 transition-colors"
@@ -59,14 +57,10 @@ export default function QRPage() {
         </div>
       )}
 
-      {!loading && !error && slug && (
-        <QRDownload slug={slug} pngUrl={pngUrl} />
-      )}
+      {!loading && !error && slug && <QRDownload slug={slug} pngUrl={pngUrl} />}
 
       {!loading && !error && !slug && (
-        <p className="text-sm text-fg-faint">
-          Complete onboarding to generate your QR code.
-        </p>
+        <p className="text-sm text-fg-faint">Complete onboarding to generate your QR code.</p>
       )}
     </div>
   );

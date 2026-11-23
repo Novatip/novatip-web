@@ -25,8 +25,7 @@ const RESULT_MESSAGES: Record<string, string> = {
     "your wallet.",
   txBadAuthExtra: "the transaction carried a signature it did not need (txBAD_AUTH_EXTRA).",
   txBadSeq:
-    "the account's sequence number moved on before this was submitted (txBAD_SEQ). " +
-    "Try again.",
+    "the account's sequence number moved on before this was submitted (txBAD_SEQ). " + "Try again.",
   txInsufficientBalance:
     "the account does not hold enough XLM to cover the transaction (txINSUFFICIENT_BALANCE).",
   txInsufficientFee: "the fee offered was below the network minimum (txINSUFFICIENT_FEE).",

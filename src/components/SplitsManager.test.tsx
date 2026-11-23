@@ -48,9 +48,7 @@ function setup(
 describe("SplitsManager – initial render", () => {
   it("renders the address from initial props", () => {
     setup();
-    expect(
-      screen.getByDisplayValue(VALID_ADDR_1),
-    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue(VALID_ADDR_1)).toBeInTheDocument();
   });
 
   it("defaults to one empty row when initial is empty", () => {
@@ -100,9 +98,7 @@ describe("SplitsManager – validation hint", () => {
 
   it("hides the hint when total is exactly 10 000", () => {
     setup();
-    expect(
-      screen.queryByText(/splits must sum to exactly/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/splits must sum to exactly/i)).not.toBeInTheDocument();
   });
 });
 
@@ -156,7 +152,10 @@ describe("SplitsManager – save", () => {
       { to: VALID_ADDR_2, bps: 0 },
     ]);
 
-    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
     expect(screen.getByText("Share must be above 0%")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
     expect(saveSpy).not.toHaveBeenCalled();

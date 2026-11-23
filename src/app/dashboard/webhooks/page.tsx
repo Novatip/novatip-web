@@ -60,7 +60,7 @@ export default function WebhooksPage() {
   const [urlTouched, setUrlTouched] = useState(false);
 
   // ── Secret reveal state (shown once after creation) ────────────────────────
-  const [newSecret,    setNewSecret]    = useState<string | null>(null);
+  const [newSecret, setNewSecret] = useState<string | null>(null);
   const [secretCopied, setSecretCopied] = useState(false);
   const [secretContext, setSecretContext] = useState<"created" | "rotated">("created");
 
@@ -85,8 +85,10 @@ export default function WebhooksPage() {
   const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
 
   // ── Ping state ─────────────────────────────────────────────────────────────
-  const [pinging,      setPinging]      = useState<string | null>(null); // id being pinged
-  const [pingResults,  setPingResults]  = useState<Record<string, { success: boolean; message: string }>>({});
+  const [pinging, setPinging] = useState<string | null>(null); // id being pinged
+  const [pingResults, setPingResults] = useState<
+    Record<string, { success: boolean; message: string }>
+  >({});
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -137,10 +139,7 @@ export default function WebhooksPage() {
 
     try {
       const r = await webhookApi.create(jwt, trimmedUrl);
-      setWebhooks((prev) => [
-        ...prev,
-        { id: r.webhook.id, url: r.webhook.url, enabled: true },
-      ]);
+      setWebhooks((prev) => [...prev, { id: r.webhook.id, url: r.webhook.url, enabled: true }]);
       setNewSecret(r.webhook.secret);
       setSecretContext("created");
       setUrl("");
@@ -339,9 +338,7 @@ export default function WebhooksPage() {
   }
 
   const urlError =
-    urlTouched && url.trim() && !isValidHttpsUrl(url)
-      ? "Must be a valid HTTPS URL"
-      : undefined;
+    urlTouched && url.trim() && !isValidHttpsUrl(url) ? "Must be a valid HTTPS URL" : undefined;
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
@@ -355,21 +352,14 @@ export default function WebhooksPage() {
 
       {/* List error */}
       {listError && (
-        <ErrorPanel
-          message={listError}
-          onRetry={fetchWebhooks}
-          retrying={listLoading}
-        />
+        <ErrorPanel message={listError} onRetry={fetchWebhooks} retrying={listLoading} />
       )}
 
       {/* One-time secret banner */}
       {newSecret && (
         <div className="rounded-xl bg-warning/10 border border-warning/30 px-4 py-4 flex flex-col gap-3">
           <div className="flex items-start gap-2">
-            <span
-              className="text-warning text-lg leading-none mt-0.5"
-              aria-hidden="true"
-            >
+            <span className="text-warning text-lg leading-none mt-0.5" aria-hidden="true">
               ⚠
             </span>
             <div className="flex flex-col gap-0.5">
@@ -384,7 +374,9 @@ export default function WebhooksPage() {
                     The old secret is no longer valid.
                   </span>
                 )}
-                Use this value to verify the <code className="text-accent">X-Novatip-Signature</code> header on incoming requests.
+                Use this value to verify the{" "}
+                <code className="text-accent">X-Novatip-Signature</code> header on incoming
+                requests.
               </p>
             </div>
           </div>
@@ -403,11 +395,7 @@ export default function WebhooksPage() {
             </Button>
           </div>
           {copyFailed && (
-            <CopyFallback
-              text={newSecret.secret}
-              onDismiss={resetCopy}
-              noun="secret"
-            />
+            <CopyFallback text={newSecret.secret} onDismiss={resetCopy} noun="secret" />
           )}
           <button
             type="button"
@@ -474,16 +462,12 @@ export default function WebhooksPage() {
 
         {!listLoading && webhooks.length === 0 && (
           <p className="text-sm text-fg-faint py-4 text-center">
-            No webhooks yet. Add an endpoint above to start receiving tip
-            notifications.
+            No webhooks yet. Add an endpoint above to start receiving tip notifications.
           </p>
         )}
 
         {!listLoading && webhooks.length > 0 && (
-          <ul
-            className="flex flex-col divide-y divide-hairline"
-            aria-label="Registered webhooks"
-          >
+          <ul className="flex flex-col divide-y divide-hairline" aria-label="Registered webhooks">
             {webhooks.map((wh) => (
               <li key={wh.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
                 <div className="flex items-center gap-3">
@@ -494,14 +478,14 @@ export default function WebhooksPage() {
                     aria-label={expandedId === wh.id ? "Hide deliveries" : "Show deliveries"}
                     aria-expanded={expandedId === wh.id}
                   >
-                    <span className={`transition-transform ${expandedId === wh.id ? "rotate-90" : ""}`}>
+                    <span
+                      className={`transition-transform ${expandedId === wh.id ? "rotate-90" : ""}`}
+                    >
                       ▶
                     </span>
                   </button>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-mono text-fg truncate">
-                      {wh.url}
-                    </p>
+                    <p className="text-sm font-mono text-fg truncate">{wh.url}</p>
                   </div>
                   <button
                     type="button"
@@ -549,7 +533,9 @@ export default function WebhooksPage() {
                   </Button>
                 </div>
                 {pingResults[wh.id] && (
-                  <p className={`text-xs ${pingResults[wh.id].success ? "text-success" : "text-danger"}`}>
+                  <p
+                    className={`text-xs ${pingResults[wh.id].success ? "text-success" : "text-danger"}`}
+                  >
                     {pingResults[wh.id].message}
                   </p>
                 )}
@@ -640,26 +626,16 @@ export default function WebhooksPage() {
               Remove webhook?
             </h2>
             <p className="text-sm text-fg-subtle mb-4">
-              This will delete the endpoint and its signing secret immediately.
-              There is no undo.
+              This will delete the endpoint and its signing secret immediately. There is no undo.
             </p>
             <div className="rounded-lg bg-surface-strong border border-hairline px-3 py-2 mb-6">
               <p className="text-xs font-mono text-fg break-all">{confirmRemove.url}</p>
             </div>
             <div className="flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={cancelRemove}
-                autoFocus
-              >
+              <Button variant="secondary" size="md" onClick={cancelRemove} autoFocus>
                 Cancel
               </Button>
-              <Button
-                variant="danger"
-                size="md"
-                onClick={() => handleRemove(confirmRemove.id)}
-              >
+              <Button variant="danger" size="md" onClick={() => handleRemove(confirmRemove.id)}>
                 Remove webhook
               </Button>
             </div>
@@ -687,33 +663,23 @@ export default function WebhooksPage() {
               Rotate signing secret?
             </h2>
             <p className="text-sm text-fg-subtle mb-4">
-              This will generate a new secret and invalidate the old one immediately.
-              Update your endpoint to use the new secret before rotating.
+              This will generate a new secret and invalidate the old one immediately. Update your
+              endpoint to use the new secret before rotating.
             </p>
             <div className="rounded-lg bg-surface-strong border border-hairline px-3 py-2 mb-6">
               <p className="text-xs font-mono text-fg break-all">{confirmRotate.url}</p>
             </div>
             <div className="flex gap-3 justify-end">
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={cancelRotate}
-                autoFocus
-              >
+              <Button variant="secondary" size="md" onClick={cancelRotate} autoFocus>
                 Cancel
               </Button>
-              <Button
-                variant="primary"
-                size="md"
-                onClick={() => handleRotate(confirmRotate.id)}
-              >
+              <Button variant="primary" size="md" onClick={() => handleRotate(confirmRotate.id)}>
                 Rotate secret
               </Button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -6,15 +6,15 @@ const variants: Record<BadgeVariant, string> = {
   default: "bg-surface-strong text-fg-muted",
   success: "bg-success/20 text-success border border-success/30",
   warning: "bg-warning/20 text-warning border border-warning/30",
-  error:   "bg-danger/20 text-danger border border-danger/30",
+  error: "bg-danger/20 text-danger border border-danger/30",
   // USDC keeps its own brand blue; the usdc-fg / usdc-border tokens lift it
   // for contrast in dark mode (see globals.css).
-  usdc:    "bg-usdc/20 text-usdc-fg border border-usdc-border/30",
+  usdc: "bg-usdc/20 text-usdc-fg border border-usdc-border/30",
 };
 
 interface BadgeProps {
-  variant?:  BadgeVariant;
-  children:  React.ReactNode;
+  variant?: BadgeVariant;
+  children: React.ReactNode;
   className?: string;
 }
 

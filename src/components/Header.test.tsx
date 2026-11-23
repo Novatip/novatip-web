@@ -25,13 +25,13 @@ vi.mock("next/image", () => ({
 }));
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    null as string | null,
-  jwt:          null as string | null,
-  isConnected:  false,
+  publicKey: null as string | null,
+  jwt: null as string | null,
+  isConnected: false,
   isConnecting: false,
-  error:        null as string | null,
-  connect:      vi.fn(),
-  disconnect:   vi.fn(),
+  error: null as string | null,
+  connect: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -74,10 +74,7 @@ describe("Header – connected", () => {
     mockWallet.publicKey = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
     render(<Header />);
 
-    expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute(
-      "href",
-      "/dashboard",
-    );
+    expect(screen.getByRole("link", { name: /dashboard/i })).toHaveAttribute("href", "/dashboard");
   });
 });
 

@@ -28,9 +28,7 @@ export function CollaboratorEarnings({ jwt }: CollaboratorEarningsProps) {
   const { data: collaborators, loading, error, run } = useAbortableRequest<Collaborator[]>([]);
 
   const fetchCollaborators = useCallback(() => {
-    run((signal) =>
-      analyticsApi.collaborators(jwt, { signal }).then((r) => r.collaborators),
-    );
+    run((signal) => analyticsApi.collaborators(jwt, { signal }).then((r) => r.collaborators));
   }, [jwt, run]);
 
   // Initial fetch
@@ -58,7 +56,9 @@ export function CollaboratorEarnings({ jwt }: CollaboratorEarningsProps) {
 
       {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">
+          {error}
+        </p>
       )}
 
       {!loading && collaborators.length === 0 && (

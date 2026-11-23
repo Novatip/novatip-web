@@ -12,7 +12,9 @@ import { render, screen } from "@testing-library/react";
 
 vi.mock("next/link", () => ({
   default: ({ href, children, className }: any) => (
-    <a href={href} className={className}>{children}</a>
+    <a href={href} className={className}>
+      {children}
+    </a>
   ),
 }));
 
@@ -25,7 +27,9 @@ vi.mock("@/components/QRDownload", () => ({
 // Mutable so individual tests can set a different apiUrl.
 const mockConfig = { apiUrl: "http://localhost:3001/api/v1" };
 vi.mock("@/lib/config", () => ({
-  get config() { return mockConfig; },
+  get config() {
+    return mockConfig;
+  },
 }));
 
 import { ShareStep } from "./ShareStep";

@@ -10,10 +10,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("History");
 
-export default function HistoryLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function HistoryLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

@@ -29,9 +29,7 @@ describe("app/global-error", () => {
   it("renders the fatal message and a retry control", () => {
     render(<GlobalError error={makeError()} reset={vi.fn()} />);
 
-    expect(
-      screen.getByRole("heading", { name: /novatip hit a snag/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /novatip hit a snag/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 

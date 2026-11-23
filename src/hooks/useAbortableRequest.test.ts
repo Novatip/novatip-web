@@ -197,7 +197,9 @@ describe("useAbortableRequest", () => {
     const { result } = renderHook(() => useAbortableRequest<string | null>(null));
 
     let resolveFirst: (value: string) => void = () => {};
-    const first = new Promise<string>((resolve) => { resolveFirst = resolve; });
+    const first = new Promise<string>((resolve) => {
+      resolveFirst = resolve;
+    });
 
     act(() => {
       // The fetcher itself doesn't check its signal — this proves the hook's

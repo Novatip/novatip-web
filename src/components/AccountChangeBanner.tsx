@@ -34,10 +34,8 @@ function Notice({ publicKey }: { publicKey: string }) {
       className="flex flex-col items-center justify-center gap-2 border-b border-warning/20 bg-warning/10 px-4 py-2 text-center text-sm text-warning sm:flex-row sm:gap-4"
     >
       <p>
-        Freighter is now on{" "}
-        <span className="font-mono">{shortenAddress(active)}</span>, but you are
-        connected as{" "}
-        <span className="font-mono">{shortenAddress(publicKey)}</span>.
+        Freighter is now on <span className="font-mono">{shortenAddress(active)}</span>, but you are
+        connected as <span className="font-mono">{shortenAddress(publicKey)}</span>.
       </p>
       <Button
         variant="secondary"

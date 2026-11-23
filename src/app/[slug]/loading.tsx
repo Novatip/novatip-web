@@ -8,7 +8,11 @@ export default function TipPageLoading() {
       {/* Header skeleton */}
       <div className="h-16 border-b border-hairline bg-canvas/80 animate-pulse" />
 
-      <main id="main-content" tabIndex={-1} className="flex-1 mx-auto w-full max-w-lg px-4 py-12 outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="flex-1 mx-auto w-full max-w-lg px-4 py-12 outline-none"
+      >
         {/* Avatar skeleton */}
         <div className="flex flex-col items-center gap-4 mb-8">
           <div className="h-20 w-20 rounded-full bg-hairline animate-pulse" />

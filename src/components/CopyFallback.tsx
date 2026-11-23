@@ -20,20 +20,15 @@ import { cn } from "@/lib/utils";
 
 interface CopyFallbackProps {
   /** The text that could not be copied. */
-  text:       string;
+  text: string;
   /** Clears the failure — wired to the hook's reset(). */
-  onDismiss:  () => void;
+  onDismiss: () => void;
   /** What the text is, used in the wording: "select the link", "the message". */
-  noun?:      string;
+  noun?: string;
   className?: string;
 }
 
-export function CopyFallback({
-  text,
-  onDismiss,
-  noun = "link",
-  className,
-}: CopyFallbackProps) {
+export function CopyFallback({ text, onDismiss, noun = "link", className }: CopyFallbackProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {

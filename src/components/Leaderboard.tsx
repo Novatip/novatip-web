@@ -48,9 +48,7 @@ export function Leaderboard({ jwt, limit = 10, slug }: LeaderboardProps) {
   const { data: supporters, loading, error, run } = useAbortableRequest<Supporter[]>([]);
 
   const fetchSupporters = useCallback(() => {
-    run((signal) =>
-      analyticsApi.topSupporters(jwt, limit, { signal }).then((r) => r.supporters),
-    );
+    run((signal) => analyticsApi.topSupporters(jwt, limit, { signal }).then((r) => r.supporters));
   }, [jwt, limit, run]);
 
   // Initial fetch
@@ -89,7 +87,9 @@ export function Leaderboard({ jwt, limit = 10, slug }: LeaderboardProps) {
 
       {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">
+          {error}
+        </p>
       )}
 
       {!loading && supporters.length === 0 && (

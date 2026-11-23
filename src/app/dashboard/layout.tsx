@@ -46,9 +46,7 @@ function TipLinkCopy({ slug }: { slug: string }) {
       <div
         className={cn(
           "flex items-center gap-2 rounded-xl border px-3 py-1.5 transition-colors",
-          failed
-            ? "border-danger/30 bg-danger/10"
-            : "border-hairline bg-surface-strong",
+          failed ? "border-danger/30 bg-danger/10" : "border-hairline bg-surface-strong",
         )}
       >
         {/* URL text — hidden on xs so the bar doesn't overflow on phones */}
@@ -68,11 +66,18 @@ function TipLinkCopy({ slug }: { slug: string }) {
             failed
               ? "text-danger hover:text-danger"
               : copied
-              ? "text-success"
-              : "text-accent hover:text-accent-strong",
+                ? "text-success"
+                : "text-accent hover:text-accent-strong",
           )}
         >
-          <svg className="h-4 w-4 sm:hidden" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <svg
+            className="h-4 w-4 sm:hidden"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            aria-hidden="true"
+          >
             {failed ? (
               <path d="M6 6l12 12M6 18L18 6" />
             ) : copied ? (
@@ -92,12 +97,7 @@ function TipLinkCopy({ slug }: { slug: string }) {
 
       {/* Manual fallback when the browser refuses the clipboard */}
       {failed && (
-        <CopyFallback
-          text={tipUrl}
-          onDismiss={reset}
-          noun="tip link"
-          className="max-w-xs"
-        />
+        <CopyFallback text={tipUrl} onDismiss={reset} noun="tip link" className="max-w-xs" />
       )}
     </div>
   );
@@ -138,7 +138,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   // header always reflects the current wallet without hitting /auth/me on
   // every page navigation.
   useEffect(() => {
-    if (!jwt) { setSlug(null); return; }
+    if (!jwt) {
+      setSlug(null);
+      return;
+    }
 
     abortControllerRef.current?.abort();
     const controller = new AbortController();
@@ -161,7 +164,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
       });
 
-    return () => { abortControllerRef.current?.abort(); };
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [jwt]);
 
   if (!isConnected) {
@@ -190,13 +195,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
         {isSigningIn ? (
           <div role="status" className="flex flex-col items-center gap-3">
-            <div aria-hidden="true" className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent" />
+            <div
+              aria-hidden="true"
+              className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent"
+            />
             <p className="text-fg-subtle text-sm">Signing you in…</p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-4 max-w-sm text-center">
             <p className="text-fg-subtle text-sm">
-              {walletError ?? "Your wallet is connected, but you need to sign in to access the dashboard."}
+              {walletError ??
+                "Your wallet is connected, but you need to sign in to access the dashboard."}
             </p>
             <Button size="lg" onClick={() => void retrySignIn()}>
               Sign in
@@ -212,19 +221,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex flex-col">
-
       {/* Top bar */}
       <header className="sticky top-0 z-50 border-b border-hairline bg-canvas/80 backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex h-16 items-center justify-between gap-2 sm:gap-4">
-          <Link href="/" className="flex items-center gap-2 group shrink-0" aria-label="Novatip home">
-            <Image
-              src="/logo.svg"
-              alt=""
-              width={24}
-              height={24}
-              className="rounded"
-              unoptimized
-            />
+          <Link
+            href="/"
+            className="flex items-center gap-2 group shrink-0"
+            aria-label="Novatip home"
+          >
+            <Image src="/logo.svg" alt="" width={24} height={24} className="rounded" unoptimized />
             <span className="hidden sm:inline font-semibold text-fg group-hover:text-accent transition-colors">
               Novatip
             </span>
@@ -264,7 +269,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
               aria-current={isActive ? "page" : undefined}
             >
-              <span className="text-base" aria-hidden="true">{item.icon}</span>
+              <span className="text-base" aria-hidden="true">
+                {item.icon}
+              </span>
               <span>{item.label}</span>
             </Link>
           );
@@ -272,7 +279,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </nav>
 
       <div className="flex flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 gap-8">
-
         {/* Sidebar */}
         <aside className="hidden md:flex flex-col gap-1 w-48 shrink-0">
           {NAV_ITEMS.map((item) => (
@@ -287,17 +293,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               )}
               aria-current={pathname === item.href ? "page" : undefined}
             >
-              <span className="text-base" aria-hidden="true">{item.icon}</span>
+              <span className="text-base" aria-hidden="true">
+                {item.icon}
+              </span>
               {item.label}
             </Link>
           ))}
         </aside>
 
         {/* Page content */}
-        <main id="main-content" tabIndex={-1} className="flex-1 min-w-0 outline-none" key={sessionKey}>
+        <main
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 min-w-0 outline-none"
+          key={sessionKey}
+        >
           {children}
         </main>
-
       </div>
     </div>
   );

@@ -42,9 +42,7 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
     return (
       <Card className="text-center">
         <p className="text-sm font-medium text-fg">Be the first to tip</p>
-        <p className="text-xs text-fg-faint mt-1">
-          Supporters will show up here.
-        </p>
+        <p className="text-xs text-fg-faint mt-1">Supporters will show up here.</p>
       </Card>
     );
   }
@@ -63,18 +61,12 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-fg">
-                <span className="font-mono text-fg-subtle">
-                  {shortenAddress(tip.fromAddress)}
-                </span>
-                {" "}tipped{" "}
-                <span className="font-semibold text-accent">
-                  ${formatUsdc(amount, 2)} USDC
-                </span>
+                <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span>{" "}
+                tipped{" "}
+                <span className="font-semibold text-accent">${formatUsdc(amount, 2)} USDC</span>
               </p>
               {tip.message && (
-                <p className="text-xs text-fg-faint mt-0.5 truncate">
-                  &ldquo;{tip.message}&rdquo;
-                </p>
+                <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
               )}
             </div>
             <TimeAgo iso={tip.ledgerAt} className="text-xs text-fg-dim shrink-0 mt-0.5">

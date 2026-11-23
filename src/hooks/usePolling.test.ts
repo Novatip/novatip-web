@@ -40,7 +40,9 @@ describe("usePolling", () => {
     renderHook(() => usePolling(cb, 1000));
     expect(cb).toHaveBeenCalledTimes(1);
 
-    act(() => { vi.advanceTimersByTime(3000); });
+    act(() => {
+      vi.advanceTimersByTime(3000);
+    });
     expect(cb).toHaveBeenCalledTimes(4);
   });
 
@@ -53,7 +55,9 @@ describe("usePolling", () => {
     setVisibility("hidden");
     expect(onHidden).toHaveBeenCalledTimes(1);
 
-    act(() => { vi.advanceTimersByTime(10_000); });
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
     expect(cb).not.toHaveBeenCalled();
   });
 
@@ -66,7 +70,9 @@ describe("usePolling", () => {
     setVisibility("visible");
     expect(cb).toHaveBeenCalledTimes(1);
 
-    act(() => { vi.advanceTimersByTime(1000); });
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
     expect(cb).toHaveBeenCalledTimes(2);
   });
 
@@ -76,7 +82,9 @@ describe("usePolling", () => {
     unmount();
     cb.mockClear();
 
-    act(() => { vi.advanceTimersByTime(5000); });
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
     setVisibility("hidden");
     setVisibility("visible");
     expect(cb).not.toHaveBeenCalled();

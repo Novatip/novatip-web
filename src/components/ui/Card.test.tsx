@@ -39,7 +39,11 @@ describe("Card – ref forwarding", () => {
 
   it("lets a caller programmatically focus the card via the ref, as TipSuccess does", () => {
     const ref = createRef<HTMLDivElement>();
-    render(<Card ref={ref} tabIndex={-1}>Content</Card>);
+    render(
+      <Card ref={ref} tabIndex={-1}>
+        Content
+      </Card>,
+    );
     ref.current?.focus();
     expect(ref.current).toHaveFocus();
   });

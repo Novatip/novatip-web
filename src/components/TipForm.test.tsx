@@ -30,13 +30,13 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/contexts/WalletContext", () => ({
   useWallet: () => ({
-    publicKey:    mocks.wallet.connected ? PUBLIC_KEY : null,
-    jwt:          mocks.wallet.connected ? "jwt" : null,
-    isConnected:  mocks.wallet.connected,
+    publicKey: mocks.wallet.connected ? PUBLIC_KEY : null,
+    jwt: mocks.wallet.connected ? "jwt" : null,
+    isConnected: mocks.wallet.connected,
     isConnecting: false,
-    error:        null,
-    connect:      vi.fn(),
-    disconnect:   vi.fn(),
+    error: null,
+    connect: vi.fn(),
+    disconnect: vi.fn(),
   }),
 }));
 
@@ -47,10 +47,10 @@ vi.mock("@/lib/balance", () => ({
 vi.mock("@/lib/wallet", async () => {
   const sdk = await import("@novatip/sdk");
   return {
-    assertActiveAccount:   vi.fn(),
-    getTipSplitterClient:  vi.fn(() => ({ tip: mocks.tip })),
-    makeSignTransaction:   vi.fn(),
-    usdcToStroops:         sdk.usdcToStroops,
+    assertActiveAccount: vi.fn(),
+    getTipSplitterClient: vi.fn(() => ({ tip: mocks.tip })),
+    makeSignTransaction: vi.fn(),
+    usdcToStroops: sdk.usdcToStroops,
   };
 });
 
@@ -63,7 +63,7 @@ const EVEN_SPLITS = [
 ];
 
 function renderForm(opts: {
-  amount:  string;
+  amount: string;
   balance: bigint;
   splits?: { to: string; bps: number }[];
 }) {
@@ -189,9 +189,9 @@ describe("TipForm – zero share warning", () => {
   it("warns when the amount rounds a collaborator's share to zero", async () => {
     // 0.00001 USDC = 100 stroops; 100 * 50 / 10_000 rounds down to 0.
     renderForm({
-      amount:  "0.00001",
+      amount: "0.00001",
       balance: 100n * USDC,
-      splits:  [
+      splits: [
         { to: "GAAA", bps: 50 },
         { to: "GBBB", bps: 9_950 },
       ],

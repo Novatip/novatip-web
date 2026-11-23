@@ -28,8 +28,8 @@ const ADDR_B = "GXYZ5678";
 const NOW = 1_000_000; // arbitrary fixed "now" timestamp
 
 // 1 USDC = 10_000_000 stroops (7 decimal places)
-const FIVE_USDC_STROOPS = "50000000";  // 5 USDC
-const THREE_USDC_STROOPS = "30000000";  // 3 USDC
+const FIVE_USDC_STROOPS = "50000000"; // 5 USDC
+const THREE_USDC_STROOPS = "30000000"; // 3 USDC
 
 function makePending(
   address: string,
@@ -47,11 +47,7 @@ function makePending(
   };
 }
 
-function makeIndexed(
-  address: string,
-  amount = FIVE_USDC_STROOPS,
-  id = "indexed-1",
-): IndexedTip {
+function makeIndexed(address: string, amount = FIVE_USDC_STROOPS, id = "indexed-1"): IndexedTip {
   return {
     kind: "indexed",
     id,

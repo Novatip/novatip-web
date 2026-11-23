@@ -38,7 +38,7 @@ import { Avatar } from "@/components/Avatar";
 
 // Both limits match UpdateProfileBody in novatip-backend's creator routes.
 const DISPLAY_NAME_MAX = 80;
-const BIO_MAX          = 300;
+const BIO_MAX = 300;
 
 function validateDisplayName(value: string): string | undefined {
   if (value.length > DISPLAY_NAME_MAX)
@@ -47,8 +47,7 @@ function validateDisplayName(value: string): string | undefined {
 }
 
 function validateBio(value: string): string | undefined {
-  if (value.length > BIO_MAX)
-    return `Bio must be ${BIO_MAX} characters or fewer`;
+  if (value.length > BIO_MAX) return `Bio must be ${BIO_MAX} characters or fewer`;
   return undefined;
 }
 
@@ -65,8 +64,7 @@ function validateAvatarUrl(value: string): string | undefined {
   if (!value) return undefined; // optional field
   try {
     const url = new URL(value);
-    if (url.protocol !== "https:")
-      return "Avatar URL must start with https://";
+    if (url.protocol !== "https:") return "Avatar URL must start with https://";
     return undefined;
   } catch {
     return "Must be a valid URL";
@@ -79,35 +77,35 @@ export default function SettingsPage() {
   const { jwt } = useWallet();
 
   // ── Loaded creator ─────────────────────────────────────────────────────────
-  const [creator,   setCreator]   = useState<CreatorProfile | null>(null);
-  const [loading,   setLoading]   = useState(true);
+  const [creator, setCreator] = useState<CreatorProfile | null>(null);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // ── Profile form state ─────────────────────────────────────────────────────
   const [displayName, setDisplayName] = useState("");
-  const [bio,         setBio]         = useState("");
-  const [avatarUrl,   setAvatarUrl]   = useState("");
-  const [email,       setEmail]       = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [email, setEmail] = useState("");
   // Track which fields have been blurred so errors only appear after
   // interaction, not the moment the page loads with a long existing value.
   const [touched, setTouched] = useState({
     displayName: false,
-    bio:         false,
-    avatarUrl:   false,
-    email:       false,
+    bio: false,
+    avatarUrl: false,
+    email: false,
   });
   const [profileSaving, setProfileSaving] = useState(false);
-  const [profileError,  setProfileError]  = useState<string | null>(null);
-  const [profileSaved,  setProfileSaved]  = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   // ── Slug rename state ──────────────────────────────────────────────────────
-  const [newSlug,      setNewSlug]      = useState("");
-  const [available,    setAvailable]    = useState<boolean | null>(null);
-  const [checking,     setChecking]     = useState(false);
+  const [newSlug, setNewSlug] = useState("");
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [checking, setChecking] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
-  const [renaming,     setRenaming]     = useState(false);
-  const [renameError,  setRenameError]  = useState<string | null>(null);
-  const [renameSaved,  setRenameSaved]  = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [renameSaved, setRenameSaved] = useState(false);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -155,9 +153,9 @@ export default function SettingsPage() {
 
   const profileErrors = {
     displayName: touched.displayName ? validateDisplayName(displayName) : undefined,
-    bio:         touched.bio         ? validateBio(bio)                 : undefined,
-    avatarUrl:   touched.avatarUrl   ? validateAvatarUrl(avatarUrl)     : undefined,
-    email:       touched.email       ? validateEmail(email)             : undefined,
+    bio: touched.bio ? validateBio(bio) : undefined,
+    avatarUrl: touched.avatarUrl ? validateAvatarUrl(avatarUrl) : undefined,
+    email: touched.email ? validateEmail(email) : undefined,
   };
 
   const profileHasErrors =
@@ -167,12 +165,11 @@ export default function SettingsPage() {
     !!validateEmail(email);
 
   const profileDirty =
-    creator !== null && (
-      displayName !== (creator.displayName ?? "") ||
-      bio         !== (creator.bio ?? "")         ||
-      avatarUrl   !== (creator.avatarUrl ?? "")   ||
-      email       !== (creator.email ?? "")
-    );
+    creator !== null &&
+    (displayName !== (creator.displayName ?? "") ||
+      bio !== (creator.bio ?? "") ||
+      avatarUrl !== (creator.avatarUrl ?? "") ||
+      email !== (creator.email ?? ""));
 
   function touchProfileField(field: keyof typeof touched) {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -196,9 +193,9 @@ export default function SettingsPage() {
       // off", so it is always sent, as null rather than omitted.
       const r = await creatorApi.updateProfile(jwt, {
         displayName: displayName.trim() || undefined,
-        bio:         bio.trim()         || undefined,
-        avatarUrl:   avatarUrl.trim()   || undefined,
-        email:       email.trim()       || null,
+        bio: bio.trim() || undefined,
+        avatarUrl: avatarUrl.trim() || undefined,
+        email: email.trim() || null,
       });
       setCreator(r.creator);
       setDisplayName(r.creator.displayName ?? "");
@@ -216,14 +213,17 @@ export default function SettingsPage() {
 
   // ── Slug rename ────────────────────────────────────────────────────────────
 
-  const slugValid   = isValidSlug(newSlug);
+  const slugValid = isValidSlug(newSlug);
   const isUnchanged = slugValid && creator !== null && newSlug === creator.slug;
 
   // Debounced availability check — mirrors onboarding/SlugStep.tsx. Skipped
   // entirely when the typed slug is just the creator's current one: there is
   // nothing to rename, and checking it against itself would misreport as taken.
   useEffect(() => {
-    if (!slugValid || isUnchanged) { setAvailable(null); return; }
+    if (!slugValid || isUnchanged) {
+      setAvailable(null);
+      return;
+    }
     setChecking(true);
     const controller = new AbortController();
     const timer = setTimeout(() => {
@@ -245,8 +245,13 @@ export default function SettingsPage() {
   }, [newSlug, slugValid, isUnchanged]);
 
   const canRename =
-    !!jwt && !!creator && slugValid && !isUnchanged && available === true &&
-    acknowledged && !renaming;
+    !!jwt &&
+    !!creator &&
+    slugValid &&
+    !isUnchanged &&
+    available === true &&
+    acknowledged &&
+    !renaming;
 
   async function handleRename() {
     if (!jwt || !canRename) return;
@@ -277,20 +282,15 @@ export default function SettingsPage() {
   // No third-party placeholder: Avatar falls back to locally generated
   // initials, so the slug never leaves the app (see Avatar.tsx).
   const avatarPreviewUrl =
-    avatarUrl && !validateAvatarUrl(avatarUrl)
-      ? avatarUrl
-      : creator?.avatarUrl ?? null;
+    avatarUrl && !validateAvatarUrl(avatarUrl) ? avatarUrl : (creator?.avatarUrl ?? null);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
-
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-fg">Settings</h1>
-        <p className="text-sm text-fg-subtle mt-1">
-          Manage your public profile and tip page link.
-        </p>
+        <p className="text-sm text-fg-subtle mt-1">Manage your public profile and tip page link.</p>
       </div>
 
       {/* Load error */}
@@ -318,7 +318,6 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="flex flex-col gap-5">
-
               {/* Avatar preview + URL */}
               <div className="flex items-start gap-4">
                 <div className="shrink-0">
@@ -332,7 +331,9 @@ export default function SettingsPage() {
                     </div>
                   ) : (
                     <div className="h-16 w-16 rounded-full bg-surface-strong border border-hairline flex items-center justify-center">
-                      <span className="text-2xl text-fg-dim" aria-hidden="true">👤</span>
+                      <span className="text-2xl text-fg-dim" aria-hidden="true">
+                        👤
+                      </span>
                     </div>
                   )}
                 </div>
@@ -378,10 +379,7 @@ export default function SettingsPage() {
 
               {/* Bio */}
               <div className="flex flex-col gap-1.5">
-                <label
-                  htmlFor="profile-bio"
-                  className="text-sm font-medium text-fg-muted"
-                >
+                <label htmlFor="profile-bio" className="text-sm font-medium text-fg-muted">
                   Bio
                 </label>
                 <textarea
@@ -400,14 +398,14 @@ export default function SettingsPage() {
                     "text-fg placeholder:text-fg-dim text-sm resize-none",
                     "focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50",
                     "transition-all duration-200 disabled:opacity-50",
-                    profileErrors.bio
-                      ? "border-danger/50 focus:ring-danger/30"
-                      : "border-hairline",
+                    profileErrors.bio ? "border-danger/50 focus:ring-danger/30" : "border-hairline",
                   ].join(" ")}
                   aria-describedby={profileErrors.bio ? "bio-error" : "bio-hint"}
                 />
                 {profileErrors.bio ? (
-                  <p id="bio-error" className="text-xs text-danger">{profileErrors.bio}</p>
+                  <p id="bio-error" className="text-xs text-danger">
+                    {profileErrors.bio}
+                  </p>
                 ) : (
                   <p id="bio-hint" className="text-xs text-fg-faint text-right">
                     {bio.length} / {BIO_MAX}
@@ -471,7 +469,12 @@ export default function SettingsPage() {
                       setBio(creator.bio ?? "");
                       setAvatarUrl(creator.avatarUrl ?? "");
                       setEmail(creator.email ?? "");
-                      setTouched({ displayName: false, bio: false, avatarUrl: false, email: false });
+                      setTouched({
+                        displayName: false,
+                        bio: false,
+                        avatarUrl: false,
+                        email: false,
+                      });
                       setProfileError(null);
                     }}
                   >
@@ -479,7 +482,6 @@ export default function SettingsPage() {
                   </button>
                 )}
               </div>
-
             </div>
           )}
         </Card>
@@ -515,11 +517,16 @@ export default function SettingsPage() {
               Renaming changes your public link immediately. Your current link
               {creator && (
                 <>
-                  {" "}(<span className="font-mono">{getTipUrl(creator.slug).replace(/^https?:\/\//, "")}</span>)
+                  {" "}
+                  (
+                  <span className="font-mono">
+                    {getTipUrl(creator.slug).replace(/^https?:\/\//, "")}
+                  </span>
+                  )
                 </>
-              )}
-              {" "}will stop working — including any QR codes or posters that
-              already have it printed on them.
+              )}{" "}
+              will stop working — including any QR codes or posters that already have it printed on
+              them.
             </p>
           </div>
 
@@ -546,19 +553,19 @@ export default function SettingsPage() {
             </div>
 
             <div className="flex items-center justify-between">
-              <p className="text-xs text-fg-faint">3–32 chars: lowercase, numbers, hyphens, underscores</p>
-              {slugValid && !isUnchanged && (
-                checking
-                  ? <Badge variant="default">Checking…</Badge>
-                  : available === true
-                  ? <Badge variant="success">Available ✓</Badge>
-                  : available === false
-                  ? <Badge variant="error">Taken</Badge>
-                  : null
-              )}
-              {isUnchanged && (
-                <Badge variant="default">That&apos;s your current slug</Badge>
-              )}
+              <p className="text-xs text-fg-faint">
+                3–32 chars: lowercase, numbers, hyphens, underscores
+              </p>
+              {slugValid &&
+                !isUnchanged &&
+                (checking ? (
+                  <Badge variant="default">Checking…</Badge>
+                ) : available === true ? (
+                  <Badge variant="success">Available ✓</Badge>
+                ) : available === false ? (
+                  <Badge variant="error">Taken</Badge>
+                ) : null)}
+              {isUnchanged && <Badge variant="default">That&apos;s your current slug</Badge>}
             </div>
           </div>
 

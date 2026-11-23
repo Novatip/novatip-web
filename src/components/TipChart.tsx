@@ -54,7 +54,20 @@ function parseAmount(raw: string): bigint | null {
 /** Format "YYYY-MM-DD" → short month + day, e.g. "Jun 3" */
 function fmtDate(iso: string): string {
   const [, m, d] = iso.split("-");
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   return `${months[Number(m) - 1]} ${Number(d)}`;
 }
 
@@ -70,9 +83,7 @@ export function fillSeries(raw: DataPoint[], days: number): DataPoint[] {
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(utcToday - i * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
-    result.push(
-      byDate.get(key) ?? { date: key, tipCount: 0, amountRaw: "0" },
-    );
+    result.push(byDate.get(key) ?? { date: key, tipCount: 0, amountRaw: "0" });
   }
   return result;
 }
@@ -132,9 +143,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       y: ys[i],
       value: values[i],
       label:
-        mode === "count"
-          ? String(p.tipCount)
-          : `$${formatUsdc(parseAmount(p.amountRaw) ?? 0n, 2)}`,
+        mode === "count" ? String(p.tipCount) : `$${formatUsdc(parseAmount(p.amountRaw) ?? 0n, 2)}`,
       date: p.date,
     }))
     .filter((d) => d.value > 0);
@@ -159,18 +168,17 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       {[0.25, 0.5, 0.75, 1].map((frac) => (
         <line
           key={frac}
-          x1={0} y1={height * frac * 0.88}
-          x2={width} y2={height * frac * 0.88}
+          x1={0}
+          y1={height * frac * 0.88}
+          x2={width}
+          y2={height * frac * 0.88}
           className="stroke-hairline"
           strokeWidth={0.5}
         />
       ))}
 
       {/* Area fill */}
-      <path
-        d={areaPath}
-        fill={`url(#${gradId})`}
-      />
+      <path d={areaPath} fill={`url(#${gradId})`} />
 
       {/* Line */}
       <path
@@ -199,8 +207,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       {/* X-axis date labels */}
       {tickIdxs.map((idx) => {
         const x = xs[idx];
-        const anchor =
-          idx === 0 ? "start" : idx === n - 1 ? "end" : "middle";
+        const anchor = idx === 0 ? "start" : idx === n - 1 ? "end" : "middle";
         return (
           <text
             key={idx}
@@ -249,29 +256,32 @@ export function TipChart({ jwt }: TipChartProps) {
   const abortRef = useRef<AbortController | null>(null);
   const gradId = useId().replace(/:/g, ""); // SVG id must not contain colons
 
-  const fetchSeries = useCallback((days: Window) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const fetchSeries = useCallback(
+    (days: Window) => {
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    setLoading(true);
-    analyticsApi
-      .timeSeries(jwt, days, { signal: controller.signal })
-      .then((r) => {
-        setSeries(fillSeries(r.series, days));
-        setError(null);
-      })
-      .catch((e: unknown) => {
-        if (e instanceof ApiError && e.code === "ABORTED") return;
-        setError(getErrorMessage(e, "Failed to load chart data."));
-      })
-      .finally(() => {
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [jwt]);
+      setLoading(true);
+      analyticsApi
+        .timeSeries(jwt, days, { signal: controller.signal })
+        .then((r) => {
+          setSeries(fillSeries(r.series, days));
+          setError(null);
+        })
+        .catch((e: unknown) => {
+          if (e instanceof ApiError && e.code === "ABORTED") return;
+          setError(getErrorMessage(e, "Failed to load chart data."));
+        })
+        .finally(() => {
+          if (abortRef.current === controller) {
+            abortRef.current = null;
+            setLoading(false);
+          }
+        });
+    },
+    [jwt],
+  );
 
   useEffect(() => {
     fetchSeries(window);
@@ -282,7 +292,8 @@ export function TipChart({ jwt }: TipChartProps) {
 
   // ── Derived summary ────────────────────────────────────────────────────────
   const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
-  const totalAmount = series?.reduce((s, p) => s + (parseAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
+  const totalAmount =
+    series?.reduce((s, p) => s + (parseAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
   const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -356,14 +367,10 @@ export function TipChart({ jwt }: TipChartProps) {
       </CardHeader>
 
       {/* Loading skeleton */}
-      {loading && (
-        <div className="h-36 rounded-xl bg-hairline/40 animate-pulse" />
-      )}
+      {loading && <div className="h-36 rounded-xl bg-hairline/40 animate-pulse" />}
 
       {/* Error */}
-      {!loading && error && (
-        <p className="text-sm text-danger py-4">{error}</p>
-      )}
+      {!loading && error && <p className="text-sm text-danger py-4">{error}</p>}
 
       {/* Empty state */}
       {!loading && !error && series && activeDays === 0 && (
@@ -384,9 +391,7 @@ export function TipChart({ jwt }: TipChartProps) {
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Earned</span>
-              <p className="font-semibold text-fg">
-                ${formatUsdc(totalAmount, 2)}
-              </p>
+              <p className="font-semibold text-fg">${formatUsdc(totalAmount, 2)}</p>
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Active days</span>

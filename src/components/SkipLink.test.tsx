@@ -58,8 +58,6 @@ describe("SkipLink", () => {
   it("has an accessible name that explains its destination", () => {
     render(<SkipLink />);
 
-    expect(
-      screen.getByRole("link", { name: "Skip to content" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Skip to content" })).toBeInTheDocument();
   });
 });

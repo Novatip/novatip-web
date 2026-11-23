@@ -21,10 +21,10 @@ const getActiveAddress = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/wallet", () => ({ getActiveAddress }));
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    null as string | null,
+  publicKey: null as string | null,
   isConnecting: false,
-  connect:      vi.fn(),
-  disconnect:   vi.fn(),
+  connect: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -32,7 +32,7 @@ vi.mock("@/contexts/WalletContext", () => ({
 }));
 
 const CONNECTED = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
-const OTHER     = "GZYXWVUTSRQPONMLKJIHGFEDCBA0987654321ZYXWVUTSRQPONMLKJI";
+const OTHER = "GZYXWVUTSRQPONMLKJIHGFEDCBA0987654321ZYXWVUTSRQPONMLKJI";
 
 async function settle(ms = 0) {
   await act(async () => {
@@ -115,8 +115,12 @@ describe("AccountChangeBanner", () => {
   it("ends the old session, then connects, when Reconnect is clicked", async () => {
     getActiveAddress.mockResolvedValue(OTHER);
     const calls: string[] = [];
-    mockWallet.disconnect.mockImplementation(() => { calls.push("disconnect"); });
-    mockWallet.connect.mockImplementation(async () => { calls.push("connect"); });
+    mockWallet.disconnect.mockImplementation(() => {
+      calls.push("disconnect");
+    });
+    mockWallet.connect.mockImplementation(async () => {
+      calls.push("connect");
+    });
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<AccountChangeBanner />);

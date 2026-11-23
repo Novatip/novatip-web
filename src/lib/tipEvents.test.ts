@@ -16,9 +16,9 @@ import { tipEvents, type TipSuccessPayload } from "./tipEvents";
 
 const PAYLOAD: TipSuccessPayload = {
   fromAddress: "GABC1234",
-  amount:      "5",
-  message:     "nice work",
-  slug:        "ada",
+  amount: "5",
+  message: "nice work",
+  slug: "ada",
 };
 
 describe("tipEvents", () => {

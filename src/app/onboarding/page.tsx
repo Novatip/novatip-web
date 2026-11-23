@@ -14,12 +14,12 @@ import { useEffect, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { StepIndicator } from "@/components/onboarding/StepIndicator";
-import { SlugStep }      from "@/components/onboarding/SlugStep";
-import { SplitsStep }    from "@/components/onboarding/SplitsStep";
-import { ShareStep }     from "@/components/onboarding/ShareStep";
-import { ThemeToggle }   from "@/components/ThemeToggle";
-import { Card }          from "@/components/ui/Card";
-import { Button }        from "@/components/ui/Button";
+import { SlugStep } from "@/components/onboarding/SlugStep";
+import { SplitsStep } from "@/components/onboarding/SplitsStep";
+import { ShareStep } from "@/components/onboarding/ShareStep";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
 import { authApi, creatorApi } from "@/lib/api";
 import { isTempSlug } from "@/lib/onboarding";
 import Link from "next/link";
@@ -62,12 +62,17 @@ export default function OnboardingPage() {
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [jwt]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="min-h-screen flex flex-col items-center justify-center px-4 py-12 outline-none">
-
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="min-h-screen flex flex-col items-center justify-center px-4 py-12 outline-none"
+    >
       {/* Back link */}
       <div className="w-full max-w-md mb-6 flex items-center justify-between">
         <Link href="/" className="text-sm text-fg-faint hover:text-fg-muted transition-colors">
@@ -77,10 +82,11 @@ export default function OnboardingPage() {
       </div>
 
       <div className="w-full max-w-md flex flex-col gap-6 animate-slide-up">
-
         {/* Header */}
         <div className="text-center">
-          <span className="text-4xl mb-3 block" role="img" aria-label="tip jar">💸</span>
+          <span className="text-4xl mb-3 block" role="img" aria-label="tip jar">
+            💸
+          </span>
           <h1 className="text-2xl font-bold text-fg">Create your tip jar</h1>
           <p className="text-sm text-fg-subtle mt-1">Takes less than a minute</p>
         </div>
@@ -114,39 +120,34 @@ export default function OnboardingPage() {
                     Your wallet is connected. Sign in to continue creating your tip jar.
                   </p>
                   {error && (
-                    <p role="alert" className="text-sm text-danger text-center">{error}</p>
+                    <p role="alert" className="text-sm text-danger text-center">
+                      {error}
+                    </p>
                   )}
                   <Button size="lg" className="w-full" loading={isSigningIn} onClick={retrySignIn}>
                     {isSigningIn ? "Signing in..." : "Sign in"}
                   </Button>
                 </div>
               ) : resuming ? (
-                <p className="text-sm text-fg-subtle text-center py-8">
-                  Checking your progress…
-                </p>
+                <p className="text-sm text-fg-subtle text-center py-8">Checking your progress…</p>
               ) : (
                 <>
                   {step === 0 && jwt && (
                     <SlugStep
                       jwt={jwt}
-                      onNext={(s) => { setSlug(s); setStep(1); }}
+                      onNext={(s) => {
+                        setSlug(s);
+                        setStep(1);
+                      }}
                     />
                   )}
-                  {step === 1 && (
-                    <SplitsStep
-                      slug={slug}
-                      onNext={() => setStep(2)}
-                    />
-                  )}
-                  {step === 2 && (
-                    <ShareStep slug={slug} />
-                  )}
+                  {step === 1 && <SplitsStep slug={slug} onNext={() => setStep(2)} />}
+                  {step === 2 && <ShareStep slug={slug} />}
                 </>
               )}
             </Card>
           </>
         )}
-
       </div>
     </main>
   );

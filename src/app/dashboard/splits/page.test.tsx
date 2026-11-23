@@ -16,15 +16,15 @@ import userEvent from "@testing-library/user-event";
 import SplitsPage from "./page";
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR",
-  jwt:          "mock.jwt.token",
-  isConnected:  true,
+  publicKey: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR",
+  jwt: "mock.jwt.token",
+  isConnected: true,
   isConnecting: false,
-  isSigningIn:  false,
-  error:        null as string | null,
-  connect:      vi.fn(),
-  retrySignIn:  vi.fn(),
-  disconnect:   vi.fn(),
+  isSigningIn: false,
+  error: null as string | null,
+  connect: vi.fn(),
+  retrySignIn: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -61,9 +61,7 @@ vi.mock("@/lib/jar", () => ({
 const MOCK_CREATOR = {
   slug: "testcreator",
   jarId: "@testcreator",
-  splits: [
-    { to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 10000 },
-  ],
+  splits: [{ to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 10000 }],
 };
 
 afterEach(() => {
@@ -166,7 +164,10 @@ describe("SplitsPage – save ordering", () => {
 
     // Fill in the new collaborator's address
     const addressInputs = screen.getAllByLabelText(/address/i);
-    await userEvent.type(addressInputs[1]!, "GCB6PYGTNPFCHUXULHSVCTITYXPUB4Y6JKW2GSJ5C2WL5CRQBY5GUBNR");
+    await userEvent.type(
+      addressInputs[1]!,
+      "GCB6PYGTNPFCHUXULHSVCTITYXPUB4Y6JKW2GSJ5C2WL5CRQBY5GUBNR",
+    );
 
     // Fill in the new collaborator's bps
     const newBpsInputs = screen.getAllByLabelText(/basis points/i);
@@ -187,10 +188,7 @@ describe("SplitsPage – save ordering", () => {
       splits: updatedSplits,
     });
 
-    expect(mockCreatorApi.updateSplits).toHaveBeenCalledWith(
-      mockWallet.jwt,
-      updatedSplits,
-    );
+    expect(mockCreatorApi.updateSplits).toHaveBeenCalledWith(mockWallet.jwt, updatedSplits);
   });
 });
 

@@ -75,9 +75,7 @@ describe("HistoryPage – load more announcement", () => {
     await user.click(button);
 
     const status = await screen.findByRole("status");
-    await waitFor(() =>
-      expect(status).toHaveTextContent("3 more tips loaded."),
-    );
+    await waitFor(() => expect(status).toHaveTextContent("3 more tips loaded."));
     expect(status).toHaveAttribute("aria-live", "polite");
   });
 
@@ -91,9 +89,7 @@ describe("HistoryPage – load more announcement", () => {
     await user.click(button);
 
     const status = await screen.findByRole("status");
-    await waitFor(() =>
-      expect(status).toHaveTextContent("1 more tip loaded."),
-    );
+    await waitFor(() => expect(status).toHaveTextContent("1 more tip loaded."));
   });
 
   it("does not announce anything for the initial page load", async () => {
@@ -111,14 +107,12 @@ describe("HistoryPage – load more announcement", () => {
 describe("HistoryPage – in-flight state", () => {
   it("conveys the in-flight state on the button while the request is pending", async () => {
     let resolveSecond: (value: { tips: ReturnType<typeof makeTips> }) => void;
-    recent
-      .mockResolvedValueOnce({ tips: makeTips(PAGE_SIZE, 0) })
-      .mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            resolveSecond = resolve;
-          }),
-      );
+    recent.mockResolvedValueOnce({ tips: makeTips(PAGE_SIZE, 0) }).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSecond = resolve;
+        }),
+    );
 
     const user = userEvent.setup();
     render(<HistoryPage />);
@@ -137,9 +131,7 @@ describe("HistoryPage – in-flight state", () => {
     resolveSecond!({ tips: makeTips(PAGE_SIZE, PAGE_SIZE) });
 
     await waitFor(() =>
-      expect(
-        screen.getByRole("button", { name: "Load more" }),
-      ).not.toHaveAttribute("aria-busy"),
+      expect(screen.getByRole("button", { name: "Load more" })).not.toHaveAttribute("aria-busy"),
     );
   });
 });
@@ -159,9 +151,7 @@ describe("HistoryPage – focus", () => {
 
     await screen.findByRole("status");
     await waitFor(() =>
-      expect(screen.getByRole("status")).toHaveTextContent(
-        `${PAGE_SIZE} more tips loaded.`,
-      ),
+      expect(screen.getByRole("status")).toHaveTextContent(`${PAGE_SIZE} more tips loaded.`),
     );
 
     expect(button).toHaveFocus();
@@ -201,9 +191,7 @@ describe("HistoryPage – pagination", () => {
 
     render(<HistoryPage />);
 
-    await waitFor(() =>
-      expect(screen.getByText("Showing all tips (100 max)")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("Showing all tips (100 max)")).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 
@@ -212,13 +200,10 @@ describe("HistoryPage – pagination", () => {
 
     render(<HistoryPage />);
 
-    await waitFor(() =>
-      expect(screen.getByText(/that.s all your tips/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/that.s all your tips/i)).toBeInTheDocument());
     expect(screen.queryByRole("button", { name: "Load more" })).not.toBeInTheDocument();
   });
 });
-
 
 describe("HistoryPage – long messages", () => {
   const LONG = "This is a very long thank-you message. ".repeat(12).trim();

@@ -18,14 +18,17 @@ export const LARGE_TIP_CONFIRM_USDC = 100;
  * Rejects empty strings, whitespace, negative numbers, hex notation, and exponents.
  */
 export function isValidPlainDecimal(amount: unknown): boolean {
-  if (typeof amount !== 'string') return false;
+  if (typeof amount !== "string") return false;
   // Regex matches 1+ digits optionally followed by a dot and 1+ digits, or just digits.
   // Strictly disallows negative signs, '0x', 'e' exponents, or whitespace.
   const plainDecimalRegex = /^\d+(\.\d+)?$/;
   return plainDecimalRegex.test(amount.trim());
 }
 
-export function isWithinTipCeiling(amount: unknown, ceiling: number = MAX_CUSTOM_TIP_USDC): boolean {
+export function isWithinTipCeiling(
+  amount: unknown,
+  ceiling: number = MAX_CUSTOM_TIP_USDC,
+): boolean {
   if (!isValidPlainDecimal(amount)) return false;
   const num = Number(amount);
   return num >= 0 && num <= ceiling;

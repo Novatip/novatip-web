@@ -8,9 +8,8 @@
 import { config } from "./config";
 
 export function getTipUrl(slug: string): string {
-  const origin = typeof window !== "undefined"
-    ? window.location.origin
-    : config.siteUrl.replace(/\/$/, "");
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : config.siteUrl.replace(/\/$/, "");
   return `${origin}/${encodeURIComponent(slug)}`;
 }
 

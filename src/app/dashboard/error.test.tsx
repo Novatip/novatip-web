@@ -32,9 +32,7 @@ describe("app/dashboard/error", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     render(<DashboardError error={makeError()} reset={vi.fn()} />);
 
-    expect(
-      screen.getByRole("heading", { name: /this page hit a snag/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /this page hit a snag/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 

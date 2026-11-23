@@ -21,7 +21,7 @@ const getActiveAddress = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/wallet", () => ({ getActiveAddress }));
 
 const CONNECTED = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
-const OTHER     = "GZYXWVUTSRQPONMLKJIHGFEDCBA0987654321ZYXWVUTSRQPONMLKJI";
+const OTHER = "GZYXWVUTSRQPONMLKJIHGFEDCBA0987654321ZYXWVUTSRQPONMLKJI";
 
 let visibility: DocumentVisibilityState = "visible";
 

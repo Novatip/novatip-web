@@ -30,15 +30,18 @@ describe("AmountPicker – preset buttons", () => {
   it("renders all five preset buttons", () => {
     setup();
     ["$1", "$2", "$5", "$10", "$25"].forEach((label) => {
-      expect(screen.getByRole("button", { name: new RegExp(`Tip \\${label} USDC`, "i") })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: new RegExp(`Tip \\${label} USDC`, "i") }),
+      ).toBeInTheDocument();
     });
   });
 
   it("marks the active preset as aria-pressed=true", () => {
     setup("5");
-    expect(
-      screen.getByRole("button", { name: /Tip \$5 USDC/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Tip \$5 USDC/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("calls onChange with the preset value when clicked", async () => {
@@ -74,7 +77,10 @@ describe("AmountPicker – restored amount", () => {
 
     rerender(<AmountPicker value="5" onChange={onChange} />);
 
-    expect(screen.getByRole("button", { name: /Tip \$5 USDC/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Tip \$5 USDC/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
     expect(screen.getByRole("textbox", { name: /enter custom tip amount/i })).toHaveValue("");
   });
 });
@@ -120,9 +126,7 @@ describe("AmountPicker – custom input sanitisation", () => {
     const { rerender } = render(<AmountPicker value="" onChange={vi.fn()} />);
     rerender(<AmountPicker value="0" onChange={vi.fn()} />);
     // The validation message should appear
-    expect(
-      screen.getByText(/enter a valid amount greater than 0/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/enter a valid amount greater than 0/i)).toBeInTheDocument();
   });
 
   it("shows the summary line for a valid amount", () => {
@@ -157,9 +161,10 @@ describe("AmountPicker – configurable presets", () => {
 
   it("marks a custom preset active by the same rule as the default list", () => {
     render(<AmountPicker value="7" onChange={vi.fn()} presets={["3", "7", "15"]} />);
-    expect(
-      screen.getByRole("button", { name: /Tip \$7 USDC/i }),
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /Tip \$7 USDC/i })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
   });
 
   it("falls back to the default list when no presets prop is given", () => {

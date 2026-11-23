@@ -42,9 +42,7 @@ describe("app/error", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
     render(<ErrorPage error={makeError()} reset={vi.fn()} />);
 
-    expect(
-      screen.getByRole("heading", { name: /something went wrong/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /something went wrong/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
   });
 
@@ -92,7 +90,7 @@ describe("app/error", () => {
 
   it("logs the error for anyone watching the console", () => {
     const logged = vi.spyOn(console, "error").mockImplementation(() => {});
-    const error  = makeError();
+    const error = makeError();
 
     render(<ErrorPage error={error} reset={vi.fn()} />);
 
@@ -121,9 +119,7 @@ describe("app/not-found", () => {
     render(<NotFound />);
 
     expect(screen.getByText("404")).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: /page not found/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /page not found/i })).toBeInTheDocument();
   });
 
   it("routes the visitor back to the homepage", () => {

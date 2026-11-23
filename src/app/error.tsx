@@ -39,10 +39,13 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
     <>
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none"
+      >
         <Card className="w-full max-w-md text-center animate-slide-up">
           <div className="flex flex-col items-center gap-5 py-4">
-
             <div
               className="flex items-center justify-center h-20 w-20 rounded-full bg-danger/15 ring-4 ring-danger/20"
               role="img"
@@ -52,12 +55,10 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-fg mb-1">
-                Something went wrong
-              </h1>
+              <h1 className="text-2xl font-bold text-fg mb-1">Something went wrong</h1>
               <p className="text-sm text-fg-subtle">
-                This one is on us, not on you. Try again — and if it keeps
-                happening, head back home and take another run at it.
+                This one is on us, not on you. Try again — and if it keeps happening, head back home
+                and take another run at it.
               </p>
             </div>
 
@@ -73,9 +74,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
             )}
 
             {error.digest && (
-              <p className="text-xs text-fg-faint font-mono">
-                Reference: {error.digest}
-              </p>
+              <p className="text-xs text-fg-faint font-mono">Reference: {error.digest}</p>
             )}
 
             <div className="flex flex-col w-full gap-3">
@@ -86,7 +85,6 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
                 Back to home
               </LinkButton>
             </div>
-
           </div>
         </Card>
       </main>

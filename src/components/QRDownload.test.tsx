@@ -21,7 +21,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QRDownload } from "./QRDownload";
 
-const SLUG   = "ada";
+const SLUG = "ada";
 const PNG_URL = "https://api.novatip.xyz/qr/ada.png";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -30,9 +30,9 @@ const PNG_URL = "https://api.novatip.xyz/qr/ada.png";
 function grantClipboard() {
   const writeText = vi.fn(async () => {});
   Object.defineProperty(navigator, "clipboard", {
-    value:        { writeText },
+    value: { writeText },
     configurable: true,
-    writable:     true,
+    writable: true,
   });
   return writeText;
 }
@@ -40,9 +40,9 @@ function grantClipboard() {
 /** Strip every copy mechanism — what an insecure origin actually looks like. */
 function blockClipboard() {
   Object.defineProperty(navigator, "clipboard", {
-    value:        undefined,
+    value: undefined,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
   Reflect.deleteProperty(document, "execCommand");
 }
@@ -105,9 +105,13 @@ describe("QRDownload – failed copy", () => {
 
   it("reports the failure when the Clipboard API rejects", async () => {
     Object.defineProperty(navigator, "clipboard", {
-      value:        { writeText: vi.fn(async () => { throw new Error("denied"); }) },
+      value: {
+        writeText: vi.fn(async () => {
+          throw new Error("denied");
+        }),
+      },
       configurable: true,
-      writable:     true,
+      writable: true,
     });
     render(<QRDownload slug={SLUG} pngUrl={PNG_URL} />);
 

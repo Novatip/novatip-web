@@ -26,10 +26,10 @@ import { getAddress, signMessage } from "@stellar/freighter-api";
 import { assertActiveAccount, signNonce } from "./wallet";
 
 vi.mock("@stellar/freighter-api", () => ({
-  getAddress:      vi.fn(),
-  isConnected:     vi.fn(),
-  requestAccess:   vi.fn(),
-  signMessage:     vi.fn(),
+  getAddress: vi.fn(),
+  isConnected: vi.fn(),
+  requestAccess: vi.fn(),
+  signMessage: vi.fn(),
   signTransaction: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-const ACTIVE   = "GACTIVEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const ACTIVE = "GACTIVEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
 const EXPECTED = "GEXPECTEDBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
 
 /** Mirrors the private shorten() helper in lib/wallet.ts. */

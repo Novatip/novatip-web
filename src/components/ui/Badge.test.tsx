@@ -56,12 +56,7 @@ describe("Badge – variants", () => {
   it("applies the usdc variant's theme-aware token classes", () => {
     render(<Badge variant="usdc">Label</Badge>);
     const badge = screen.getByText("Label");
-    expect(badge).toHaveClass(
-      "bg-usdc/20",
-      "text-usdc-fg",
-      "border",
-      "border-usdc-border/30",
-    );
+    expect(badge).toHaveClass("bg-usdc/20", "text-usdc-fg", "border", "border-usdc-border/30");
     // No raw palette classes — dark values come from the tokens.
     expect(badge.className).not.toMatch(/blue-\d+/);
   });

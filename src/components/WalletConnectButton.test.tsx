@@ -22,14 +22,14 @@ import userEvent from "@testing-library/user-event";
 import { WalletConnectButton } from "./WalletConnectButton";
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    null as string | null,
-  jwt:          null as string | null,
-  isConnected:  false,
+  publicKey: null as string | null,
+  jwt: null as string | null,
+  isConnected: false,
   isConnecting: false,
-  error:        null as string | null,
-  errorCode:    null as string | null,
-  connect:      vi.fn(),
-  disconnect:   vi.fn(),
+  error: null as string | null,
+  errorCode: null as string | null,
+  connect: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -68,7 +68,8 @@ describe("WalletConnectButton – disconnected", () => {
   });
 
   it("links to freighter.app when the extension is not installed", () => {
-    mockWallet.error = "Freighter wallet extension not found. Install it from freighter.app, then reload this page.";
+    mockWallet.error =
+      "Freighter wallet extension not found. Install it from freighter.app, then reload this page.";
     mockWallet.errorCode = "FREIGHTER_NOT_INSTALLED";
     render(<WalletConnectButton />);
 
@@ -114,7 +115,9 @@ describe("WalletConnectButton – connected", () => {
     mockWallet.publicKey = PUBLIC_KEY;
     render(<WalletConnectButton />);
 
-    expect(screen.getByText(`${PUBLIC_KEY.slice(0, 4)}…${PUBLIC_KEY.slice(-4)}`)).toBeInTheDocument();
+    expect(
+      screen.getByText(`${PUBLIC_KEY.slice(0, 4)}…${PUBLIC_KEY.slice(-4)}`),
+    ).toBeInTheDocument();
   });
 
   it("does not show the Connect Wallet button", () => {

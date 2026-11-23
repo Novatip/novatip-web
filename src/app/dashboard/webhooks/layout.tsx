@@ -10,10 +10,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("Webhooks");
 
-export default function WebhooksLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function WebhooksLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

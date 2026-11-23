@@ -16,9 +16,9 @@
 
 import { renderHomeOgCard } from "@/lib/homeOgCard";
 
-export const runtime     = "edge";
-export const alt         = "Novatip — Tap to tip any creator";
-export const size        = { width: 1200, height: 630 };
+export const runtime = "edge";
+export const alt = "Novatip — Tap to tip any creator";
+export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default function OgImage() {

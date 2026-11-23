@@ -14,13 +14,7 @@
  *   - disconnect()       clear local session
  */
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { connectFreighter, isFreighterInstalled, signNonce } from "@/lib/wallet";
 import { authApi } from "@/lib/api";
 import { onUnauthorized } from "@/lib/authEvents";
@@ -32,16 +26,16 @@ import { isJwtExpired } from "@/lib/jwt";
 export type WalletErrorCode = "FREIGHTER_NOT_INSTALLED";
 
 interface WalletState {
-  publicKey:    string | null;
-  jwt:          string | null;
-  isConnected:  boolean;
+  publicKey: string | null;
+  jwt: string | null;
+  isConnected: boolean;
   isConnecting: boolean;
-  isSigningIn:  boolean;
-  error:        string | null;
-  errorCode:    WalletErrorCode | null;
-  connect:      () => Promise<void>;
-  retrySignIn:  () => Promise<void>;
-  disconnect:   () => void;
+  isSigningIn: boolean;
+  error: string | null;
+  errorCode: WalletErrorCode | null;
+  connect: () => Promise<void>;
+  retrySignIn: () => Promise<void>;
+  disconnect: () => void;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -49,17 +43,17 @@ interface WalletState {
 const WalletContext = createContext<WalletState | null>(null);
 
 const JWT_STORAGE_KEY = "novatip_jwt";
-const PK_STORAGE_KEY  = "novatip_pk";
+const PK_STORAGE_KEY = "novatip_pk";
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [publicKey,    setPublicKey]    = useState<string | null>(null);
-  const [jwt,          setJwt]          = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [jwt, setJwt] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isSigningIn,  setIsSigningIn]  = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [errorCode,    setErrorCode]    = useState<WalletErrorCode | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<WalletErrorCode | null>(null);
 
   // Rehydrate from localStorage on mount. The two are restored independently:
   // a connected wallet with no creator session is the normal state for someone
@@ -203,7 +197,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       value={{
         publicKey,
         jwt,
-        isConnected:  !!publicKey,
+        isConnected: !!publicKey,
         isConnecting,
         isSigningIn,
         error,

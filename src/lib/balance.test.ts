@@ -53,8 +53,7 @@ const deps = vi.hoisted(() => ({
 vi.mock("./config", () => ({
   config: {
     stellar: {
-      usdcContractId:
-        "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
+      usdcContractId: "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA",
     },
   },
 }));
@@ -110,11 +109,7 @@ describe("getUsdcBalance", () => {
     // the address doubles as the read-only source account.
     expect(deps.getNetworkConfig).toHaveBeenCalledTimes(1);
     expect(deps.createRpcServer).toHaveBeenCalledWith(NETWORK);
-    expect(deps.buildTransactionBuilder).toHaveBeenCalledWith(
-      ADDRESS,
-      NETWORK,
-      server,
-    );
+    expect(deps.buildTransactionBuilder).toHaveBeenCalledWith(ADDRESS, NETWORK, server);
 
     expect(deps.nativeToScVal).toHaveBeenCalledWith(ADDRESS, {
       type: "address",
@@ -134,9 +129,7 @@ describe("getUsdcBalance", () => {
       error: "HostError: Error(Contract, #10)",
     });
 
-    await expect(getUsdcBalance(ADDRESS)).rejects.toThrow(
-      "Could not read USDC balance.",
-    );
+    await expect(getUsdcBalance(ADDRESS)).rejects.toThrow("Could not read USDC balance.");
 
     // Nothing is unwrapped from a failed simulation, not even a stale retval.
     expect(deps.scValToNative).not.toHaveBeenCalled();
@@ -146,9 +139,7 @@ describe("getUsdcBalance", () => {
     deps.isSimulationError.mockReturnValue(false);
     server.simulateTransaction.mockResolvedValue({});
 
-    await expect(getUsdcBalance(ADDRESS)).rejects.toThrow(
-      "Could not read USDC balance.",
-    );
+    await expect(getUsdcBalance(ADDRESS)).rejects.toThrow("Could not read USDC balance.");
 
     expect(deps.scValToNative).not.toHaveBeenCalled();
   });

@@ -28,17 +28,12 @@ afterEach(cleanup);
 describe("Button – loading state", () => {
   it("sets aria-busy when loading", () => {
     render(<Button loading>Save</Button>);
-    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute(
-      "aria-busy",
-      "true",
-    );
+    expect(screen.getByRole("button", { name: "Save" })).toHaveAttribute("aria-busy", "true");
   });
 
   it("does not set aria-busy when not loading", () => {
     render(<Button>Save</Button>);
-    expect(screen.getByRole("button", { name: "Save" })).not.toHaveAttribute(
-      "aria-busy",
-    );
+    expect(screen.getByRole("button", { name: "Save" })).not.toHaveAttribute("aria-busy");
   });
 
   it("hides the spinner from assistive technology", () => {
@@ -60,7 +55,11 @@ describe("Button – disabled while loading", () => {
   it("does not fire onClick when clicked while loading", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
-    render(<Button loading onClick={onClick}>Save</Button>);
+    render(
+      <Button loading onClick={onClick}>
+        Save
+      </Button>,
+    );
 
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -70,7 +69,11 @@ describe("Button – disabled while loading", () => {
   it("does not fire onClick when explicitly disabled (loading or not)", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
-    render(<Button disabled onClick={onClick}>Save</Button>);
+    render(
+      <Button disabled onClick={onClick}>
+        Save
+      </Button>,
+    );
 
     await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -90,7 +93,11 @@ describe("Button – disabled while loading", () => {
   it("is not disabled, and fires onClick, when loading is explicitly false", async () => {
     const onClick = vi.fn();
     const user = userEvent.setup();
-    render(<Button loading={false} onClick={onClick}>Save</Button>);
+    render(
+      <Button loading={false} onClick={onClick}>
+        Save
+      </Button>,
+    );
 
     const button = screen.getByRole("button", { name: "Save" });
     expect(button).toBeEnabled();
@@ -178,18 +185,12 @@ describe("Button – sizes", () => {
 describe("Button – type attribute", () => {
   it('defaults to type="button" to avoid accidental form submission', () => {
     render(<Button>Click</Button>);
-    expect(screen.getByRole("button", { name: "Click" })).toHaveAttribute(
-      "type",
-      "button",
-    );
+    expect(screen.getByRole("button", { name: "Click" })).toHaveAttribute("type", "button");
   });
 
   it('accepts type="submit" when explicitly set', () => {
     render(<Button type="submit">Submit</Button>);
-    expect(screen.getByRole("button", { name: "Submit" })).toHaveAttribute(
-      "type",
-      "submit",
-    );
+    expect(screen.getByRole("button", { name: "Submit" })).toHaveAttribute("type", "submit");
   });
 });
 

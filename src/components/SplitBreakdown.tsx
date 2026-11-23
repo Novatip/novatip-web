@@ -33,12 +33,7 @@ export function SplitBreakdown({ splits }: SplitBreakdownProps) {
         {splits.map((split, i) => {
           const isYou = publicKey && split.to === publicKey;
           return (
-            <SplitRow
-              key={`${split.to}-${i}`}
-              address={split.to}
-              bps={split.bps}
-              isYou={isYou}
-            />
+            <SplitRow key={`${split.to}-${i}`} address={split.to} bps={split.bps} isYou={isYou} />
           );
         })}
       </ul>
@@ -78,11 +73,7 @@ function SplitRow({ address, bps, isYou }: SplitRowProps) {
             {shortenAddress(address)}
           </span>
         )}
-        {isYou && (
-          <span className="text-xs font-semibold text-brand-500 shrink-0">
-            You
-          </span>
-        )}
+        {isYou && <span className="text-xs font-semibold text-brand-500 shrink-0">You</span>}
         <button
           type="button"
           onClick={() => void copy(address)}
@@ -102,9 +93,7 @@ function SplitRow({ address, bps, isYou }: SplitRowProps) {
           {copied ? "✓" : failed ? "✕" : "📋"}
         </button>
       </span>
-      <span className="text-sm font-semibold text-fg shrink-0">
-        {formatBps(bps)}
-      </span>
+      <span className="text-sm font-semibold text-fg shrink-0">{formatBps(bps)}</span>
     </li>
   );
 }

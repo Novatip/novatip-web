@@ -36,7 +36,7 @@ function requirePublic(key: string, val: string | undefined): string {
   if (!val) {
     throw new Error(
       `Missing required environment variable: ${key}\n` +
-      `Copy .env.example to .env.local and set a value for this variable.`,
+        `Copy .env.example to .env.local and set a value for this variable.`,
     );
   }
   return val;
@@ -67,7 +67,7 @@ function requireNetwork(
   if (!(STELLAR_NETWORKS as readonly string[]).includes(raw)) {
     throw new Error(
       `Invalid value for ${key}: ${JSON.stringify(raw)}\n` +
-      `Accepted values: ${STELLAR_NETWORKS.join(", ")}.`,
+        `Accepted values: ${STELLAR_NETWORKS.join(", ")}.`,
     );
   }
   return raw as StellarNetwork;
@@ -85,8 +85,8 @@ function requireContractId(key: string, raw: string | undefined): string {
   if (!StrKey.isValidContract(val)) {
     throw new Error(
       `Invalid value for ${key}: ${JSON.stringify(val)}\n` +
-      `Expected a 56-character Soroban contract ID starting with "C" ` +
-      `(e.g. CAAAA…BSC4).`,
+        `Expected a 56-character Soroban contract ID starting with "C" ` +
+        `(e.g. CAAAA…BSC4).`,
     );
   }
   return val;
@@ -103,16 +103,13 @@ export const TESTNET_USDC_CONTRACT_ID = "CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WW
  *   so a silent fallback would produce broken balance reads and trustline checks.
  * - On testnet and local the testnet USDC SAC is used when the variable is absent.
  */
-export function resolveUsdcContractId(
-  raw: string | undefined,
-  network: StellarNetwork,
-): string {
+export function resolveUsdcContractId(raw: string | undefined, network: StellarNetwork): string {
   if (raw) {
     if (!StrKey.isValidContract(raw)) {
       throw new Error(
         `Invalid value for NEXT_PUBLIC_USDC_CONTRACT_ID: ${JSON.stringify(raw)}\n` +
-        `Expected a 56-character Soroban contract ID starting with "C" ` +
-        `(e.g. CAAAA…BSC4).`,
+          `Expected a 56-character Soroban contract ID starting with "C" ` +
+          `(e.g. CAAAA…BSC4).`,
       );
     }
     return raw;
@@ -120,8 +117,8 @@ export function resolveUsdcContractId(
   if (network === "mainnet") {
     throw new Error(
       `Missing required environment variable: NEXT_PUBLIC_USDC_CONTRACT_ID\n` +
-      `On mainnet this variable is required — the testnet default does not exist ` +
-      `there. Copy .env.example to .env.local and set the mainnet USDC SAC address.`,
+        `On mainnet this variable is required — the testnet default does not exist ` +
+        `there. Copy .env.example to .env.local and set the mainnet USDC SAC address.`,
     );
   }
   return TESTNET_USDC_CONTRACT_ID;
@@ -156,21 +153,21 @@ export function resolveSiteUrl(raw: string | undefined): string {
   } catch {
     throw new Error(
       `Invalid NEXT_PUBLIC_SITE_URL: ${JSON.stringify(value)}. ` +
-      `Expected an absolute URL including the scheme, e.g. https://novatip.xyz`,
+        `Expected an absolute URL including the scheme, e.g. https://novatip.xyz`,
     );
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     throw new Error(
       `Invalid NEXT_PUBLIC_SITE_URL: ${JSON.stringify(value)}. ` +
-      `Expected an http or https URL, got ${url.protocol.replace(":", "")}.`,
+        `Expected an http or https URL, got ${url.protocol.replace(":", "")}.`,
     );
   }
 
   // A base carries no query or fragment; drop them so a stray "?" in a
   // deployment variable cannot end up glued onto every generated image URL.
   url.search = "";
-  url.hash   = "";
+  url.hash = "";
 
   return url.href;
 }
@@ -196,8 +193,8 @@ export function resolveApiUrl(raw: string | undefined): string {
     if (process.env.NODE_ENV === "production") {
       throw new Error(
         `Missing required environment variable: NEXT_PUBLIC_API_URL\n` +
-        `Set it to the backend API base URL, ` +
-        `e.g. https://api.example.com/api/v1`,
+          `Set it to the backend API base URL, ` +
+          `e.g. https://api.example.com/api/v1`,
       );
     }
     return DEFAULT_API_URL;
@@ -209,15 +206,15 @@ export function resolveApiUrl(raw: string | undefined): string {
   } catch {
     throw new Error(
       `Invalid NEXT_PUBLIC_API_URL: ${JSON.stringify(value)}. ` +
-      `Expected an absolute URL including the scheme, ` +
-      `e.g. https://api.example.com/api/v1`,
+        `Expected an absolute URL including the scheme, ` +
+        `e.g. https://api.example.com/api/v1`,
     );
   }
 
   if (url.protocol !== "https:" && url.protocol !== "http:") {
     throw new Error(
       `Invalid NEXT_PUBLIC_API_URL: ${JSON.stringify(value)}. ` +
-      `Expected an http or https URL, got ${url.protocol.replace(":", "")}.`,
+        `Expected an http or https URL, got ${url.protocol.replace(":", "")}.`,
     );
   }
 
@@ -299,9 +296,6 @@ export const config = {
      * on testnet and local. A provided value is validated as a contract ID.
      * See resolveUsdcContractId above.
      */
-    usdcContractId: resolveUsdcContractId(
-      process.env.NEXT_PUBLIC_USDC_CONTRACT_ID,
-      stellarNetwork,
-    ),
+    usdcContractId: resolveUsdcContractId(process.env.NEXT_PUBLIC_USDC_CONTRACT_ID, stellarNetwork),
   },
 } as const;

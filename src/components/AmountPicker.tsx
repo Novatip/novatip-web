@@ -18,13 +18,13 @@ import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
 export const DEFAULT_AMOUNT_PRESETS = ["1", "2", "5", "10", "25"];
 
 interface AmountPickerProps {
-  value:     string;
-  onChange:  (value: string) => void;
+  value: string;
+  onChange: (value: string) => void;
   disabled?: boolean;
   /** Preset amount buttons, in display order. Defaults to DEFAULT_AMOUNT_PRESETS. */
-  presets?:  string[];
+  presets?: string[];
   /** The connected supporter's USDC balance, if known — null while unknown/loading. */
-  balance?:  bigint | null;
+  balance?: bigint | null;
 }
 
 export function AmountPicker({
@@ -56,9 +56,7 @@ export function AmountPicker({
     const raw = e.target.value.replace(/[^0-9.]/g, "");
     // Prevent more than one decimal point
     const parts = raw.split(".");
-    let clean  = parts.length > 2
-      ? `${parts[0]}.${parts.slice(1).join("")}`
-      : raw;
+    let clean = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
     // USDC on Stellar supports 7 decimal places — anything finer
     // cannot be represented, so prevent excess precision as the user types.
     if (clean.includes(".")) {
@@ -168,30 +166,22 @@ export function AmountPicker({
 
       {/* Precision hint — shown whenever the custom field is active so the
           user understands why extra decimal digits are dropped automatically */}
-      {isCustom && (
-        <p className="text-xs text-fg-dim">
-          USDC supports up to 7 decimal places.
-        </p>
-      )}
+      {isCustom && <p className="text-xs text-fg-dim">USDC supports up to 7 decimal places.</p>}
       {amountValid && insufficientBalance && balance === 0n && (
         <p className="text-xs text-danger">
-          Your wallet has no USDC on Stellar. The most common cause is a missing
-          USDC trustline — add one from your wallet, then fund it with USDC to
-          send a tip.
+          Your wallet has no USDC on Stellar. The most common cause is a missing USDC trustline —
+          add one from your wallet, then fund it with USDC to send a tip.
         </p>
       )}
 
       {amountValid && insufficientBalance && balance !== 0n && (
-        <p className="text-xs text-danger">
-          That&apos;s more than your USDC balance.
-        </p>
+        <p className="text-xs text-danger">That&apos;s more than your USDC balance.</p>
       )}
 
       {/* Selected amount summary */}
       {amountValid && !insufficientBalance && (
         <p className="text-xs text-fg-faint text-right">
-          Sending{" "}
-          <span className="text-accent font-semibold">${value} USDC</span>
+          Sending <span className="text-accent font-semibold">${value} USDC</span>
         </p>
       )}
     </div>

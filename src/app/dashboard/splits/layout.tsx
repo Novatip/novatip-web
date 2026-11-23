@@ -10,10 +10,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("Splits");
 
-export default function SplitsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SplitsLayout({ children }: { children: React.ReactNode }) {
   return children;
 }
