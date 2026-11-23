@@ -207,6 +207,8 @@ describe("SplitsManager – save", () => {
     await waitFor(() => {
       expect(screen.getByText(/splits saved successfully/i)).toBeInTheDocument();
     });
+    expect(screen.getByRole("status")).toHaveTextContent("Splits saved successfully!");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("shows error message when onSave rejects", async () => {
@@ -216,6 +218,8 @@ describe("SplitsManager – save", () => {
     await waitFor(() => {
       expect(screen.getByText(/network timeout/i)).toBeInTheDocument();
     });
+    expect(screen.getByRole("alert")).toHaveTextContent("Network timeout");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 });
 

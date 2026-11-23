@@ -253,10 +253,10 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
 
       {/* Error / success */}
       {error && (
-        <p className="text-sm text-danger">{error}</p>
+        <p role="alert" className="text-sm text-danger">{error}</p>
       )}
       {success && (
-        <p className="text-sm text-success">Splits saved successfully!</p>
+        <p role="status" className="text-sm text-success">Splits saved successfully!</p>
       )}
 
       {/* Save */}
