@@ -6,22 +6,26 @@ export default function TipPageLoading() {
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
       {/* Header skeleton */}
-      <div className="h-16 border-b border-hairline bg-canvas/80 animate-pulse" />
+      <div aria-hidden="true" className="h-16 border-b border-hairline bg-canvas/80 animate-pulse" />
 
       <main
         id="main-content"
         tabIndex={-1}
         className="flex-1 mx-auto w-full max-w-lg px-4 py-12 outline-none"
       >
+        <div role="status">
+          <span className="sr-only">Loading…</span>
+        </div>
+
         {/* Avatar skeleton */}
-        <div className="flex flex-col items-center gap-4 mb-8">
+        <div aria-hidden="true" className="flex flex-col items-center gap-4 mb-8">
           <div className="h-20 w-20 rounded-full bg-hairline animate-pulse" />
           <div className="h-6 w-40 rounded-lg bg-hairline animate-pulse" />
           <div className="h-4 w-64 rounded-lg bg-hairline/50 animate-pulse" />
         </div>
 
         {/* Card skeleton */}
-        <div className="rounded-2xl bg-surface border border-hairline p-6 space-y-4">
+        <div aria-hidden="true" className="rounded-2xl bg-surface border border-hairline p-6 space-y-4">
           <div className="h-4 w-32 rounded bg-hairline animate-pulse" />
           <div className="flex gap-3">
             {[1, 2, 3, 4].map((i) => (
