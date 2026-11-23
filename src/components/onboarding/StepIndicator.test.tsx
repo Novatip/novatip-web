@@ -5,8 +5,9 @@
  *
  * Covers:
  *   - A step before currentStep renders as "done" (checkmark + filled style)
- *   - The step at currentStep renders as "active" with aria-current="step"
+ *   - The list item at currentStep carries aria-current="step"
  *   - A step after currentStep renders as "upcoming" (its number, no aria-current)
+ *   - Each step exposes its state as hidden text (Completed, Current, Not started)
  *   - Exactly one step carries aria-current, regardless of position
  *   - The connector between steps is not rendered after the last step
  */
@@ -34,7 +35,7 @@ describe("StepIndicator – step states", () => {
     const circle = circleOf(steps[0]);
     expect(circle).toHaveTextContent("✓");
     expect(circle).toHaveClass("bg-brand-500", "border-brand-500", "text-white");
-    expect(circle).not.toHaveAttribute("aria-current");
+    expect(steps[0]).not.toHaveAttribute("aria-current");
   });
 
   it('renders the step at currentStep as active, with aria-current="step"', () => {
@@ -42,7 +43,8 @@ describe("StepIndicator – step states", () => {
 
     const steps = screen.getAllByRole("listitem");
     const circle = circleOf(steps[1]);
-    expect(circle).toHaveAttribute("aria-current", "step");
+    expect(steps[1]).toHaveAttribute("aria-current", "step");
+    expect(circle).not.toHaveAttribute("aria-current");
     expect(circle).toHaveTextContent("2"); // i + 1
     expect(circle).toHaveClass("border-brand-500", "text-accent");
   });
@@ -52,9 +54,20 @@ describe("StepIndicator – step states", () => {
 
     const steps = screen.getAllByRole("listitem");
     const circle = circleOf(steps[2]);
-    expect(circle).not.toHaveAttribute("aria-current");
+    expect(steps[2]).not.toHaveAttribute("aria-current");
     expect(circle).toHaveTextContent("3"); // i + 1
     expect(circle).toHaveClass("border-hairline-strong", "text-fg-dim");
+  });
+});
+
+describe("StepIndicator – state text", () => {
+  it("exposes each step's state as text", () => {
+    render(<StepIndicator currentStep={1} totalSteps={3} labels={LABELS} />);
+
+    const steps = screen.getAllByRole("listitem");
+    expect(steps[0]).toHaveTextContent("Completed");
+    expect(steps[1]).toHaveTextContent("Current");
+    expect(steps[2]).toHaveTextContent("Not started");
   });
 });
 
@@ -63,6 +76,7 @@ describe("StepIndicator – aria-current uniqueness", () => {
     const { container } = render(<StepIndicator currentStep={0} totalSteps={3} labels={LABELS} />);
     expect(container.querySelectorAll("[aria-current]")).toHaveLength(1);
     expect(container.querySelector("[aria-current]")).toHaveAttribute("aria-current", "step");
+    expect(container.querySelector("[aria-current]")).toHaveAttribute("role", "listitem");
   });
 
   it("marks exactly one step with aria-current, at the last step", () => {

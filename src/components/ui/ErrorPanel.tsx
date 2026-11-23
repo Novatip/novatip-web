@@ -19,7 +19,10 @@ interface ErrorPanelProps {
 
 export function ErrorPanel({ message, onRetry, retrying = false }: ErrorPanelProps) {
   return (
-    <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex items-center justify-between gap-3">
+    <div
+      role="alert"
+      className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex items-center justify-between gap-3"
+    >
       <p className="text-sm text-danger">{message}</p>
       <Button
         variant="danger"
