@@ -26,15 +26,15 @@ vi.mock("next/navigation", () => ({
 }));
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    null as string | null,
-  jwt:          null as string | null,
-  isConnected:  false,
+  publicKey: null as string | null,
+  jwt: null as string | null,
+  isConnected: false,
   isConnecting: false,
-  isSigningIn:  false,
-  error:        null as string | null,
-  connect:      vi.fn(),
-  retrySignIn:  vi.fn(),
-  disconnect:   vi.fn(),
+  isSigningIn: false,
+  error: null as string | null,
+  connect: vi.fn(),
+  retrySignIn: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -72,7 +72,7 @@ describe("DashboardLayout – disconnected state", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     expect(screen.getByText(/connect your wallet to access the dashboard/i)).toBeInTheDocument();
@@ -83,12 +83,14 @@ describe("DashboardLayout – disconnected state", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     // None of the nav labels should be present
     for (const item of NAV_ITEMS) {
-      expect(screen.queryByRole("link", { name: new RegExp(item.label, "i") })).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("link", { name: new RegExp(item.label, "i") }),
+      ).not.toBeInTheDocument();
     }
   });
 
@@ -96,7 +98,7 @@ describe("DashboardLayout – disconnected state", () => {
     render(
       <DashboardLayout>
         <div>Test dashboard content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     expect(screen.queryByText(/test dashboard content/i)).not.toBeInTheDocument();
@@ -114,7 +116,7 @@ describe("DashboardLayout – connected state", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     // Check that all nav items are rendered as links with correct hrefs
@@ -122,7 +124,7 @@ describe("DashboardLayout – connected state", () => {
       const links = screen.getAllByRole("link", { name: new RegExp(item.label, "i") });
       // Each item appears twice: once in mobile nav, once in sidebar
       expect(links).toHaveLength(2);
-      links.forEach(link => {
+      links.forEach((link) => {
         expect(link).toHaveAttribute("href", item.href);
       });
     }
@@ -132,17 +134,17 @@ describe("DashboardLayout – connected state", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     // Find all links with aria-current="page"
     const currentLinks = screen.getAllByRole("link", { current: "page" });
-    
+
     // Should be exactly 2: one in mobile nav, one in sidebar
     expect(currentLinks).toHaveLength(2);
-    
+
     // Both should point to /dashboard (the mocked pathname)
-    currentLinks.forEach(link => {
+    currentLinks.forEach((link) => {
       expect(link).toHaveAttribute("href", "/dashboard");
     });
   });
@@ -151,7 +153,7 @@ describe("DashboardLayout – connected state", () => {
     render(
       <DashboardLayout>
         <div>Test dashboard content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     expect(screen.getByText(/test dashboard content/i)).toBeInTheDocument();
@@ -169,20 +171,20 @@ describe("DashboardLayout – navigation aria-current behavior", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     // The Overview link (matching /dashboard) should have aria-current
     const overviewLinks = screen.getAllByRole("link", { name: /overview/i });
-    overviewLinks.forEach(link => {
+    overviewLinks.forEach((link) => {
       expect(link).toHaveAttribute("aria-current", "page");
     });
 
     // Other nav items should not have aria-current
-    const otherItems = NAV_ITEMS.filter(item => item.href !== "/dashboard");
+    const otherItems = NAV_ITEMS.filter((item) => item.href !== "/dashboard");
     for (const item of otherItems) {
       const links = screen.getAllByRole("link", { name: new RegExp(item.label, "i") });
-      links.forEach(link => {
+      links.forEach((link) => {
         expect(link).not.toHaveAttribute("aria-current");
       });
     }
@@ -193,7 +195,7 @@ describe("DashboardLayout – navigation aria-current behavior", () => {
     render(
       <DashboardLayout>
         <div>Test content</div>
-      </DashboardLayout>
+      </DashboardLayout>,
     );
 
     const currentLinks = screen.getAllByRole("link", { current: "page" });

@@ -30,8 +30,8 @@ const listeners = new Set<MediaListener>();
 function stubMatchMedia(prefersDark: boolean) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: query.includes("dark") ? prefersDark : false,
-    media:   query,
-    addEventListener:    (_: string, cb: MediaListener) => listeners.add(cb),
+    media: query,
+    addEventListener: (_: string, cb: MediaListener) => listeners.add(cb),
     removeEventListener: (_: string, cb: MediaListener) => listeners.delete(cb),
   }));
 }
@@ -86,9 +86,7 @@ describe("ThemeToggle – rendering", () => {
     applyThemeClass("dark");
     render(<ThemeToggle />);
 
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: system. Switch to light theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: system. Switch to light theme.");
     expect(getToggle()).toHaveTextContent("🖥️");
   });
 
@@ -97,9 +95,7 @@ describe("ThemeToggle – rendering", () => {
     applyThemeClass("light");
     render(<ThemeToggle />);
 
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: light. Switch to dark theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: light. Switch to dark theme.");
     expect(getToggle()).toHaveTextContent("☀️");
   });
 });
@@ -114,35 +110,27 @@ describe("ThemeToggle – cycling", () => {
     render(<ThemeToggle />);
 
     const toggle = getToggle();
-    expect(toggle).toHaveAccessibleName(
-      "Theme: system. Switch to light theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: system. Switch to light theme.");
 
     // system → light
     await user.click(toggle);
     expect(isDark()).toBe(false);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("light");
-    expect(toggle).toHaveAccessibleName(
-      "Theme: light. Switch to dark theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: light. Switch to dark theme.");
     expect(toggle).toHaveTextContent("☀️");
 
     // light → dark
     await user.click(toggle);
     expect(isDark()).toBe(true);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-    expect(toggle).toHaveAccessibleName(
-      "Theme: dark. Switch to system theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: dark. Switch to system theme.");
     expect(toggle).toHaveTextContent("🌙");
 
     // dark → system, which resolves to the OS preference and clears the key
     await user.click(toggle);
     expect(isDark()).toBe(true);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBeNull();
-    expect(toggle).toHaveAccessibleName(
-      "Theme: system. Switch to light theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: system. Switch to light theme.");
     expect(toggle).toHaveTextContent("🖥️");
   });
 
@@ -153,17 +141,13 @@ describe("ThemeToggle – cycling", () => {
     render(<ThemeToggle />);
 
     const toggle = getToggle();
-    expect(toggle).toHaveAccessibleName(
-      "Theme: system. Switch to dark theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: system. Switch to dark theme.");
 
     await user.click(toggle);
 
     expect(isDark()).toBe(true);
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe("dark");
-    expect(toggle).toHaveAccessibleName(
-      "Theme: dark. Switch to system theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: dark. Switch to system theme.");
   });
 
   it("starts from an explicit stored preference rather than assuming system", async () => {
@@ -173,9 +157,7 @@ describe("ThemeToggle – cycling", () => {
     render(<ThemeToggle />);
 
     const toggle = getToggle();
-    expect(toggle).toHaveAccessibleName(
-      "Theme: dark. Switch to system theme.",
-    );
+    expect(toggle).toHaveAccessibleName("Theme: dark. Switch to system theme.");
 
     await user.click(toggle);
 
@@ -194,15 +176,11 @@ describe("ThemeToggle – OS preference", () => {
 
     emitOsThemeChange(true);
     expect(isDark()).toBe(true);
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: system. Switch to light theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: system. Switch to light theme.");
 
     emitOsThemeChange(false);
     expect(isDark()).toBe(false);
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: system. Switch to dark theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: system. Switch to dark theme.");
   });
 
   it("ignores an OS change once the user has chosen", async () => {
@@ -234,9 +212,7 @@ describe("ThemeToggle – cross-tab sync", () => {
     });
 
     expect(isDark()).toBe(true);
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: dark. Switch to system theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: dark. Switch to system theme.");
   });
 
   it("returns to system when another tab clears the preference", () => {
@@ -246,15 +222,11 @@ describe("ThemeToggle – cross-tab sync", () => {
 
     window.localStorage.removeItem(THEME_STORAGE_KEY);
     act(() => {
-      window.dispatchEvent(
-        new StorageEvent("storage", { key: null, newValue: null }),
-      );
+      window.dispatchEvent(new StorageEvent("storage", { key: null, newValue: null }));
     });
 
     expect(isDark()).toBe(false); // the stubbed OS prefers light
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: system. Switch to dark theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: system. Switch to dark theme.");
   });
 
   it("ignores storage events for unrelated keys", () => {
@@ -268,8 +240,6 @@ describe("ThemeToggle – cross-tab sync", () => {
     });
 
     expect(isDark()).toBe(false);
-    expect(getToggle()).toHaveAccessibleName(
-      "Theme: system. Switch to dark theme.",
-    );
+    expect(getToggle()).toHaveAccessibleName("Theme: system. Switch to dark theme.");
   });
 });

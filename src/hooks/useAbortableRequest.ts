@@ -19,19 +19,19 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/lib/api";
 
 export interface UseAbortableRequestResult<T> {
-  data:    T;
+  data: T;
   loading: boolean;
-  error:   string | null;
+  error: string | null;
   /** Abort any in-flight request and start a new one, replacing `data` on success. */
-  run:     (fetcher: (signal: AbortSignal) => Promise<T>) => void;
+  run: (fetcher: (signal: AbortSignal) => Promise<T>) => void;
   /** Abort any in-flight request without starting a new one. */
-  abort:   () => void;
+  abort: () => void;
 }
 
 export function useAbortableRequest<T>(initialData: T): UseAbortableRequestResult<T> {
-  const [data,    setData]    = useState<T>(initialData);
+  const [data, setData] = useState<T>(initialData);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -47,32 +47,35 @@ export function useAbortableRequest<T>(initialData: T): UseAbortableRequestResul
     setLoading(false);
   }, []);
 
-  const run = useCallback((fetcher: (signal: AbortSignal) => Promise<T>) => {
-    abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setLoading(true);
+  const run = useCallback(
+    (fetcher: (signal: AbortSignal) => Promise<T>) => {
+      abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      setLoading(true);
 
-    fetcher(controller.signal)
-      .then((result) => {
-        // A later run() may have replaced this controller while this one was
-        // still in flight — a stale resolution must not overwrite newer state.
-        if (abortControllerRef.current !== controller) return;
-        setData(result);
-        setError(null);
-      })
-      .catch((e: unknown) => {
-        if (abortControllerRef.current !== controller) return;
-        if (e instanceof ApiError && e.code === "ABORTED") return;
-        setError(e instanceof Error ? e.message : "Something went wrong.");
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [abort]);
+      fetcher(controller.signal)
+        .then((result) => {
+          // A later run() may have replaced this controller while this one was
+          // still in flight — a stale resolution must not overwrite newer state.
+          if (abortControllerRef.current !== controller) return;
+          setData(result);
+          setError(null);
+        })
+        .catch((e: unknown) => {
+          if (abortControllerRef.current !== controller) return;
+          if (e instanceof ApiError && e.code === "ABORTED") return;
+          setError(e instanceof Error ? e.message : "Something went wrong.");
+        })
+        .finally(() => {
+          if (abortControllerRef.current === controller) {
+            abortControllerRef.current = null;
+            setLoading(false);
+          }
+        });
+    },
+    [abort],
+  );
 
   useEffect(() => abort, [abort]);
 

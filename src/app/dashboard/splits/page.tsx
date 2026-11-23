@@ -50,8 +50,8 @@ export default function SplitsPage() {
   async function handleSave(splits: SplitRow[]) {
     if (!jwt || !creator || !publicKey) return;
     await syncJarToChain({
-      owner:  publicKey,
-      jarId:  creator.jarId,
+      owner: publicKey,
+      jarId: creator.jarId,
       splits,
     });
     const result = await creatorApi.updateSplits(jwt, splits);
@@ -63,14 +63,12 @@ export default function SplitsPage() {
       <div>
         <h1 className="text-2xl font-bold text-fg">Collaborator Splits</h1>
         <p className="text-sm text-fg-subtle mt-1">
-          Define how each incoming tip is split between you and your collaborators.
-          All basis points must total exactly 10,000 (100%).
+          Define how each incoming tip is split between you and your collaborators. All basis points
+          must total exactly 10,000 (100%).
         </p>
       </div>
 
-      {error && (
-        <ErrorPanel message={error} onRetry={fetchCreator} retrying={loading} />
-      )}
+      {error && <ErrorPanel message={error} onRetry={fetchCreator} retrying={loading} />}
 
       <Card>
         <CardHeader>
@@ -98,9 +96,9 @@ export default function SplitsPage() {
 
       <div className="rounded-xl bg-surface-strong border border-hairline px-4 py-3">
         <p className="text-xs text-fg-faint">
-          Saving updates your splits on-chain first, then in Novatip. Your wallet will
-          ask you to sign the transaction, and the Stellar network charges a small XLM
-          fee for it. The new splits apply to tips once the transaction is confirmed.
+          Saving updates your splits on-chain first, then in Novatip. Your wallet will ask you to
+          sign the transaction, and the Stellar network charges a small XLM fee for it. The new
+          splits apply to tips once the transaction is confirmed.
         </p>
       </div>
     </div>

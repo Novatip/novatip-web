@@ -27,12 +27,13 @@ export const metadata: Metadata = {
   */
   metadataBase: new URL(config.siteUrl),
 
-  title:       "Novatip — Tap to tip any creator",
-  description: "Cross-border micro-tipping for creators, streamers, and street musicians. Powered by Stellar.",
+  title: "Novatip — Tap to tip any creator",
+  description:
+    "Cross-border micro-tipping for creators, streamers, and street musicians. Powered by Stellar.",
   openGraph: {
-    title:       "Novatip",
+    title: "Novatip",
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
-    type:        "website",
+    type: "website",
   },
   /*
     No `images` on openGraph or twitter on purpose: app/opengraph-image.tsx and
@@ -41,8 +42,8 @@ export const metadata: Metadata = {
     stated so the injected image renders as a large preview.
   */
   twitter: {
-    card:        "summary_large_image",
-    title:       "Novatip",
+    card: "summary_large_image",
+    title: "Novatip",
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
   },
   icons: {
@@ -55,12 +56,8 @@ export const metadata: Metadata = {
       apple-touch-icon.png in public/ — 180×180 PNG for the iOS home screen,
                                which does not use SVG icons.
     */
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
-    ],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -68,15 +65,11 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)",  color: "#030712" },
+    { media: "(prefers-color-scheme: dark)", color: "#030712" },
   ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: the script below adds a `dark` class that the
     // server render cannot know about, so <html> legitimately differs between

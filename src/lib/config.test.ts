@@ -11,7 +11,14 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { resolveSiteUrl, DEFAULT_SITE_URL, resolveUsdcContractId, TESTNET_USDC_CONTRACT_ID, resolveApiUrl, DEFAULT_API_URL } from "./config";
+import {
+  resolveSiteUrl,
+  DEFAULT_SITE_URL,
+  resolveUsdcContractId,
+  TESTNET_USDC_CONTRACT_ID,
+  resolveApiUrl,
+  DEFAULT_API_URL,
+} from "./config";
 
 // ── resolveApiUrl ─────────────────────────────────────────────────────────────
 
@@ -46,21 +53,15 @@ describe("resolveApiUrl – production requires the variable", () => {
 
 describe("resolveApiUrl – accepting valid URLs", () => {
   it("returns a valid https URL unchanged", () => {
-    expect(resolveApiUrl("https://api.example.com/api/v1")).toBe(
-      "https://api.example.com/api/v1",
-    );
+    expect(resolveApiUrl("https://api.example.com/api/v1")).toBe("https://api.example.com/api/v1");
   });
 
   it("accepts http, which local and LAN testing need", () => {
-    expect(resolveApiUrl("http://192.168.1.5:3001/api/v1")).toBe(
-      "http://192.168.1.5:3001/api/v1",
-    );
+    expect(resolveApiUrl("http://192.168.1.5:3001/api/v1")).toBe("http://192.168.1.5:3001/api/v1");
   });
 
   it("strips one or more trailing slashes", () => {
-    expect(resolveApiUrl("https://api.example.com/api/v1/")).toBe(
-      "https://api.example.com/api/v1",
-    );
+    expect(resolveApiUrl("https://api.example.com/api/v1/")).toBe("https://api.example.com/api/v1");
     expect(resolveApiUrl("https://api.example.com/api/v1///")).toBe(
       "https://api.example.com/api/v1",
     );

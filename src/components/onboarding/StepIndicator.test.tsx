@@ -60,24 +60,18 @@ describe("StepIndicator – step states", () => {
 
 describe("StepIndicator – aria-current uniqueness", () => {
   it("marks exactly one step with aria-current, at the first step", () => {
-    const { container } = render(
-      <StepIndicator currentStep={0} totalSteps={3} labels={LABELS} />,
-    );
+    const { container } = render(<StepIndicator currentStep={0} totalSteps={3} labels={LABELS} />);
     expect(container.querySelectorAll("[aria-current]")).toHaveLength(1);
     expect(container.querySelector("[aria-current]")).toHaveAttribute("aria-current", "step");
   });
 
   it("marks exactly one step with aria-current, at the last step", () => {
-    const { container } = render(
-      <StepIndicator currentStep={2} totalSteps={3} labels={LABELS} />,
-    );
+    const { container } = render(<StepIndicator currentStep={2} totalSteps={3} labels={LABELS} />);
     expect(container.querySelectorAll("[aria-current]")).toHaveLength(1);
   });
 
   it("marks exactly one step with aria-current in the middle of the flow", () => {
-    const { container } = render(
-      <StepIndicator currentStep={1} totalSteps={3} labels={LABELS} />,
-    );
+    const { container } = render(<StepIndicator currentStep={1} totalSteps={3} labels={LABELS} />);
     expect(container.querySelectorAll("[aria-current]")).toHaveLength(1);
   });
 });

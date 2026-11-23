@@ -57,10 +57,7 @@ const NAMES: Record<ThemePreference, string> = {
  * still behaves like the old two-state toggle.  From an explicit choice the
  * control moves to the other explicit choice and then back to "system".
  */
-function nextPreference(
-  preference: ThemePreference,
-  applied: ResolvedTheme,
-): ThemePreference {
+function nextPreference(preference: ThemePreference, applied: ResolvedTheme): ThemePreference {
   if (preference === "system") return applied === "dark" ? "light" : "dark";
   return preference === "light" ? "dark" : "system";
 }

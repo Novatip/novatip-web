@@ -15,10 +15,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("Overview");
 
-export default function OverviewLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function OverviewLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

@@ -61,14 +61,7 @@ describe("pageTitle", () => {
   });
 
   it("works with all dashboard route titles", () => {
-    const dashboardRoutes = [
-      "Overview",
-      "History",
-      "Splits",
-      "QR Code",
-      "Settings",
-      "Webhooks",
-    ];
+    const dashboardRoutes = ["Overview", "History", "Splits", "QR Code", "Settings", "Webhooks"];
 
     dashboardRoutes.forEach((route) => {
       const result = pageTitle(route);

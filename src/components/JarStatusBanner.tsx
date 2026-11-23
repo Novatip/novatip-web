@@ -66,9 +66,8 @@ export function JarStatusBanner({ jarId }: JarStatusBannerProps) {
         Your jar isn&rsquo;t registered on-chain yet
       </p>
       <p className="text-sm text-fg-subtle">
-        Tips to your link will fail until this is fixed. Open Splits and save
-        once — even the default 100%-to-you split registers it, no changes
-        required.
+        Tips to your link will fail until this is fixed. Open Splits and save once — even the
+        default 100%-to-you split registers it, no changes required.
       </p>
       <Link
         href="/dashboard/splits"

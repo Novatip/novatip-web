@@ -22,10 +22,13 @@ export default function NotFound() {
     <>
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none"
+      >
         <Card className="w-full max-w-md text-center animate-slide-up">
           <div className="flex flex-col items-center gap-5 py-4">
-
             <div
               className="flex items-center justify-center h-20 w-20 rounded-full bg-surface-strong ring-4 ring-hairline"
               role="img"
@@ -36,12 +39,10 @@ export default function NotFound() {
 
             <div>
               <p className="text-5xl font-bold text-gradient mb-2">404</p>
-              <h1 className="text-2xl font-bold text-fg mb-1">
-                Page not found
-              </h1>
+              <h1 className="text-2xl font-bold text-fg mb-1">Page not found</h1>
               <p className="text-sm text-fg-subtle">
-                That link doesn&apos;t lead anywhere. It may have been mistyped,
-                or the page may have moved.
+                That link doesn&apos;t lead anywhere. It may have been mistyped, or the page may
+                have moved.
               </p>
             </div>
 
@@ -53,7 +54,6 @@ export default function NotFound() {
                 Create your tip jar
               </LinkButton>
             </div>
-
           </div>
         </Card>
       </main>

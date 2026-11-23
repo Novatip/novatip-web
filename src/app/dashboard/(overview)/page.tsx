@@ -34,20 +34,12 @@ function parseAmount(raw: string): bigint | null {
 }
 
 interface Totals {
-  totalTips:        number;
-  totalAmountRaw:   string;
+  totalTips: number;
+  totalAmountRaw: string;
   uniqueSupporters: number;
 }
 
-function StatCard({
-  label,
-  value,
-  sub,
-}: {
-  label: string;
-  value: string;
-  sub?:  string;
-}) {
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <Card className="flex flex-col gap-1">
       <p className="text-xs text-fg-faint uppercase tracking-wider">{label}</p>
@@ -90,7 +82,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in">
-
       {/* Page title */}
       <div className="flex flex-col gap-2">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -115,9 +106,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Error */}
-      {error && (
-        <ErrorPanel message={error} onRetry={fetchTotals} retrying={loading} />
-      )}
+      {error && <ErrorPanel message={error} onRetry={fetchTotals} retrying={loading} />}
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -126,11 +115,7 @@ export default function DashboardPage() {
           value={loading ? "…" : String(totals?.totalTips ?? 0)}
           sub="all time"
         />
-        <StatCard
-          label="Total Earned"
-          value={loading ? "…" : `$${totalUsdc}`}
-          sub="USDC"
-        />
+        <StatCard label="Total Earned" value={loading ? "…" : `$${totalUsdc}`} sub="USDC" />
         <StatCard
           label="Supporters"
           value={loading ? "…" : String(totals?.uniqueSupporters ?? 0)}
@@ -149,7 +134,6 @@ export default function DashboardPage() {
 
       {/* Collaborator earnings */}
       {jwt && <CollaboratorEarnings jwt={jwt} />}
-
     </div>
   );
 }

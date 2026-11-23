@@ -11,21 +11,21 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { metadata as overviewMetadata }   from "./dashboard/(overview)/layout";
-import { metadata as historyMetadata }    from "./dashboard/history/layout";
-import { metadata as splitsMetadata }     from "./dashboard/splits/layout";
-import { metadata as qrMetadata }         from "./dashboard/qr/layout";
-import { metadata as settingsMetadata }   from "./dashboard/settings/layout";
-import { metadata as webhooksMetadata }   from "./dashboard/webhooks/layout";
+import { metadata as overviewMetadata } from "./dashboard/(overview)/layout";
+import { metadata as historyMetadata } from "./dashboard/history/layout";
+import { metadata as splitsMetadata } from "./dashboard/splits/layout";
+import { metadata as qrMetadata } from "./dashboard/qr/layout";
+import { metadata as settingsMetadata } from "./dashboard/settings/layout";
+import { metadata as webhooksMetadata } from "./dashboard/webhooks/layout";
 import { metadata as onboardingMetadata } from "./onboarding/layout";
 
 const ROUTES = [
-  ["Overview",   overviewMetadata],
-  ["History",    historyMetadata],
-  ["Splits",     splitsMetadata],
-  ["QR Code",    qrMetadata],
-  ["Settings",   settingsMetadata],
-  ["Webhooks",   webhooksMetadata],
+  ["Overview", overviewMetadata],
+  ["History", historyMetadata],
+  ["Splits", splitsMetadata],
+  ["QR Code", qrMetadata],
+  ["Settings", settingsMetadata],
+  ["Webhooks", webhooksMetadata],
   ["Onboarding", onboardingMetadata],
 ] as const;
 

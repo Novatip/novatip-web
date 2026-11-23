@@ -21,7 +21,12 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { ApiError, getErrorMessage, notificationsApi, type NotificationPreferences as Prefs } from "@/lib/api";
+import {
+  ApiError,
+  getErrorMessage,
+  notificationsApi,
+  type NotificationPreferences as Prefs,
+} from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
@@ -139,7 +144,9 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
         }
       });
 
-    return () => { abortControllerRef.current?.abort(); };
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [jwt]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -174,7 +181,6 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
       </CardHeader>
 
       <div className="flex flex-col gap-3 px-4 pb-4">
-
         {/* Honest channel status note */}
         <p className="text-xs text-fg-subtle">
           Choose which channels fire after each tip is indexed.{" "}
@@ -185,17 +191,18 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
 
         {/* Error banner */}
         {error && (
-          <div
-            role="alert"
-            className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2"
-          >
+          <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2">
             <p className="text-xs text-danger">{error}</p>
           </div>
         )}
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="flex flex-col gap-3 animate-pulse" aria-busy="true" aria-label="Loading notification preferences">
+          <div
+            className="flex flex-col gap-3 animate-pulse"
+            aria-busy="true"
+            aria-label="Loading notification preferences"
+          >
             <div className="h-16 rounded-xl bg-hairline" />
             <div className="h-16 rounded-xl bg-hairline" />
           </div>
@@ -232,7 +239,6 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
             No notification settings found. Complete onboarding first.
           </p>
         )}
-
       </div>
     </Card>
   );

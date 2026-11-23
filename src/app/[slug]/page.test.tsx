@@ -61,9 +61,7 @@ describe("TipPage (/[slug])", () => {
 
     const main = screen.getByRole("main");
     const footer = screen.getByRole("contentinfo");
-    expect(
-      main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("link", { name: /^Docs/ })).toHaveAttribute(
       "href",
       "https://novatip-docs.pages.dev",

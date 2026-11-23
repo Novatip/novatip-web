@@ -14,7 +14,10 @@ export default function DashboardLoading() {
       {/* Stat cards skeleton */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl p-6 bg-surface border border-hairline flex flex-col gap-2">
+          <div
+            key={i}
+            className="rounded-2xl p-6 bg-surface border border-hairline flex flex-col gap-2"
+          >
             <div className="h-3 w-16 rounded bg-hairline/50 uppercase tracking-wider" />
             <div className="h-8 w-24 rounded bg-hairline mt-1" />
             <div className="h-3.5 w-20 rounded bg-hairline/50" />

@@ -23,19 +23,19 @@ const mocks = vi.hoisted(() => {
     pathname: "/dashboard",
     router: { push },
     wallet: {
-      publicKey:    null as string | null,
-      jwt:          null as string | null,
-      isConnected:  false,
+      publicKey: null as string | null,
+      jwt: null as string | null,
+      isConnected: false,
       isConnecting: false,
-      error:        null as string | null,
-      connect:      vi.fn(),
-      disconnect:   vi.fn(),
+      error: null as string | null,
+      connect: vi.fn(),
+      disconnect: vi.fn(),
     },
   };
 });
 
 vi.mock("next/navigation", () => ({
-  useRouter:   () => mocks.router,
+  useRouter: () => mocks.router,
   usePathname: () => mocks.pathname,
 }));
 

@@ -60,11 +60,16 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 function creatorPayload() {
   return {
     creator: {
-      id: "c1", slug: "alice", displayName: "Alice", bio: "Street violinist",
-      avatarUrl: null, jarId: "jar1", splits: [{ to: "GABC", bps: 10_000 }],
+      id: "c1",
+      slug: "alice",
+      displayName: "Alice",
+      bio: "Street violinist",
+      avatarUrl: null,
+      jarId: "jar1",
+      splits: [{ to: "GABC", bps: 10_000 }],
       createdAt: "2026-01-01T00:00:00Z",
     },
-    tipUrl:   "https://novatip.xyz/alice",
+    tipUrl: "https://novatip.xyz/alice",
     qrSvgUrl: "https://novatip.xyz/qr/alice.svg",
     qrPngUrl: "https://novatip.xyz/qr/alice.png",
   };
@@ -81,9 +86,7 @@ describe("app/[slug]/not-found", () => {
   it("renders a branded 404 for an unknown creator", () => {
     render(<CreatorNotFound />);
 
-    expect(
-      screen.getByRole("heading", { name: /no tip jar here/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /no tip jar here/i })).toBeInTheDocument();
   });
 
   it("routes the visitor back to the homepage", () => {
@@ -200,37 +203,41 @@ describe("app/[slug]/page – metadata", () => {
 
     // No `images` in either block — opengraph-image.tsx supplies those via the
     // Next file convention, so generateMetadata must not set them itself.
-    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
-      title:       "Tip Alice on Novatip",
-      description: "Street violinist",
-      openGraph: {
-        title:       "Tip Alice on Novatip",
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual(
+      {
+        title: "Tip Alice on Novatip",
         description: "Street violinist",
-        url:         "https://novatip.xyz/alice",
-        siteName:    "Novatip",
-        type:        "profile",
+        openGraph: {
+          title: "Tip Alice on Novatip",
+          description: "Street violinist",
+          url: "https://novatip.xyz/alice",
+          siteName: "Novatip",
+          type: "profile",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Tip Alice on Novatip",
+          description: "Street violinist",
+        },
       },
-      twitter: {
-        card:        "summary_large_image",
-        title:       "Tip Alice on Novatip",
-        description: "Street violinist",
-      },
-    });
+    );
   });
 
   it("bails out so a dead link is not titled as a live page", async () => {
     resolve.mockRejectedValue(new ApiError(404, "NOT_FOUND", "No such creator"));
 
-    await expect(
-      generateMetadata({ params: Promise.resolve({ slug: "nobody" }) }),
-    ).rejects.toBe(NOT_FOUND);
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "nobody" }) })).rejects.toBe(
+      NOT_FOUND,
+    );
   });
 
   it("stays generic — and does not 404 — on a backend fault", async () => {
     resolve.mockRejectedValue(new ApiError(500, "INTERNAL", "backend on fire"));
 
-    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
-      title: "Novatip",
-    });
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual(
+      {
+        title: "Novatip",
+      },
+    );
   });
 });

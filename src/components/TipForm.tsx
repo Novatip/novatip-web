@@ -33,13 +33,13 @@ import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";
 
 export interface Split {
-  to:  string;
+  to: string;
   bps: number;
 }
 
 interface TipFormProps {
-  jarId:   string;
-  slug:    string;
+  jarId: string;
+  slug: string;
   /** Collaborator splits for this jar, used to warn when the tip is too small. */
   splits?: Split[];
 }
@@ -49,10 +49,10 @@ type FormStep = "input" | "confirm" | "signing" | "success" | "error";
 export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   const { publicKey, isConnected } = useWallet();
 
-  const [amount,  setAmount]  = useState(DEFAULT_TIP_AMOUNT);
+  const [amount, setAmount] = useState(DEFAULT_TIP_AMOUNT);
   const [message, setMessage] = useState("");
-  const [step,    setStep]    = useState<FormStep>("input");
-  const [error,   setError]   = useState<string | null>(null);
+  const [step, setStep] = useState<FormStep>("input");
+  const [error, setError] = useState<string | null>(null);
   const [txAmount, setTxAmount] = useState("");
   const [balance, setBalance] = useState<bigint | null>(null);
 
@@ -66,9 +66,15 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     }
     let cancelled = false;
     getUsdcBalance(publicKey)
-      .then((b) => { if (!cancelled) setBalance(b); })
-      .catch(() => { if (!cancelled) setBalance(null); });
-    return () => { cancelled = true; };
+      .then((b) => {
+        if (!cancelled) setBalance(b);
+      })
+      .catch(() => {
+        if (!cancelled) setBalance(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [publicKey]);
 
   // Restore the supporter's last tip amount after mount — not in the initial
@@ -79,8 +85,12 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   }, []);
 
   // ── Validation ─────────────────────────────────────────────────────────────
-  const stroops    = (() => {
-    try { return usdcToStroops(amount); } catch { return BigInt(0); }
+  const stroops = (() => {
+    try {
+      return usdcToStroops(amount);
+    } catch {
+      return BigInt(0);
+    }
   })();
   const amountValid = isValidTipAmount(stroops);
   const insufficientBalance = balance !== null && amountValid && stroops > balance;
@@ -103,7 +113,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     ? splits.filter((s) => (stroops * BigInt(s.bps)) / 10_000n === 0n).length
     : 0;
 
-  const canSubmit   =
+  const canSubmit =
     isConnected &&
     amountValid &&
     hasRecipients &&
@@ -123,9 +133,9 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
       await describeSubmissionError(
         client.tip(
           {
-            from:    publicKey,
+            from: publicKey,
             jarId,
-            amount:  stroops,
+            amount: stroops,
             message: message.trim(),
           },
           { signTransaction: makeSignTransaction(publicKey) },
@@ -184,7 +194,6 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   return (
     <Card>
       <div className="flex flex-col gap-5">
-
         {/* Amount picker */}
         <AmountPicker
           value={amount}
@@ -196,8 +205,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         {/* Message input */}
         <div className="flex flex-col gap-1.5">
           <label className="text-sm font-medium text-fg-muted">
-            Message{" "}
-            <span className="text-fg-dim font-normal">(optional)</span>
+            Message <span className="text-fg-dim font-normal">(optional)</span>
           </label>
           <textarea
             value={message}
@@ -232,7 +240,10 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Unconfigured jar warning */}
         {!hasRecipients && (
-          <div role="status" className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div
+            role="status"
+            className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3"
+          >
             <p className="text-sm text-warning">
               This jar has no recipients configured and cannot receive tips.
             </p>
@@ -241,13 +252,17 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Splits-too-small warning */}
         {zeroPaidCount > 0 && (
-          <div role="status" className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div
+            role="status"
+            className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3"
+          >
             <p className="text-sm text-warning">
               At this amount,{" "}
               <span className="font-semibold">
                 {zeroPaidCount} of {splits.length} collaborator{zeroPaidCount !== 1 ? "s" : ""}
               </span>{" "}
-              would receive nothing — their share rounds to zero. Increase the tip amount so everyone is paid.
+              would receive nothing — their share rounds to zero. Increase the tip amount so
+              everyone is paid.
             </p>
           </div>
         )}
@@ -297,17 +312,17 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                 !hasRecipients
                   ? "Jar not configured"
                   : step === "signing"
-                  ? "Sending tip…"
-                  : `Send $${amount} USDC tip`
+                    ? "Sending tip…"
+                    : `Send $${amount} USDC tip`
               }
             >
               {!hasRecipients
                 ? "Jar not configured"
                 : step === "signing"
-                ? "Waiting for signature…"
-                : step === "error"
-                ? "Retry"
-                : `Send $${amountValid ? amount : "—"} USDC tip 💸`}
+                  ? "Waiting for signature…"
+                  : step === "error"
+                    ? "Retry"
+                    : `Send $${amountValid ? amount : "—"} USDC tip 💸`}
             </Button>
           )
         ) : (
@@ -319,10 +334,8 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Disclaimer */}
         <p className="text-center text-xs text-fg-faint">
-          Tips are final and sent directly on the Stellar network.
-          No platform fees.
+          Tips are final and sent directly on the Stellar network. No platform fees.
         </p>
-
       </div>
     </Card>
   );

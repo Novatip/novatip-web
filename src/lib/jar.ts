@@ -117,12 +117,7 @@
  * - `@novatip/sdk`: TipSplitterClient, transaction building and simulation
  */
 
-import {
-  ContractErrorCode,
-  NovatipContractError,
-  type Jar,
-  type Split,
-} from "@novatip/sdk";
+import { ContractErrorCode, NovatipContractError, type Jar, type Split } from "@novatip/sdk";
 import { assertActiveAccount, getTipSplitterClient, makeSignTransaction } from "./wallet";
 import { describeSubmissionError } from "./txerror";
 import { assertRecipientsCanReceive } from "./trustline";
@@ -162,8 +157,7 @@ function isJarNotFound(err: unknown): boolean {
 /** Splits are equal when the same addresses hold the same shares, in order. */
 function sameSplits(a: readonly Split[], b: readonly Split[]): boolean {
   return (
-    a.length === b.length &&
-    a.every((split, i) => split.to === b[i]!.to && split.bps === b[i]!.bps)
+    a.length === b.length && a.every((split, i) => split.to === b[i]!.to && split.bps === b[i]!.bps)
   );
 }
 
@@ -182,8 +176,8 @@ export type JarSyncResult = "created" | "updated" | "unchanged";
  * write that would change nothing.
  */
 export async function syncJarToChain(opts: {
-  owner:  string;
-  jarId:  string;
+  owner: string;
+  jarId: string;
   splits: Split[];
 }): Promise<JarSyncResult> {
   // Checked before anything is built or signed: the contract authorises
@@ -196,9 +190,9 @@ export async function syncJarToChain(opts: {
   // tip to this jar — and it breaks it for the tipper, who cannot fix it.
   await assertRecipientsCanReceive(opts.splits.map((s) => s.to));
 
-  const client          = getTipSplitterClient();
+  const client = getTipSplitterClient();
   const signTransaction = makeSignTransaction(opts.owner);
-  const existing        = await readJar(opts.jarId);
+  const existing = await readJar(opts.jarId);
 
   if (!existing) {
     await describeSubmissionError(

@@ -6,7 +6,7 @@ Next.js 14 frontend for Novatip.
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
-Prerequisites: Node.js 20 (pinned in `.nvmrc`, matching CI — run `nvm use`), novatip-backend on port 3001, Freighter browser extension
+Prerequisites: Node.js (the version in `.nvmrc` — run `nvm use`; `.nvmrc` is the single source of truth, CI reads it too, so bump it there), novatip-backend on port 3001, Freighter browser extension
 
     npm install
     cp .env.example .env.local
@@ -900,7 +900,8 @@ Notice:
     npm run start     - production server
     npm run typecheck - tsc --noEmit
     npm run lint      - eslint
-    npm run format    - prettier
+    npm run format    - prettier --write
+    npm run format:check - prettier --check (also runs in CI)
     npm test               - run tests once (Vitest)
     npm run test:watch     - run tests in watch mode
     npm run test:coverage  - run tests with v8 coverage report

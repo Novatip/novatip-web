@@ -115,9 +115,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
             The page couldn&apos;t be loaded. Reloading usually clears it.
           </p>
 
-          {error.digest && (
-            <p className="novatip-fatal__digest">Reference: {error.digest}</p>
-          )}
+          {error.digest && <p className="novatip-fatal__digest">Reference: {error.digest}</p>}
 
           <div className="novatip-fatal__actions">
             <button type="button" className="novatip-fatal__button" onClick={reset}>

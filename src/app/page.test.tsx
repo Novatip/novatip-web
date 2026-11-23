@@ -85,9 +85,7 @@ describe("HomePage (/)", () => {
     const footer = screen.getByRole("contentinfo");
     const main = screen.getByRole("main");
     expect(footer).toBeInTheDocument();
-    expect(
-      main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(main.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getByRole("link", { name: /^GitHub/ })).toHaveAttribute(
       "href",
       "https://github.com/Novatip",
@@ -99,9 +97,7 @@ describe("HomePage (/)", () => {
   it("displays the main heading", () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole("heading", { name: /tip any creator in/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /tip any creator in/i })).toBeInTheDocument();
   });
 
   it("highlights '2 seconds' in the heading", () => {
@@ -114,9 +110,7 @@ describe("HomePage (/)", () => {
   it("displays the value proposition text", () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByText(/cross-border micro-tipping for creators/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/cross-border micro-tipping for creators/i)).toBeInTheDocument();
   });
 
   it("explains the tech stack in the value proposition", () => {
@@ -143,16 +137,13 @@ describe("HomePage (/)", () => {
     expect(demoLink).toHaveAttribute("href", "/ada-lovelace");
   });
 
-  it.each(["", "   "])(
-    "hides 'See a demo page' when NEXT_PUBLIC_DEMO_SLUG is %j",
-    (value) => {
-      vi.stubEnv("NEXT_PUBLIC_DEMO_SLUG", value);
-      render(<HomePage />);
+  it.each(["", "   "])("hides 'See a demo page' when NEXT_PUBLIC_DEMO_SLUG is %j", (value) => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_SLUG", value);
+    render(<HomePage />);
 
-      expect(screen.queryByRole("link", { name: /see a demo page/i })).not.toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /create your tip jar/i })).toBeInTheDocument();
-    },
-  );
+    expect(screen.queryByRole("link", { name: /see a demo page/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /create your tip jar/i })).toBeInTheDocument();
+  });
 
   it("hides 'See a demo page' when NEXT_PUBLIC_DEMO_SLUG is not defined", () => {
     delete process.env.NEXT_PUBLIC_DEMO_SLUG;
@@ -176,9 +167,7 @@ describe("HomePage (/)", () => {
   it("renders both CTA links side-by-side on larger screens", () => {
     render(<HomePage />);
 
-    const container = screen
-      .getByRole("link", { name: /create your tip jar/i })
-      .closest("div");
+    const container = screen.getByRole("link", { name: /create your tip jar/i }).closest("div");
     expect(container).toHaveClass("flex");
     expect(container).toHaveClass("sm:flex-row");
   });

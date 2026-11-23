@@ -37,10 +37,13 @@ export default function CreatorNotFound() {
     <>
       <Header />
 
-      <main id="main-content" tabIndex={-1} className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none">
+      <main
+        id="main-content"
+        tabIndex={-1}
+        className="min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-12 outline-none"
+      >
         <Card className="w-full max-w-md text-center animate-slide-up">
           <div className="flex flex-col items-center gap-5 py-4">
-
             <div
               className="flex items-center justify-center h-20 w-20 rounded-full bg-surface-strong ring-4 ring-hairline"
               role="img"
@@ -50,20 +53,17 @@ export default function CreatorNotFound() {
             </div>
 
             <div>
-              <h1 className="text-2xl font-bold text-fg mb-1">
-                No tip jar here
-              </h1>
+              <h1 className="text-2xl font-bold text-fg mb-1">No tip jar here</h1>
               <p className="text-sm text-fg-subtle">
-                This link doesn&apos;t belong to any creator. Check the spelling
-                — tip links are easy to mistype off a sticker or a printed QR
-                code — or the creator may have changed their link.
+                This link doesn&apos;t belong to any creator. Check the spelling — tip links are
+                easy to mistype off a sticker or a printed QR code — or the creator may have changed
+                their link.
               </p>
             </div>
 
             <div className="w-full rounded-xl bg-surface-strong border border-hairline px-4 py-3">
               <p className="text-xs text-fg-faint">
-                Tip links look like{" "}
-                <span className="font-mono text-accent">novatip.xyz/alice</span>
+                Tip links look like <span className="font-mono text-accent">novatip.xyz/alice</span>
               </p>
             </div>
 
@@ -75,7 +75,6 @@ export default function CreatorNotFound() {
                 Claim this name for yourself
               </LinkButton>
             </div>
-
           </div>
         </Card>
       </main>

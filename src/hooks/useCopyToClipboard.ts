@@ -37,12 +37,10 @@ export interface UseCopyToClipboard {
   reset: () => void;
 }
 
-export function useCopyToClipboard(
-  resetDelay: number = COPIED_RESET_DELAY,
-): UseCopyToClipboard {
+export function useCopyToClipboard(resetDelay: number = COPIED_RESET_DELAY): UseCopyToClipboard {
   const [status, setStatus] = useState<CopyStatus>("idle");
 
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Guards against setting state after unmount — copy() is async, and the user
   // can navigate away between the click and the clipboard write resolving.
   const mountedRef = useRef(true);

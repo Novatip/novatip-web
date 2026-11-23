@@ -22,18 +22,12 @@
 
 /** Whether the async Clipboard API is usable in this context. */
 export function isClipboardApiAvailable(): boolean {
-  return (
-    typeof navigator !== "undefined" &&
-    typeof navigator.clipboard?.writeText === "function"
-  );
+  return typeof navigator !== "undefined" && typeof navigator.clipboard?.writeText === "function";
 }
 
 /** Whether the legacy `execCommand` fallback is usable in this context. */
 export function isExecCommandAvailable(): boolean {
-  return (
-    typeof document !== "undefined" &&
-    typeof document.execCommand === "function"
-  );
+  return typeof document !== "undefined" && typeof document.execCommand === "function";
 }
 
 /**
@@ -92,7 +86,7 @@ function copyViaExecCommand(text: string): boolean {
   if (!isExecCommandAvailable()) return false;
 
   const previouslyFocused = document.activeElement as HTMLElement | null;
-  const textarea          = document.createElement("textarea");
+  const textarea = document.createElement("textarea");
 
   textarea.value = text;
   // readonly keeps the on-screen keyboard from popping up on mobile.

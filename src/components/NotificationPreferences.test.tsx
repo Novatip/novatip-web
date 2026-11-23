@@ -117,9 +117,7 @@ describe("NotificationPreferences – saving", () => {
       save.reject(new ApiError(500, "INTERNAL", "Could not save preferences."));
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent(
-      "Could not save preferences.",
-    );
+    expect(await screen.findByRole("alert")).toHaveTextContent("Could not save preferences.");
     expect(email.checked).toBe(true);
     expect(toggle("notif-webhook")).not.toBeDisabled();
   });

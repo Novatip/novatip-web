@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/contexts/WalletContext";
 
 interface SplitsStepProps {
-  slug:   string;
+  slug: string;
   onNext: () => void;
 }
 
@@ -32,8 +32,8 @@ export function SplitsStep({ slug, onNext }: SplitsStepProps) {
   async function save(splits: SplitRow[]) {
     if (!jwt || !publicKey) return;
     await syncJarToChain({
-      owner:  publicKey,
-      jarId:  jarIdForSlug(slug),
+      owner: publicKey,
+      jarId: jarIdForSlug(slug),
       splits,
     });
     await creatorApi.updateSplits(jwt, splits);
@@ -52,9 +52,7 @@ export function SplitsStep({ slug, onNext }: SplitsStepProps) {
     try {
       await save([{ to: publicKey, bps: 10000 }]);
     } catch (err) {
-      setDefaultError(
-        err instanceof Error ? err.message : "Could not register your jar on-chain.",
-      );
+      setDefaultError(err instanceof Error ? err.message : "Could not register your jar on-chain.");
     } finally {
       setDefaulting(false);
     }
@@ -77,8 +75,8 @@ export function SplitsStep({ slug, onNext }: SplitsStepProps) {
       />
 
       <p className="text-xs text-fg-faint text-center">
-        Saving registers your jar on the Stellar network. Your wallet will ask
-        you to sign, and the network charges a small XLM fee.
+        Saving registers your jar on the Stellar network. Your wallet will ask you to sign, and the
+        network charges a small XLM fee.
       </p>
 
       {defaultError && <p className="text-sm text-danger">{defaultError}</p>}

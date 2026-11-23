@@ -93,7 +93,8 @@ export function SplitsManager({
 
   const parsedBps = rows.map((r) => parseBpsInput(r.bps));
   const totalBps = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
-  const bpsValid = parsedBps.every((v) => v !== null && v > 0) && validateSplitsBps(parsedBps as number[]);
+  const bpsValid =
+    parsedBps.every((v) => v !== null && v > 0) && validateSplitsBps(parsedBps as number[]);
   const addressesOk = rows.every((r) => isValidAddress(r.to));
   // The contract rejects a jar that lists the same recipient twice
   // (DuplicateRecipient), so duplicates block saving rather than just warn.
@@ -115,9 +116,7 @@ export function SplitsManager({
   function updateRow(index: number, field: keyof SplitRow, value: string) {
     setSuccess(false);
     setConfirmingMissingWallet(false);
-    setRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    );
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
 
   function addRow() {
@@ -171,12 +170,10 @@ export function SplitsManager({
 
   return (
     <div className="flex flex-col gap-5">
-
       {/* Rows */}
       <div className="flex flex-col gap-3">
         {rows.map((row, i) => (
           <div key={row.id} className="flex items-start gap-2">
-
             {/* Address */}
             <div className="flex-1 min-w-0">
               <Input
@@ -210,7 +207,9 @@ export function SplitsManager({
                   aria-invalid={row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)}
                   className={cn(
                     "w-full rounded-xl bg-surface-strong border",
-                    row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0) ? "border-danger" : "border-hairline",
+                    row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)
+                      ? "border-danger"
+                      : "border-hairline",
                     "px-3 pr-10 py-2.5 text-sm text-fg text-right",
                     "focus:outline-none focus:ring-2 focus:ring-brand-500/50",
                     "disabled:opacity-50 transition-all duration-200",
@@ -223,16 +222,18 @@ export function SplitsManager({
               <p
                 className={cn(
                   "text-right text-xs mt-1",
-                  row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0) ? "text-danger" : "text-fg-dim",
+                  row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)
+                    ? "text-danger"
+                    : "text-fg-dim",
                 )}
               >
                 {parsedBps[i] === 0
                   ? "Share must be above 0%"
                   : row.bps !== "" && parsedBps[i] === null
-                  ? "Whole number only"
-                  : parsedBps[i] !== null
-                    ? `${formatBps(parsedBps[i]!)}`
-                    : "0%"}
+                    ? "Whole number only"
+                    : parsedBps[i] !== null
+                      ? `${formatBps(parsedBps[i]!)}`
+                      : "0%"}
               </p>
             </div>
 
@@ -246,7 +247,6 @@ export function SplitsManager({
             >
               ✕
             </button>
-
           </div>
         ))}
       </div>
@@ -279,10 +279,12 @@ export function SplitsManager({
       <div className="flex items-center justify-between rounded-xl bg-surface-strong border border-hairline px-4 py-3">
         <span className="text-sm text-fg-subtle">Total allocation</span>
         <div className="flex items-center gap-2">
-          <span className={cn(
-            "text-sm font-semibold font-mono",
-            bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
-          )}>
+          <span
+            className={cn(
+              "text-sm font-semibold font-mono",
+              bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
+            )}
+          >
             {totalBps.toLocaleString()} / 10,000 bps
           </span>
           <Badge variant={bpsValid ? "success" : "error"}>
@@ -303,18 +305,14 @@ export function SplitsManager({
 
       {hasDuplicates && (
         <p className="text-xs text-warning">
-          Each recipient can only appear once. Merge duplicate rows into a single
-          share before saving.
+          Each recipient can only appear once. Merge duplicate rows into a single share before
+          saving.
         </p>
       )}
 
       {/* Error / success */}
-      {error && (
-        <p className="text-sm text-danger">{error}</p>
-      )}
-      {success && (
-        <p className="text-sm text-success">Splits saved successfully!</p>
-      )}
+      {error && <p className="text-sm text-danger">{error}</p>}
+      {success && <p className="text-sm text-success">Splits saved successfully!</p>}
 
       {/* Missing-wallet warning — gates the save once rather than blocking it */}
       {confirmingMissingWallet ? (
@@ -322,11 +320,14 @@ export function SplitsManager({
           <p className="text-sm text-fg">
             Your connected wallet
             {connectedAddress && (
-              <> (<span className="font-mono">{shortenAddress(connectedAddress)}</span>)</>
+              <>
+                {" "}
+                (<span className="font-mono">{shortenAddress(connectedAddress)}</span>)
+              </>
             )}{" "}
-            isn&rsquo;t one of these recipients. Every tip will go entirely to the
-            addresses listed above and you won&rsquo;t receive anything — that&rsquo;s
-            expected for a charity jar, but worth double-checking otherwise.
+            isn&rsquo;t one of these recipients. Every tip will go entirely to the addresses listed
+            above and you won&rsquo;t receive anything — that&rsquo;s expected for a charity jar,
+            but worth double-checking otherwise.
           </p>
           <div className="flex gap-2">
             <Button
@@ -361,7 +362,6 @@ export function SplitsManager({
           {saving ? "Saving…" : "Save splits"}
         </Button>
       )}
-
     </div>
   );
 }

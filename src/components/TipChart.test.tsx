@@ -79,14 +79,8 @@ describe("TipChart – window control", () => {
 
     // The window control reports the newly selected window, not just the
     // button that happens to look active.
-    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    expect(screen.getByRole("button", { name: "30d" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
+    expect(screen.getByRole("button", { name: "7d" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "30d" })).toHaveAttribute("aria-pressed", "false");
   });
 });
 
@@ -118,7 +112,7 @@ describe("TipChart – mode toggle", () => {
       name: "Daily tip count over the last 30 days",
     });
 
-    const countButton  = screen.getByRole("button", { name: "Tips" });
+    const countButton = screen.getByRole("button", { name: "Tips" });
     const amountButton = screen.getByRole("button", { name: "USDC" });
 
     expect(countButton).toHaveAttribute("aria-pressed", "true");
@@ -150,12 +144,8 @@ describe("TipChart – empty state", () => {
 
     render(<TipChart jwt="jwt" />);
 
-    expect(
-      await screen.findByText("No tips in this window yet."),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Share your tip link to get started."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("No tips in this window yet.")).toBeInTheDocument();
+    expect(screen.getByText("Share your tip link to get started.")).toBeInTheDocument();
 
     // A flat line at zero reads as "the chart is broken", which is exactly
     // what the empty state exists to prevent.
@@ -171,8 +161,6 @@ describe("TipChart – empty state", () => {
       name: "Daily tip count over the last 30 days",
     });
 
-    expect(
-      screen.queryByText("No tips in this window yet."),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText("No tips in this window yet.")).not.toBeInTheDocument();
   });
 });

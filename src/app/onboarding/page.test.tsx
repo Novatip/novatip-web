@@ -22,15 +22,15 @@ vi.mock("next/link", () => ({
 }));
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    null as string | null,
-  jwt:          null as string | null,
-  isConnected:  false,
+  publicKey: null as string | null,
+  jwt: null as string | null,
+  isConnected: false,
   isConnecting: false,
-  isSigningIn:  false,
-  error:        null as string | null,
-  connect:      vi.fn(),
-  retrySignIn:  vi.fn(),
-  disconnect:   vi.fn(),
+  isSigningIn: false,
+  error: null as string | null,
+  connect: vi.fn(),
+  retrySignIn: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -141,9 +141,7 @@ describe("OnboardingPage – resume logic", () => {
       creator: {
         slug: "completecreator",
         jarId: "@completecreator",
-        splits: [
-          { to: "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC", bps: 10000 },
-        ],
+        splits: [{ to: "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC", bps: 10000 }],
       },
     });
 
@@ -186,7 +184,7 @@ describe("OnboardingPage – resume logic", () => {
 
   it("shows resuming state while fetching creator data", async () => {
     mockWallet.jwt = "mock.jwt.token";
-    
+
     // Delay the API response to keep the resuming state visible
     mockAuthApi.me.mockImplementation(() => new Promise(() => {}));
 

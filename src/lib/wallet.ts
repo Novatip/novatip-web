@@ -11,12 +11,7 @@
  * simply works.
  */
 
-import {
-  getNetwork,
-  TipSplitterClient,
-  usdcToStroops,
-  type NetworkConfig,
-} from "@novatip/sdk";
+import { getNetwork, TipSplitterClient, usdcToStroops, type NetworkConfig } from "@novatip/sdk";
 import {
   getAddress,
   isConnected,
@@ -62,7 +57,7 @@ export function getNetworkConfig(): NetworkConfig {
 export function getTipSplitterClient(): TipSplitterClient {
   return new TipSplitterClient({
     contractId: config.stellar.tipSplitterContractId,
-    network:    getNetworkConfig(),
+    network: getNetworkConfig(),
   });
 }
 

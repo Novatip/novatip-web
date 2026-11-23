@@ -35,9 +35,7 @@ describe("JarStatusBanner", () => {
     mockedReadJar.mockResolvedValue({ owner: "GABC", splits: [{ to: "GABC", bps: 10_000 }] });
     render(<JarStatusBanner jarId="@ada" />);
 
-    await waitFor(() =>
-      expect(screen.getByText(/registered on-chain/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/registered on-chain/i)).toBeInTheDocument());
     expect(mockedReadJar).toHaveBeenCalledWith("@ada");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
@@ -76,8 +74,6 @@ describe("JarStatusBanner", () => {
     rerender(<JarStatusBanner jarId="@bob" />);
 
     await waitFor(() => expect(mockedReadJar).toHaveBeenCalledWith("@bob"));
-    await waitFor(() =>
-      expect(screen.getByText(/registered on-chain/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText(/registered on-chain/i)).toBeInTheDocument());
   });
 });

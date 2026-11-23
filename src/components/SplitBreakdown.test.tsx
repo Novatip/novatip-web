@@ -98,9 +98,7 @@ describe("SplitBreakdown", () => {
   it("labels the list for assistive technology", () => {
     render(<SplitBreakdown splits={[{ to: CREATOR, bps: 10000 }]} />);
 
-    expect(
-      screen.getByRole("list", { name: "Split breakdown" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Split breakdown" })).toBeInTheDocument();
   });
 
   it("marks your own address with a 'You' label when wallet is connected", () => {
@@ -171,13 +169,7 @@ describe("SplitBreakdown", () => {
   it("links addresses to the stellar explorer on mainnet", () => {
     mockConfig.stellar.network = "mainnet";
 
-    render(
-      <SplitBreakdown
-        splits={[
-          { to: CREATOR, bps: 10000 },
-        ]}
-      />,
-    );
+    render(<SplitBreakdown splits={[{ to: CREATOR, bps: 10000 }]} />);
 
     const link = screen.getByRole("link");
     expect(link).toHaveAttribute(
@@ -194,13 +186,7 @@ describe("SplitBreakdown", () => {
   it("renders addresses as plain text on a local network (no explorer page)", () => {
     mockConfig.stellar.network = "local";
 
-    render(
-      <SplitBreakdown
-        splits={[
-          { to: CREATOR, bps: 10000 },
-        ]}
-      />,
-    );
+    render(<SplitBreakdown splits={[{ to: CREATOR, bps: 10000 }]} />);
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
 
@@ -228,13 +214,7 @@ describe("SplitBreakdown", () => {
     const user = userEvent.setup();
     mockClipboard.writeText.mockResolvedValue(undefined);
 
-    render(
-      <SplitBreakdown
-        splits={[
-          { to: CREATOR, bps: 10000 },
-        ]}
-      />,
-    );
+    render(<SplitBreakdown splits={[{ to: CREATOR, bps: 10000 }]} />);
 
     const copyButton = screen.getByRole("button", { name: `Copy full address ${CREATOR}` });
     await user.click(copyButton);
@@ -247,13 +227,7 @@ describe("SplitBreakdown", () => {
     const user = userEvent.setup();
     mockClipboard.writeText.mockRejectedValue(new Error("Clipboard denied"));
 
-    render(
-      <SplitBreakdown
-        splits={[
-          { to: CREATOR, bps: 10000 },
-        ]}
-      />,
-    );
+    render(<SplitBreakdown splits={[{ to: CREATOR, bps: 10000 }]} />);
 
     const copyButton = screen.getByRole("button", { name: `Copy full address ${CREATOR}` });
     await user.click(copyButton);

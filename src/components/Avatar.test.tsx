@@ -70,12 +70,11 @@ describe("Avatar", () => {
   it("renders the image when src is present", () => {
     render(<Avatar src={FIRST_SRC} displayName="Alice Smith" slug="alice" />);
 
-    expect(
-      screen.getByRole("img", { name: "Alice Smith avatar" }),
-    ).toHaveAttribute("src", FIRST_SRC);
-    expect(
-      screen.queryByLabelText("Alice Smith avatar fallback"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toHaveAttribute(
+      "src",
+      FIRST_SRC,
+    );
+    expect(screen.queryByLabelText("Alice Smith avatar fallback")).not.toBeInTheDocument();
   });
 
   it("falls back to initials when the image fails to load", () => {
@@ -83,9 +82,7 @@ describe("Avatar", () => {
 
     fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
 
-    expect(
-      screen.getByRole("img", { name: "Alice Smith avatar" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toBeInTheDocument();
     expect(screen.getByText("AS")).toBeInTheDocument();
     expect(document.querySelector("img")).not.toBeInTheDocument();
   });
@@ -96,19 +93,14 @@ describe("Avatar", () => {
     );
 
     fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
-    expect(
-      screen.getByRole("img", { name: "Alice Smith avatar" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toBeInTheDocument();
 
-    rerender(
-      <Avatar src={SECOND_SRC} displayName="Alice Smith" slug="alice" />,
+    rerender(<Avatar src={SECOND_SRC} displayName="Alice Smith" slug="alice" />);
+
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toHaveAttribute(
+      "src",
+      SECOND_SRC,
     );
-
-    expect(
-      screen.getByRole("img", { name: "Alice Smith avatar" }),
-    ).toHaveAttribute("src", SECOND_SRC);
-    expect(
-      container.querySelector('div[role="img"]'),
-    ).not.toBeInTheDocument();
+    expect(container.querySelector('div[role="img"]')).not.toBeInTheDocument();
   });
 });

@@ -14,14 +14,14 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import DashboardPage from "./page";
 
-const totals    = vi.hoisted(() => vi.fn());
-const me        = vi.hoisted(() => vi.fn());
+const totals = vi.hoisted(() => vi.fn());
+const me = vi.hoisted(() => vi.fn());
 const getBySlug = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api", () => ({
   analyticsApi: { totals },
-  authApi:      { me },
-  creatorApi:   { getBySlug },
+  authApi: { me },
+  creatorApi: { getBySlug },
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -49,15 +49,15 @@ vi.mock("@/components/CollaboratorEarnings", () => ({
 }));
 
 const MOCK_CREATOR = {
-  id:          "creator-1",
-  slug:        "ada",
+  id: "creator-1",
+  slug: "ada",
   displayName: "Ada",
-  bio:         null,
-  avatarUrl:   null,
-  email:       null,
-  jarId:       "@ada",
-  splits:      [{ to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 10000 }],
-  createdAt:   "2024-01-01T00:00:00Z",
+  bio: null,
+  avatarUrl: null,
+  email: null,
+  jarId: "@ada",
+  splits: [{ to: "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR", bps: 10000 }],
+  createdAt: "2024-01-01T00:00:00Z",
 };
 
 afterEach(() => {
@@ -68,8 +68,8 @@ afterEach(() => {
 describe("DashboardPage – stat cards", () => {
   it("renders the formatted totals once loaded", async () => {
     totals.mockResolvedValue({
-      totalTips:        42,
-      totalAmountRaw:   "125000000",
+      totalTips: 42,
+      totalAmountRaw: "125000000",
       uniqueSupporters: 7,
     });
     me.mockResolvedValue({ user: { slug: "ada" } });
@@ -94,8 +94,8 @@ describe("DashboardPage – failed totals", () => {
     expect(await screen.findByText("Network down")).toBeInTheDocument();
 
     totals.mockResolvedValueOnce({
-      totalTips:        3,
-      totalAmountRaw:   "10000000",
+      totalTips: 3,
+      totalAmountRaw: "10000000",
       uniqueSupporters: 9,
     });
 
@@ -110,8 +110,8 @@ describe("DashboardPage – failed totals", () => {
 describe("DashboardPage – jar status banner", () => {
   it("appears once the creator loads", async () => {
     totals.mockResolvedValue({
-      totalTips:        0,
-      totalAmountRaw:   "0",
+      totalTips: 0,
+      totalAmountRaw: "0",
       uniqueSupporters: 0,
     });
     me.mockResolvedValue({ user: { slug: "ada" } });
@@ -121,9 +121,6 @@ describe("DashboardPage – jar status banner", () => {
 
     expect(screen.queryByTestId("jar-status-banner")).not.toBeInTheDocument();
 
-    expect(await screen.findByTestId("jar-status-banner")).toHaveAttribute(
-      "data-jar-id",
-      "@ada",
-    );
+    expect(await screen.findByTestId("jar-status-banner")).toHaveAttribute("data-jar-id", "@ada");
   });
 });

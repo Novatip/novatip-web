@@ -16,7 +16,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/lib/api", () => {
   class ApiError extends Error {
-    constructor(public status: number, public code: string, message: string) {
+    constructor(
+      public status: number,
+      public code: string,
+      message: string,
+    ) {
       super(message);
     }
   }
@@ -63,7 +67,9 @@ describe("SlugStep – availability check failure", () => {
 
     await typeSlug("ada");
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/couldn.t check whether this slug is available/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      /couldn.t check whether this slug is available/i,
+    );
     expect(screen.getByRole("button", { name: /try again/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /claim @ada/i })).toBeDisabled();
   });

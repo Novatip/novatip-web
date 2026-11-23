@@ -20,12 +20,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import {
-  isMatch,
-  mergeWithPending,
-  type IndexedTip,
-  type PendingTip,
-} from "./RecentTips";
+import { isMatch, mergeWithPending, type IndexedTip, type PendingTip } from "./RecentTips";
 
 const ADDRESS = "GD7UXR3IX276M2M4XUE3TPNKTA7PJTERTEDEGWELQQYQBBHDL2NTREFR";
 const OTHER = "GDE6TLQE77OGAPXORP5G5YLRG4FQE2D7ZCD237LVLTAALXAOVV3YTPDS";

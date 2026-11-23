@@ -27,7 +27,7 @@ import { TipSuccess } from "./TipSuccess";
 // what these tests are about.
 vi.mock("canvas-confetti", () => ({ default: vi.fn() }));
 
-const SLUG   = "ada";
+const SLUG = "ada";
 const AMOUNT = "5.00";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ function defineOnNavigator(key: "share" | "canShare" | "clipboard", value: unkno
   Object.defineProperty(navigator, key, {
     value,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
 }
 
@@ -67,8 +67,7 @@ function expectedMessage() {
 }
 
 /** Only rendered once the share sheet has been detected after mount. */
-const findShareButton = () =>
-  screen.findByRole("button", { name: `Share @${SLUG}'s tip page` });
+const findShareButton = () => screen.findByRole("button", { name: `Share @${SLUG}'s tip page` });
 
 const copyButton = () => screen.getByRole("button", { name: "Copy link to clipboard" });
 
@@ -99,17 +98,20 @@ describe("TipSuccess – native share", () => {
 
     expect(share).toHaveBeenCalledWith({
       title: `Tip @${SLUG} on Novatip`,
-      text:  expectedText(),
-      url:   expectedUrl(),
+      text: expectedText(),
+      url: expectedUrl(),
     });
     expect(writeText).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("treats a cancelled share as a non-event", async () => {
-    defineOnNavigator("share", vi.fn(async () => {
-      throw Object.assign(new Error("cancelled"), { name: "AbortError" });
-    }));
+    defineOnNavigator(
+      "share",
+      vi.fn(async () => {
+        throw Object.assign(new Error("cancelled"), { name: "AbortError" });
+      }),
+    );
     const writeText = grantClipboard();
     renderSuccess();
 
@@ -122,9 +124,12 @@ describe("TipSuccess – native share", () => {
   });
 
   it("falls back to the clipboard when the share itself fails", async () => {
-    defineOnNavigator("share", vi.fn(async () => {
-      throw new Error("Permission denied");
-    }));
+    defineOnNavigator(
+      "share",
+      vi.fn(async () => {
+        throw new Error("Permission denied");
+      }),
+    );
     const writeText = grantClipboard();
     renderSuccess();
 

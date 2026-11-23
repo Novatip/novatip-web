@@ -32,7 +32,6 @@ export default function DashboardError({ error, reset }: DashboardErrorProps) {
   return (
     <Card className="w-full max-w-md mx-auto text-center animate-slide-up">
       <div className="flex flex-col items-center gap-5 py-4">
-
         <div
           className="flex items-center justify-center h-20 w-20 rounded-full bg-danger/15 ring-4 ring-danger/20"
           role="img"
@@ -42,9 +41,7 @@ export default function DashboardError({ error, reset }: DashboardErrorProps) {
         </div>
 
         <div>
-          <h1 className="text-2xl font-bold text-fg mb-1">
-            This page hit a snag
-          </h1>
+          <h1 className="text-2xl font-bold text-fg mb-1">This page hit a snag</h1>
           <p className="text-sm text-fg-subtle">
             The rest of your dashboard is fine — just this page. Try again.
           </p>
@@ -57,15 +54,12 @@ export default function DashboardError({ error, reset }: DashboardErrorProps) {
         )}
 
         {error.digest && (
-          <p className="text-xs text-fg-faint font-mono">
-            Reference: {error.digest}
-          </p>
+          <p className="text-xs text-fg-faint font-mono">Reference: {error.digest}</p>
         )}
 
         <Button size="lg" className="w-full" onClick={reset}>
           Try again
         </Button>
-
       </div>
     </Card>
   );

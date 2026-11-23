@@ -10,10 +10,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("Settings");
 
-export default function SettingsLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SettingsLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

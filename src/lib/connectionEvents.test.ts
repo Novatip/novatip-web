@@ -46,7 +46,9 @@ describe("connectionEvents", () => {
 
   it("keeps notifying other listeners when one throws", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    const bad = vi.fn(() => { throw new Error("boom"); });
+    const bad = vi.fn(() => {
+      throw new Error("boom");
+    });
     const good = vi.fn();
     const offBad = onConnectionFailure(bad);
     const offGood = onConnectionFailure(good);

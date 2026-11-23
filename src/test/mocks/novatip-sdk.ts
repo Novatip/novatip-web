@@ -29,9 +29,9 @@ export function isValidTipAmount(stroops: bigint): boolean {
 }
 
 export function formatUsdc(stroops: bigint, decimals = 2): string {
-  const whole    = stroops / 10_000_000n;
+  const whole = stroops / 10_000_000n;
   const fraction = stroops % 10_000_000n;
-  const fracStr  = fraction.toString().padStart(7, "0").slice(0, decimals);
+  const fracStr = fraction.toString().padStart(7, "0").slice(0, decimals);
   return `${whole}.${fracStr}`;
 }
 
@@ -47,18 +47,18 @@ export function validateSplitsBps(bpsArray: number[]): boolean {
 
 /** Mirrors the `Error` enum in contracts/tip-splitter/src/lib.rs. */
 export enum ContractErrorCode {
-  NotInitialized     = 1,
-  JarExists          = 2,
-  JarNotFound        = 3,
-  InvalidSplits      = 4,
-  InvalidAmount      = 5,
-  TooManyRecipients  = 6,
+  NotInitialized = 1,
+  JarExists = 2,
+  JarNotFound = 3,
+  InvalidSplits = 4,
+  InvalidAmount = 5,
+  TooManyRecipients = 6,
   DuplicateRecipient = 7,
-  MessageTooLong     = 8,
-  InvalidJarId       = 9,
-  SplitsEmpty        = 10,
-  SplitOutOfRange    = 11,
-  SplitSumNot100Pct  = 12,
+  MessageTooLong = 8,
+  InvalidJarId = 9,
+  SplitsEmpty = 10,
+  SplitOutOfRange = 11,
+  SplitSumNot100Pct = 12,
 }
 
 /** SDK-level error wrapping a contract error code. */
@@ -73,11 +73,11 @@ export class NovatipContractError extends Error {
 }
 
 export interface Split {
-  to:  string;
+  to: string;
   bps: number;
 }
 
 export interface Jar {
-  owner:  string;
+  owner: string;
   splits: Split[];
 }

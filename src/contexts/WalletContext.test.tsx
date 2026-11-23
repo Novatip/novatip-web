@@ -34,14 +34,14 @@ import { emitUnauthorized } from "@/lib/authEvents";
 // state transitions instead of a wallet extension that is not installed in
 // the test environment.
 vi.mock("@/lib/wallet", () => ({
-  connectFreighter:     vi.fn(),
+  connectFreighter: vi.fn(),
   isFreighterInstalled: vi.fn(),
-  signNonce:            vi.fn(),
+  signNonce: vi.fn(),
 }));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
-const PK_KEY  = "novatip_pk";
+const PK_KEY = "novatip_pk";
 const JWT_KEY = "novatip_jwt";
 
 const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
@@ -50,21 +50,18 @@ const EXPIRY_MESSAGE = "Your session has expired. Please reconnect your wallet."
 
 /** Encode a JWT payload the way `lib/jwt.ts` decodes it: base64url, unpadded. */
 function base64Url(obj: unknown): string {
-  return btoa(JSON.stringify(obj))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  return btoa(JSON.stringify(obj)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function makeJwt(expOffsetSeconds: number): string {
-  const header  = base64Url({ alg: "none", typ: "JWT" });
+  const header = base64Url({ alg: "none", typ: "JWT" });
   const payload = base64Url({
     exp: Math.floor(Date.now() / 1000) + expOffsetSeconds,
   });
   return `${header}.${payload}.signature`;
 }
 
-const VALID_JWT   = makeJwt(3600);
+const VALID_JWT = makeJwt(3600);
 const EXPIRED_JWT = makeJwt(-3600);
 
 /**

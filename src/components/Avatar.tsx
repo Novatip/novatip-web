@@ -48,7 +48,9 @@ export function Avatar({ src, displayName, slug, className }: AvatarProps) {
         role="img"
         aria-label={accessibleName}
       >
-        <span className="text-lg" aria-hidden="true">{initials}</span>
+        <span className="text-lg" aria-hidden="true">
+          {initials}
+        </span>
       </div>
     );
   }

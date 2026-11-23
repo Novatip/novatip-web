@@ -12,7 +12,7 @@
  */
 
 export const CHART_WINDOW_STORAGE_KEY = "novatip_chart_window";
-export const CHART_MODE_STORAGE_KEY   = "novatip_chart_mode";
+export const CHART_MODE_STORAGE_KEY = "novatip_chart_mode";
 
 /** Default window when nothing valid is stored yet. */
 export const DEFAULT_CHART_WINDOW = 30 as const;

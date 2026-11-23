@@ -29,9 +29,7 @@ describe("Footer", () => {
     render(<Footer />);
 
     const footer = screen.getByRole("contentinfo");
-    expect(
-      within(footer).getByRole("navigation", { name: "Project links" }),
-    ).toBeInTheDocument();
+    expect(within(footer).getByRole("navigation", { name: "Project links" })).toBeInTheDocument();
   });
 
   it.each(EXPECTED_LINKS)("links to $href", ({ name, href }) => {

@@ -38,8 +38,8 @@ function setOsPrefersDark(prefersDark: boolean | null) {
   }
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: query.includes("dark") ? prefersDark : false,
-    media:   query,
-    addEventListener:    vi.fn(),
+    media: query,
+    addEventListener: vi.fn(),
     removeEventListener: vi.fn(),
   }));
 }

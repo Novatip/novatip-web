@@ -10,10 +10,6 @@ import { pageTitle } from "@/lib/pageTitle";
 
 export const metadata: Metadata = pageTitle("QR Code");
 
-export default function QrLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function QrLayout({ children }: { children: React.ReactNode }) {
   return children;
 }

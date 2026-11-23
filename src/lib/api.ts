@@ -163,11 +163,7 @@ async function fetchOnce(
   }
 }
 
-async function request<T>(
-  path: string,
-  init: RequestOptions = {},
-  jwt?: string,
-): Promise<T> {
+async function request<T>(path: string, init: RequestOptions = {}, jwt?: string): Promise<T> {
   const headers: Record<string, string> = {
     ...(init.body ? { "Content-Type": "application/json" } : {}),
     ...(init.headers as Record<string, string>),
@@ -199,8 +195,8 @@ async function request<T>(
   emitConnectionSuccess();
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>;
-    const err  = body["error"] as Record<string, unknown> | undefined;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const err = body["error"] as Record<string, unknown> | undefined;
 
     // A 401 from any endpoint means the session is no longer valid, whether
     // it expired or was never valid to begin with. Handle it in one place
@@ -254,26 +250,22 @@ export const authApi = {
     }),
 
   me: (jwt: string, options?: RequestOptions) =>
-    request<{ user: { sub: string; wallet: string; slug: string } }>(
-      "/auth/me",
-      options,
-      jwt,
-    ),
+    request<{ user: { sub: string; wallet: string; slug: string } }>("/auth/me", options, jwt),
 };
 
 // ── Creators ──────────────────────────────────────────────────────────────────
 
 export interface CreatorProfile {
-  id:          string;
-  slug:        string;
+  id: string;
+  slug: string;
   displayName: string | null;
-  bio:         string | null;
-  avatarUrl:   string | null;
+  bio: string | null;
+  avatarUrl: string | null;
   /** Address tip-received emails are sent to. Null means notifications are off. */
-  email:       string | null;
-  jarId:       string;
-  splits:      Array<{ to: string; bps: number }>;
-  createdAt:   string;
+  email: string | null;
+  jarId: string;
+  splits: Array<{ to: string; bps: number }>;
+  createdAt: string;
 }
 
 export const creatorApi = {
@@ -281,72 +273,87 @@ export const creatorApi = {
     request<{ creator: CreatorProfile }>(`/creators/${encodeURIComponent(slug)}`, options),
 
   checkSlug: (slug: string, options?: RequestOptions) =>
-    request<{ slug: string; available: boolean }>(`/creators/check/${encodeURIComponent(slug)}`, options),
+    request<{ slug: string; available: boolean }>(
+      `/creators/check/${encodeURIComponent(slug)}`,
+      options,
+    ),
 
   claim: (
     jwt: string,
     data: { slug: string; jarId: string; displayName?: string; bio?: string },
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/claim", {
-      ...options,
-      method: "POST",
-      body: JSON.stringify(data),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/claim",
+      {
+        ...options,
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      jwt,
+    ),
 
   updateProfile: (
     jwt: string,
     data: { displayName?: string; bio?: string; avatarUrl?: string; email?: string | null },
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/me", {
-      ...options,
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/me",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+      jwt,
+    ),
 
   updateSplits: (
     jwt: string,
     splits: Array<{ to: string; bps: number }>,
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/me/splits", {
-      ...options,
-      method: "PATCH",
-      body: JSON.stringify({ splits }),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/me/splits",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify({ splits }),
+      },
+      jwt,
+    ),
 
   // Renames the creator's public slug. Does not touch jarId — the on-chain
   // jar stays registered under the id it was created with, so a rename only
   // ever changes where the tip page and links resolve, never the contract
   // state splits are paid through.
-  updateSlug: (
-    jwt: string,
-    slug: string,
-    options?: RequestOptions,
-  ) =>
-    request<{ creator: CreatorProfile }>("/creators/me/slug", {
-      ...options,
-      method: "PATCH",
-      body: JSON.stringify({ slug }),
-    }, jwt),
+  updateSlug: (jwt: string, slug: string, options?: RequestOptions) =>
+    request<{ creator: CreatorProfile }>(
+      "/creators/me/slug",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify({ slug }),
+      },
+      jwt,
+    ),
 };
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
 export interface PublicTip {
-  id:          string;
+  id: string;
   fromAddress: string;
-  amount:      string;
-  message:     string;
-  ledgerAt:    string;
+  amount: string;
+  message: string;
+  ledgerAt: string;
 }
 
 export interface ResolvedPage {
-  creator:    CreatorProfile;
-  tipUrl:     string;
-  qrSvgUrl:   string;
-  qrPngUrl:   string;
+  creator: CreatorProfile;
+  tipUrl: string;
+  qrSvgUrl: string;
+  qrPngUrl: string;
   recentTips: PublicTip[];
 }
 
@@ -390,7 +397,9 @@ export const analyticsApi = {
     ),
 
   topSupporters: (jwt: string, limit = 10, options?: RequestOptions) =>
-    request<{ supporters: Array<{ fromAddress: string; tipCount: number; totalAmountRaw: string }> }>(
+    request<{
+      supporters: Array<{ fromAddress: string; tipCount: number; totalAmountRaw: string }>;
+    }>(
       `/analytics/top-supporters?limit=${clampInt(limit, TOP_SUPPORTERS_MIN_LIMIT, TOP_SUPPORTERS_MAX_LIMIT)}`,
       options,
       jwt,
@@ -425,18 +434,14 @@ export const analyticsApi = {
 
 export interface NotificationPreferences {
   /** Receive an email after each indexed tip. */
-  emailEnabled:   boolean;
+  emailEnabled: boolean;
   /** Receive a webhook POST after each indexed tip. */
   webhookEnabled: boolean;
 }
 
 export const notificationsApi = {
   getPreferences: (jwt: string, options?: RequestOptions) =>
-    request<{ preferences: NotificationPreferences }>(
-      "/notifications/preferences",
-      options,
-      jwt,
-    ),
+    request<{ preferences: NotificationPreferences }>("/notifications/preferences", options, jwt),
 
   updatePreferences: (
     jwt: string,
@@ -453,9 +458,9 @@ export const notificationsApi = {
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
 export interface WebhookDelivery {
-  id:        string;
-  status:    number;
-  attempt:   number;
+  id: string;
+  status: number;
+  attempt: number;
   createdAt: string;
 }
 

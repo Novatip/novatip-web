@@ -24,15 +24,15 @@ vi.mock("@/components/NotificationPreferences", () => ({
 }));
 
 const mockWallet = vi.hoisted(() => ({
-  publicKey:    "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
-  jwt:          "mock.jwt.token",
-  isConnected:  true,
+  publicKey: "GOWNER123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABC",
+  jwt: "mock.jwt.token",
+  isConnected: true,
   isConnecting: false,
-  isSigningIn:  false,
-  error:        null as string | null,
-  connect:      vi.fn(),
-  retrySignIn:  vi.fn(),
-  disconnect:   vi.fn(),
+  isSigningIn: false,
+  error: null as string | null,
+  connect: vi.fn(),
+  retrySignIn: vi.fn(),
+  disconnect: vi.fn(),
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
@@ -109,7 +109,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
-    
+
     // A two-character slug stays invalid after input normalization.
     await userEvent.type(slugInput, "ab");
 
@@ -134,7 +134,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
-    
+
     // Type a valid slug that's taken
     await userEvent.type(slugInput, "takenslug");
 
@@ -162,7 +162,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
     });
 
     const slugInput = screen.getByLabelText(/new slug/i);
-    
+
     // Type a valid, available slug
     await userEvent.type(slugInput, "availableslug");
 
@@ -188,7 +188,7 @@ describe("SettingsPage – rename button disabled until conditions met", () => {
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
-    
+
     // Type a valid, available slug
     await userEvent.type(slugInput, "newvalidslug");
 
@@ -217,7 +217,7 @@ describe("SettingsPage – current slug reported as unchanged", () => {
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
-    
+
     // Type the current slug
     await userEvent.type(slugInput, "currentslug");
 
@@ -258,7 +258,7 @@ describe("SettingsPage – successful rename clears inputs and shows confirmatio
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
     const checkbox = screen.getByRole("checkbox") as HTMLInputElement;
-    
+
     // Type a valid, available slug
     await userEvent.type(slugInput, "newslug");
 
@@ -305,7 +305,7 @@ describe("SettingsPage – rename error handling", () => {
 
     const slugInput = screen.getByLabelText(/new slug/i);
     const checkbox = screen.getByRole("checkbox");
-    
+
     // Type a valid, available slug
     await userEvent.type(slugInput, "errorslug");
 
@@ -344,9 +344,7 @@ describe("SettingsPage – rename error handling", () => {
     await userEvent.click(screen.getByRole("checkbox"));
     await userEvent.click(screen.getByRole("button", { name: /rename to @newslug/i }));
 
-    expect(
-      await screen.findByText("Slug renaming is not available yet."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Slug renaming is not available yet.")).toBeInTheDocument();
     expect(screen.queryByText(/route patch:/i)).not.toBeInTheDocument();
   });
 });
@@ -361,7 +359,7 @@ describe("SettingsPage – slug validation", () => {
     });
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
-    
+
     // Type slug with invalid characters (uppercase, spaces, special chars)
     await userEvent.type(slugInput, "Test Slug!@#$123");
 
@@ -378,7 +376,7 @@ describe("SettingsPage – slug validation", () => {
     });
 
     const slugInput = screen.getByLabelText(/new slug/i) as HTMLInputElement;
-    
+
     // Type a slug longer than 32 characters
     const longSlug = "a".repeat(40);
     await userEvent.type(slugInput, longSlug);

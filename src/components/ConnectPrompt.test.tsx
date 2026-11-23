@@ -22,13 +22,13 @@ const mocks = vi.hoisted(() => ({
   replace: vi.fn(),
   searchParams: new URLSearchParams(),
   wallet: {
-    publicKey:    null as string | null,
-    jwt:          null as string | null,
-    isConnected:  false,
+    publicKey: null as string | null,
+    jwt: null as string | null,
+    isConnected: false,
     isConnecting: false,
-    error:        null as string | null,
-    connect:      vi.fn(async () => {}),
-    disconnect:   vi.fn(),
+    error: null as string | null,
+    connect: vi.fn(async () => {}),
+    disconnect: vi.fn(),
   },
 }));
 
@@ -160,9 +160,7 @@ describe("ConnectPrompt – rendering", () => {
     setParams("connect=true");
     render(<ConnectPrompt />);
 
-    expect(
-      screen.getByText(/that page needs a connected wallet/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/that page needs a connected wallet/i)).toBeInTheDocument();
   });
 
   it("shows a connecting message once the wallet connection is in flight", () => {

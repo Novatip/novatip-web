@@ -19,8 +19,8 @@ import { getNetworkConfig } from "./wallet";
  */
 export async function getUsdcBalance(address: string): Promise<bigint> {
   const network = getNetworkConfig();
-  const server  = createRpcServer(network);
-  const token   = new Contract(config.stellar.usdcContractId);
+  const server = createRpcServer(network);
+  const token = new Contract(config.stellar.usdcContractId);
 
   const builder = await buildTransactionBuilder(address, network, server);
   const tx = builder

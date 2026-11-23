@@ -31,7 +31,12 @@ export function useActiveAccountChange(connected: string | null): string | null 
 
   // Replies can arrive out of order or after unmount; only the newest counts.
   const latest = useRef(0);
-  useEffect(() => () => { latest.current += 1; }, []);
+  useEffect(
+    () => () => {
+      latest.current += 1;
+    },
+    [],
+  );
 
   const check = useCallback(() => {
     if (!connected) return;
