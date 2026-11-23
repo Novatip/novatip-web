@@ -9,11 +9,13 @@
  *
  * Covers:
  *   - The project-links footer is rendered after the main content
+ *   - generateMetadata sets the canonical URL in the /alice form for both
+ *     /alice and /@alice, and leaves the Open Graph URL alone
  */
 
 import { describe, it, expect, afterEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
-import TipPage from "./page";
+import TipPage, { generateMetadata } from "./page";
 
 // The client build of React that vitest resolves has no cache(); a pass-through
 // is enough because the page only uses it to dedupe one request.
@@ -70,5 +72,31 @@ describe("TipPage (/[slug])", () => {
       "href",
       "https://github.com/Novatip/novatip-docs/blob/main/SECURITY.md",
     );
+  });
+});
+
+describe("generateMetadata (/[slug])", () => {
+  const canonical = () => `${window.location.origin}/alice`;
+
+  it("sets the canonical URL in the /alice form for /alice", async () => {
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "alice" }) });
+
+    expect(metadata.alternates?.canonical).toBe(canonical());
+  });
+
+  it("sets the same canonical URL for /@alice", async () => {
+    const plain = await generateMetadata({ params: Promise.resolve({ slug: "alice" }) });
+    const at = await generateMetadata({ params: Promise.resolve({ slug: "@alice" }) });
+    const encodedAt = await generateMetadata({ params: Promise.resolve({ slug: "%40alice" }) });
+
+    expect(at.alternates?.canonical).toBe(canonical());
+    expect(encodedAt.alternates?.canonical).toBe(canonical());
+    expect(at.alternates?.canonical).toBe(plain.alternates?.canonical);
+  });
+
+  it("leaves the Open Graph URL as the backend's tipUrl", async () => {
+    const metadata = await generateMetadata({ params: Promise.resolve({ slug: "@alice" }) });
+
+    expect(metadata.openGraph?.url).toBe("https://novatip.example/@alice");
   });
 });
