@@ -10,6 +10,7 @@
  * <AmountPicker value={amount} onChange={setAmount} />
  */
 
+import { useId } from "react";
 import { cn } from "@/lib/utils";
 import { formatUsdc, isValidTipAmount, usdcToStroops } from "@novatip/sdk";
 import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
@@ -34,6 +35,8 @@ export function AmountPicker({
   presets = DEFAULT_AMOUNT_PRESETS,
   balance = null,
 }: AmountPickerProps) {
+  const errorId = useId();
+
   const isPreset = presets.includes(value);
   const isCustom = value !== "" && !isPreset;
 
@@ -77,6 +80,7 @@ export function AmountPicker({
     }
   })();
   const exceedsCeiling = isCustom && !!value && Number(value) > MAX_CUSTOM_TIP_USDC;
+  const showAmountError = isCustom && !!value && !amountValid;
 
   const insufficientBalance = (() => {
     if (balance === null || !amountValid) return false;
@@ -149,6 +153,8 @@ export function AmountPicker({
               : "border-hairline focus:ring-brand-500/40",
           )}
           aria-label="Enter custom tip amount"
+          aria-invalid={showAmountError}
+          aria-describedby={showAmountError ? errorId : undefined}
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-fg-faint pointer-events-none">
           USDC
@@ -156,13 +162,15 @@ export function AmountPicker({
       </div>
 
       {/* Validation feedback */}
-      {isCustom && value && !amountValid && (
-        <p className="text-xs text-danger">
-          {exceedsCeiling
+      {/* Always mounted so assistive technology registers the live region
+          before the message appears; visually hidden while empty. */}
+      <p id={errorId} role="status" className={showAmountError ? "text-xs text-danger" : "sr-only"}>
+        {showAmountError
+          ? exceedsCeiling
             ? `Custom tips are capped at $${MAX_CUSTOM_TIP_USDC}`
-            : "Enter a valid amount greater than 0"}
-        </p>
-      )}
+            : "Enter a valid amount greater than 0"
+          : null}
+      </p>
 
       {/* Precision hint — shown whenever the custom field is active so the
           user understands why extra decimal digits are dropped automatically */}

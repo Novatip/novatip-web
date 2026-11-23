@@ -100,6 +100,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   // count shown and the count enforced both have to be in bytes — a string of
   // emoji is well under 280 characters and well over 280 bytes.
   const messageBytes = utf8ByteLength(trimmedMessage);
+  const messageTooLong = messageBytes > MAX_MESSAGE_BYTES;
 
   // A jar with no recipients cannot pay anyone, so tipping it would fail
   // on-chain after the supporter had already signed.
@@ -117,7 +118,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     amountValid &&
     hasRecipients &&
     !insufficientBalance &&
-    messageBytes <= MAX_MESSAGE_BYTES &&
+    !messageTooLong &&
     step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
@@ -217,17 +218,32 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                        focus:outline-none focus:ring-2 focus:ring-brand-500/50
                        transition-all duration-200 disabled:opacity-50"
             aria-label="Optional tip message"
+            aria-describedby="tip-message-count"
+            aria-invalid={messageTooLong}
           />
+          {/* Not a live region: it changes on every keystroke. The overflow is
+              announced separately, once, by the status below. */}
           <p
-            className={`text-right text-xs ${messageBytes > MAX_MESSAGE_BYTES ? "text-danger" : "text-fg-dim"}`}
+            id="tip-message-count"
+            className={`text-right text-xs ${messageTooLong ? "text-danger" : "text-fg-dim"}`}
           >
             {messageBytes}/{MAX_MESSAGE_BYTES} bytes
           </p>
+          {/* Only mounted while over the limit, so it is announced once when
+              the limit is crossed rather than on every keystroke. */}
+          {messageTooLong && (
+            <p role="status" className="sr-only">
+              Message is over the {MAX_MESSAGE_BYTES} byte limit.
+            </p>
+          )}
         </div>
 
         {/* Unconfigured jar warning */}
         {!hasRecipients && (
-          <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div
+            role="status"
+            className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3"
+          >
             <p className="text-sm text-warning">
               This jar has no recipients configured and cannot receive tips.
             </p>
@@ -236,7 +252,10 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Splits-too-small warning */}
         {zeroPaidCount > 0 && (
-          <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div
+            role="status"
+            className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3"
+          >
             <p className="text-sm text-warning">
               At this amount,{" "}
               <span className="font-semibold">
@@ -250,7 +269,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Error banner */}
         {step === "error" && error && (
-          <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+          <div role="alert" className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
             <p className="text-sm text-danger">{error}</p>
           </div>
         )}

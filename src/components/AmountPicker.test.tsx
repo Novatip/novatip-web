@@ -16,6 +16,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AmountPicker } from "./AmountPicker";
+import { MAX_CUSTOM_TIP_USDC } from "@/lib/tipAmount";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -170,5 +171,39 @@ describe("AmountPicker – configurable presets", () => {
   it("falls back to the default list when no presets prop is given", () => {
     setup();
     expect(screen.getByRole("button", { name: /Tip \$25 USDC/i })).toBeInTheDocument();
+  });
+});
+
+// ── Accessible validation ─────────────────────────────────────────────────────
+
+describe("AmountPicker – accessible validation", () => {
+  function renderCustom(value: string) {
+    const { rerender } = render(<AmountPicker value="" onChange={vi.fn()} />);
+    const input = screen.getByLabelText(/enter custom tip amount/i);
+    fireEvent.focus(input);
+    rerender(<AmountPicker value={value} onChange={vi.fn()} />);
+    return input;
+  }
+
+  it("marks an invalid amount and links the input to a polite message", () => {
+    const input = renderCustom("0");
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription("Enter a valid amount greater than 0");
+    expect(screen.getByRole("status")).toHaveTextContent(/enter a valid amount greater than 0/i);
+  });
+
+  it("marks an over-ceiling amount and describes it with the ceiling message", () => {
+    const input = renderCustom(String(MAX_CUSTOM_TIP_USDC + 1));
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription(`Custom tips are capped at $${MAX_CUSTOM_TIP_USDC}`);
+  });
+
+  it("is not invalid or described for a valid amount", () => {
+    const input = renderCustom("5");
+
+    expect(input).toHaveAttribute("aria-invalid", "false");
+    expect(input).not.toHaveAttribute("aria-describedby");
   });
 });
