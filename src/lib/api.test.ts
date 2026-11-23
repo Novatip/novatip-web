@@ -10,6 +10,7 @@
  *   - request() returns undefined for 204 No Content
  *   - request() throws ApiError INVALID_RESPONSE for a 200 with a non-JSON body
  *   - request() attaches the Authorization header when a JWT is provided
+ *   - analyticsApi.timeSeries / topSupporters clamp their query values
  *   - request() retries a body-less GET once after a network failure or a
  *     502/503/504, and never retries anything else
  */
@@ -475,5 +476,65 @@ describe("request() retry", () => {
 
     expect(await pending).toMatchObject({ code: "ABORTED" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── analytics query clamping ──────────────────────────────────────────────────
+
+describe("analyticsApi query clamping", () => {
+  const fetchSpy = vi.spyOn(globalThis, "fetch");
+
+  beforeEach(() => {
+    fetchSpy.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve({ series: [], supporters: [] }),
+    } as unknown as Response);
+  });
+
+  afterEach(() => {
+    fetchSpy.mockReset();
+  });
+
+  function requestedUrl(): string {
+    return (fetchSpy.mock.calls[0] as [string, RequestInit])[0];
+  }
+
+  it.each([
+    [-5, 1],
+    [0, 1],
+    [366, 365],
+    [100000, 365],
+    [Number.NaN, 1],
+  ])("timeSeries(days=%s) requests days=%s", async (input, expected) => {
+    await analyticsApi.timeSeries("tok", input);
+    expect(requestedUrl()).toMatch(new RegExp(`/analytics/timeseries\\?days=${expected}$`));
+  });
+
+  it.each([
+    [-1, 1],
+    [0, 1],
+    [101, 100],
+    [5000, 100],
+    [Number.NaN, 1],
+  ])("topSupporters(limit=%s) requests limit=%s", async (input, expected) => {
+    await analyticsApi.topSupporters("tok", input);
+    expect(requestedUrl()).toMatch(new RegExp(`/analytics/top-supporters\\?limit=${expected}$`));
+  });
+
+  it("leaves in-range values unchanged", async () => {
+    await analyticsApi.timeSeries("tok", 90);
+    expect(requestedUrl()).toMatch(/\/analytics\/timeseries\?days=90$/);
+    fetchSpy.mockClear();
+    await analyticsApi.topSupporters("tok", 25);
+    expect(requestedUrl()).toMatch(/\/analytics\/top-supporters\?limit=25$/);
+  });
+
+  it("keeps the defaults (30 days, 10 supporters)", async () => {
+    await analyticsApi.timeSeries("tok");
+    expect(requestedUrl()).toMatch(/days=30$/);
+    fetchSpy.mockClear();
+    await analyticsApi.topSupporters("tok");
+    expect(requestedUrl()).toMatch(/limit=10$/);
   });
 });
