@@ -24,6 +24,7 @@ const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVW";
 
 const mocks = vi.hoisted(() => ({
   getUsdcBalance: vi.fn<(address: string) => Promise<bigint>>(),
+  tip: vi.fn(),
   wallet: { connected: true },
 }));
 
@@ -47,7 +48,7 @@ vi.mock("@/lib/wallet", async () => {
   const sdk = await import("@novatip/sdk");
   return {
     assertActiveAccount:   vi.fn(),
-    getTipSplitterClient:  vi.fn(),
+    getTipSplitterClient:  vi.fn(() => ({ tip: mocks.tip })),
     makeSignTransaction:   vi.fn(),
     usdcToStroops:         sdk.usdcToStroops,
   };
@@ -78,6 +79,7 @@ function sendButton() {
 beforeEach(() => {
   window.localStorage.clear();
   mocks.getUsdcBalance.mockReset();
+  mocks.tip.mockReset();
   mocks.wallet.connected = true;
 });
 
@@ -112,6 +114,28 @@ describe("TipForm – valid amount", () => {
     });
 
     expect(screen.getByRole("button", { name: "Send $7.5 USDC tip" })).toBeEnabled();
+  });
+});
+
+describe("TipForm – submission errors", () => {
+  it("shows a readable message for a rejected transaction result", async () => {
+    const resultXdr = "AAAAAAAA+QT////6AAAAAA==";
+    mocks.tip.mockRejectedValueOnce(new Error(`Transaction submission failed: ${resultXdr}`));
+    renderForm({ amount: "2", balance: 100n * USDC });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send $2 USDC tip" }));
+
+    const error = await screen.findByText(/Transaction rejected:.*txBAD_AUTH/);
+    expect(error).not.toHaveTextContent(resultXdr);
+  });
+
+  it("shows an unrelated error unchanged", async () => {
+    mocks.tip.mockRejectedValueOnce(new Error("RPC unreachable"));
+    renderForm({ amount: "2", balance: 100n * USDC });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send $2 USDC tip" }));
+
+    expect(await screen.findByText("RPC unreachable")).toBeInTheDocument();
   });
 });
 
