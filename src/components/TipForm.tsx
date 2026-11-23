@@ -30,6 +30,7 @@ import { tipEvents } from "@/lib/tipEvents";
 import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 import { DEFAULT_TIP_AMOUNT, getLastTipAmount, storeLastTipAmount } from "@/lib/lastTipAmount";
 import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
+import { describeSubmissionError } from "@/lib/txerror";
 
 export interface Split {
   to:  string;
@@ -119,14 +120,16 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
     try {
       const client = getTipSplitterClient();
-      await client.tip(
-        {
-          from:    publicKey,
-          jarId,
-          amount:  stroops,
-          message: message.trim(),
-        },
-        { signTransaction: makeSignTransaction(publicKey) },
+      await describeSubmissionError(
+        client.tip(
+          {
+            from:    publicKey,
+            jarId,
+            amount:  stroops,
+            message: message.trim(),
+          },
+          { signTransaction: makeSignTransaction(publicKey) },
+        ),
       );
 
       setTxAmount(amount);

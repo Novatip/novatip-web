@@ -58,6 +58,28 @@ describe("AmountPicker – preset buttons", () => {
   });
 });
 
+describe("AmountPicker – restored amount", () => {
+  it("shows a restored non-preset amount in the custom field", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<AmountPicker value="2" onChange={onChange} />);
+
+    rerender(<AmountPicker value="3.5" onChange={onChange} />);
+
+    expect(screen.getByRole("textbox", { name: /enter custom tip amount/i })).toHaveValue("3.5");
+    expect(screen.queryAllByRole("button", { pressed: true })).toHaveLength(0);
+  });
+
+  it("highlights a restored preset and leaves the custom field empty", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<AmountPicker value="3.5" onChange={onChange} />);
+
+    rerender(<AmountPicker value="5" onChange={onChange} />);
+
+    expect(screen.getByRole("button", { name: /Tip \$5 USDC/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("textbox", { name: /enter custom tip amount/i })).toHaveValue("");
+  });
+});
+
 // ── Custom input sanitisation ─────────────────────────────────────────────────
 
 describe("AmountPicker – custom input sanitisation", () => {
@@ -67,7 +89,7 @@ describe("AmountPicker – custom input sanitisation", () => {
     render(<AmountPicker value="" onChange={onChange} />);
 
     const input = screen.getByLabelText(/enter custom tip amount/i);
-    await user.click(input); // focus → setIsCustom(true) and onChange("")
+    await user.click(input);
     onChange.mockClear();
 
     // Simulate typing "ab3" — only "3" should reach onChange
@@ -95,13 +117,8 @@ describe("AmountPicker – custom input sanitisation", () => {
   });
 
   it("shows validation error for a zero amount", () => {
-    // isCustom=true means we need to have focused the field first;
-    // render with a state that simulates custom + invalid value by clicking
-    // the custom field and checking error after a bad value
+    // A non-preset value is custom even when supplied after the first render.
     const { rerender } = render(<AmountPicker value="" onChange={vi.fn()} />);
-    const input = screen.getByLabelText(/enter custom tip amount/i);
-    fireEvent.focus(input);
-
     rerender(<AmountPicker value="0" onChange={vi.fn()} />);
     // The validation message should appear
     expect(

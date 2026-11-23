@@ -1,8 +1,8 @@
 /**
  * src/app/dashboard/nav.test.ts
  *
- * Every dashboard nav entry must resolve to a route with a page.tsx, so no
- * link in the signed-in shell lands on the not-found page.
+ * Dashboard nav entries and page routes must match, so every dashboard page
+ * is reachable from the signed-in shell and every link resolves to a page.
  */
 
 import { describe, it, expect } from "vitest";
@@ -35,6 +35,21 @@ function pageFor(routeDir: string): string | undefined {
   return undefined;
 }
 
+/** Route groups contribute pages without adding a segment to the URL. */
+function dashboardPageRoutes(routeDir: string, href = "/dashboard"): string[] {
+  const routes = existsSync(join(routeDir, "page.tsx")) ? [href] : [];
+
+  for (const entry of readdirSync(routeDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith("_")) continue;
+    const segment = entry.name.startsWith("(") && entry.name.endsWith(")")
+      ? ""
+      : `/${entry.name}`;
+    routes.push(...dashboardPageRoutes(join(routeDir, entry.name), `${href}${segment}`));
+  }
+
+  return routes;
+}
+
 describe("dashboard NAV_ITEMS", () => {
   it.each(NAV_ITEMS.map((item) => [item.label, item.href]))(
     "%s (%s) has a page",
@@ -47,5 +62,12 @@ describe("dashboard NAV_ITEMS", () => {
   it("has unique hrefs", () => {
     const hrefs = NAV_ITEMS.map((item) => item.href);
     expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+
+  it("links to every dashboard page", () => {
+    const hrefs = NAV_ITEMS.map((item) => item.href);
+    for (const route of dashboardPageRoutes(join(APP_DIR, "dashboard"))) {
+      expect(hrefs).toContain(route);
+    }
   });
 });
