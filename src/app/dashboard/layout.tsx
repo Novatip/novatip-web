@@ -13,7 +13,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 import { ApiError, authApi } from "@/lib/api";
 import { getTipUrl } from "@/lib/tipUrl";
@@ -23,7 +22,7 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { Button } from "@/components/ui/Button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
-import { NAV_ITEMS } from "./nav";
+import { DashboardNav } from "./DashboardNav";
 
 // ── Tip-link copy control ─────────────────────────────────────────────────────
 
@@ -109,7 +108,6 @@ function TipLinkCopy({ slug }: { slug: string }) {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { isConnected, publicKey, jwt, isSigningIn, retrySignIn, error: walletError } = useWallet();
-  const pathname = usePathname();
   const [sessionKey, setSessionKey] = useState(0);
   const [slug, setSlug] = useState<string | null>(null);
 
@@ -253,55 +251,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </header>
 
       {/* Mobile nav */}
-      <nav
-        className="md:hidden border-b border-hairline bg-surface/50 px-4 py-2 flex items-center justify-around gap-1 overflow-x-auto"
-        aria-label="Dashboard navigation"
-      >
-        {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-medium transition-all shrink-0",
-                isActive
-                  ? "bg-brand-500/20 text-accent border border-brand-500/20"
-                  : "text-fg-subtle hover:text-fg hover:bg-surface-strong",
-              )}
-              aria-current={isActive ? "page" : undefined}
-            >
-              <span className="text-base" aria-hidden="true">
-                {item.icon}
-              </span>
-              <span>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <DashboardNav layout="bar" />
 
       <div className="flex flex-1 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-8 gap-8">
         {/* Sidebar */}
-        <aside className="hidden md:flex flex-col gap-1 w-48 shrink-0">
-          {NAV_ITEMS.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-                pathname === item.href
-                  ? "bg-brand-500/20 text-accent border border-brand-500/20"
-                  : "text-fg-subtle hover:text-fg hover:bg-surface-strong",
-              )}
-              aria-current={pathname === item.href ? "page" : undefined}
-            >
-              <span className="text-base" aria-hidden="true">
-                {item.icon}
-              </span>
-              {item.label}
-            </Link>
-          ))}
-        </aside>
+        <DashboardNav layout="sidebar" />
 
         {/* Page content */}
         <main
