@@ -14,73 +14,12 @@
  */
 
 import { describe, it, expect } from "vitest";
-
-// ── Local copy of the helpers under test ──────────────────────────────────────
-//
-// mergeWithPending and its helpers are not exported from RecentTips.tsx
-// (implementation details).  We mirror the logic here so the tests stay
-// self-contained without coupling to the module boundary.
-
-interface IndexedTip {
-  kind: "indexed";
-  id: string;
-  fromAddress: string;
-  amount: string;
-  message: string;
-  ledgerAt: string;
-}
-
-interface PendingTip {
-  kind: "pending";
-  id: string;
-  fromAddress: string;
-  displayAmount: string;
-  message: string;
-  expiresAt: number;
-}
-
-interface UnconfirmedTip extends Omit<PendingTip, "kind"> {
-  kind: "unconfirmed";
-}
-
-type FeedEntry = IndexedTip | PendingTip | UnconfirmedTip;
-
-// Mirror of the production displayAmountToStroops helper
-function displayAmountToStroops(display: string): bigint {
-  const [integer = "0", fraction = ""] = display.split(".");
-  const paddedFraction = fraction.padEnd(7, "0").slice(0, 7);
-  return BigInt(integer) * 10_000_000n + BigInt(paddedFraction);
-}
-
-// Mirror of the production isMatch helper
-function isMatch(indexed: IndexedTip, pending: PendingTip): boolean {
-  if (indexed.fromAddress !== pending.fromAddress) return false;
-  try {
-    return BigInt(indexed.amount) >= displayAmountToStroops(pending.displayAmount);
-  } catch {
-    return false;
-  }
-}
-
-function mergeWithPending(
-  indexed: IndexedTip[],
-  pending: PendingTip[],
-  now = Date.now(),
-): FeedEntry[] {
-  const unconfirmed: UnconfirmedTip[] = [];
-  const stillPending: PendingTip[] = [];
-
-  for (const p of pending) {
-    if (indexed.some((t) => isMatch(t, p))) continue; // confirmed — drop it
-    if (now > p.expiresAt) {
-      unconfirmed.push({ ...p, kind: "unconfirmed" });
-    } else {
-      stillPending.push(p);
-    }
-  }
-
-  return [...stillPending, ...unconfirmed, ...indexed];
-}
+import {
+  mergeWithPending,
+  type IndexedTip,
+  type PendingTip,
+  type UnconfirmedTip,
+} from "./RecentTips";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -89,8 +28,8 @@ const ADDR_B = "GXYZ5678";
 const NOW = 1_000_000; // arbitrary fixed "now" timestamp
 
 // 1 USDC = 10_000_000 stroops (7 decimal places)
-const FIVE_USDC_STROOPS = "50000000";  // 5 USDC
-const THREE_USDC_STROOPS = "30000000";  // 3 USDC
+const FIVE_USDC_STROOPS = "50000000"; // 5 USDC
+const THREE_USDC_STROOPS = "30000000"; // 3 USDC
 
 function makePending(
   address: string,
@@ -108,11 +47,7 @@ function makePending(
   };
 }
 
-function makeIndexed(
-  address: string,
-  amount = FIVE_USDC_STROOPS,
-  id = "indexed-1",
-): IndexedTip {
+function makeIndexed(address: string, amount = FIVE_USDC_STROOPS, id = "indexed-1"): IndexedTip {
   return {
     kind: "indexed",
     id,

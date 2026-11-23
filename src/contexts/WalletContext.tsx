@@ -14,13 +14,7 @@
  *   - disconnect()       clear local session
  */
 
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { connectFreighter, isFreighterInstalled, signNonce } from "@/lib/wallet";
 import { authApi } from "@/lib/api";
 import { onUnauthorized } from "@/lib/authEvents";
@@ -28,14 +22,20 @@ import { isJwtExpired } from "@/lib/jwt";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+/** Narrows `error` so the UI can special-case recovery, e.g. a link to install Freighter. */
+export type WalletErrorCode = "FREIGHTER_NOT_INSTALLED";
+
 interface WalletState {
-  publicKey:    string | null;
-  jwt:          string | null;
-  isConnected:  boolean;
+  publicKey: string | null;
+  jwt: string | null;
+  isConnected: boolean;
   isConnecting: boolean;
-  error:        string | null;
-  connect:      () => Promise<void>;
-  disconnect:   () => void;
+  isSigningIn: boolean;
+  error: string | null;
+  errorCode: WalletErrorCode | null;
+  connect: () => Promise<void>;
+  retrySignIn: () => Promise<void>;
+  disconnect: () => void;
 }
 
 // ── Context ───────────────────────────────────────────────────────────────────
@@ -43,15 +43,17 @@ interface WalletState {
 const WalletContext = createContext<WalletState | null>(null);
 
 const JWT_STORAGE_KEY = "novatip_jwt";
-const PK_STORAGE_KEY  = "novatip_pk";
+const PK_STORAGE_KEY = "novatip_pk";
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
-  const [publicKey,    setPublicKey]    = useState<string | null>(null);
-  const [jwt,          setJwt]          = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [jwt, setJwt] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [errorCode, setErrorCode] = useState<WalletErrorCode | null>(null);
 
   // Rehydrate from localStorage on mount. The two are restored independently:
   // a connected wallet with no creator session is the normal state for someone
@@ -83,7 +85,37 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       setPublicKey(null);
       setJwt(null);
       setError("Your session has expired. Please reconnect your wallet.");
+      setErrorCode(null);
     });
+  }, []);
+
+  // Follow connects and disconnects made in other tabs. The `storage` event
+  // only fires in documents other than the one that wrote, so this never
+  // echoes this tab's own changes back at it. Only the two session keys matter;
+  // key === null means localStorage was cleared wholesale, which is a
+  // disconnect for both of them.
+  useEffect(() => {
+    function handleStorage(event: StorageEvent) {
+      const cleared = event.key === null;
+      if (!cleared && event.key !== PK_STORAGE_KEY && event.key !== JWT_STORAGE_KEY) return;
+
+      if (cleared || event.key === PK_STORAGE_KEY) {
+        setPublicKey(cleared ? null : event.newValue);
+      }
+      if (cleared || event.key === JWT_STORAGE_KEY) {
+        // Same rule as rehydration: an already-expired token is not a session.
+        const token = cleared ? null : event.newValue;
+        setJwt(token && !isJwtExpired(token) ? token : null);
+      }
+
+      // A message about this tab's own attempt is stale once another tab has
+      // changed who is connected.
+      setError(null);
+      setErrorCode(null);
+    }
+
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
   }, []);
 
   /**
@@ -96,6 +128,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
    * still set so the failure (rejected, wallet locked, nonce expired) is visible.
    */
   const signIn = useCallback(async (pk: string): Promise<string | null> => {
+    setIsSigningIn(true);
+    setError(null);
     try {
       const { nonce } = await authApi.challenge(pk);
       const signatureHex = await signNonce(nonce, pk);
@@ -103,20 +137,30 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
       localStorage.setItem(JWT_STORAGE_KEY, token);
       setJwt(token);
+      setError(null);
       return token;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Sign-in failed. Please try again.";
       setError(message);
       return null;
+    } finally {
+      setIsSigningIn(false);
     }
   }, []);
+
+  const retrySignIn = useCallback(async () => {
+    if (!publicKey || isSigningIn) return;
+    await signIn(publicKey);
+  }, [publicKey, isSigningIn, signIn]);
 
   const connect = useCallback(async () => {
     setIsConnecting(true);
     setError(null);
+    setErrorCode(null);
 
     try {
       if (!(await isFreighterInstalled())) {
+        setErrorCode("FREIGHTER_NOT_INSTALLED");
         throw new Error(
           "Freighter wallet extension not found. Install it from freighter.app, then reload this page.",
         );
@@ -145,6 +189,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setPublicKey(null);
     setJwt(null);
     setError(null);
+    setErrorCode(null);
   }, []);
 
   return (
@@ -152,10 +197,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       value={{
         publicKey,
         jwt,
-        isConnected:  !!publicKey,
+        isConnected: !!publicKey,
         isConnecting,
+        isSigningIn,
         error,
+        errorCode,
         connect,
+        retrySignIn,
         disconnect,
       }}
     >

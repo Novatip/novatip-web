@@ -5,18 +5,18 @@
  * Step 1 — claim a unique public slug.
  */
 
-import { useState, useEffect } from "react";
-import { Input } from "@/components/ui/Input";
+import { useState, useEffect, useId } from "react";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { creatorApi } from "@/lib/api";
+import { ApiError, creatorApi } from "@/lib/api";
 import { jarIdForSlug, readJar } from "@/lib/jar";
 import { useWallet } from "@/contexts/WalletContext";
 import { getTipUrl } from "@/lib/tipUrl";
+import { isReservedSlug, isValidSlug } from "@/lib/slug";
 
 interface SlugStepProps {
-  jwt:      string;
-  onNext:   (slug: string) => void;
+  jwt: string;
+  onNext: (slug: string) => void;
 }
 
 /**
@@ -40,18 +40,29 @@ async function checkAvailability(
 
 export function SlugStep({ jwt, onNext }: SlugStepProps) {
   const { publicKey } = useWallet();
-  const [slug,      setSlug]      = useState("");
+  const hintId = useId();
+  const [slug, setSlug] = useState("");
   const [available, setAvailable] = useState<boolean | null>(null);
-  const [onChain,   setOnChain]   = useState(false);
-  const [checking,  setChecking]  = useState(false);
-  const [saving,    setSaving]    = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
+  const [onChain, setOnChain] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [retryNonce, setRetryNonce] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const slugValid = /^[a-z0-9_-]{3,32}$/.test(slug);
+  const slugValid = isValidSlug(slug);
+  // A reserved slug is never available, so there is nothing to ask the backend.
+  const slugReserved = slugValid && isReservedSlug(slug);
+  const slugCheckable = slugValid && !slugReserved;
 
   // Debounced availability check
   useEffect(() => {
-    if (!slugValid) { setAvailable(null); return; }
+    setCheckFailed(false);
+    if (!slugCheckable) {
+      setAvailable(null);
+      setChecking(false);
+      return;
+    }
     setAvailable(null);
     setChecking(true);
     const controller = new AbortController();
@@ -62,9 +73,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
           setAvailable(r.available);
           setOnChain(r.takenOnChain);
         })
-        .catch((e: any) => {
-          if (e.code === "ABORTED" || controller.signal.aborted) return;
+        .catch((e: unknown) => {
+          if ((e instanceof ApiError && e.code === "ABORTED") || controller.signal.aborted) return;
           setAvailable(null);
+          setCheckFailed(true);
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -76,10 +88,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [slug, slugValid, publicKey]);
+  }, [slug, slugCheckable, publicKey, retryNonce]);
 
   async function handleClaim() {
-    if (!slugValid || checking || !available) return;
+    if (!slugCheckable || checking || !available) return;
     setSaving(true);
     setError(null);
     try {
@@ -104,7 +116,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   return (
     <form
       className="flex flex-col gap-6"
-      onSubmit={(e) => { e.preventDefault(); handleClaim(); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        handleClaim();
+      }}
     >
       <div>
         <h2 className="text-xl font-bold text-fg mb-1">Claim your slug</h2>
@@ -132,21 +147,46 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
                        text-fg text-sm placeholder:text-fg-dim focus:outline-none
                        focus:ring-2 focus:ring-brand-500/50 transition-all disabled:opacity-50"
             aria-label="Choose your slug"
+            aria-describedby={hintId}
           />
         </div>
 
         <div className="flex items-center justify-between">
-          <p className="text-xs text-fg-faint">3–32 chars: lowercase, numbers, hyphens, underscores</p>
-          {slugValid && (
-            checking
-              ? <Badge variant="default">Checking…</Badge>
-              : available === true
-              ? <Badge variant="success">Available ✓</Badge>
-              : available === false
-              ? <Badge variant="error">{onChain ? "Taken on-chain" : "Taken"}</Badge>
-              : null
-          )}
+          <p id={hintId} className="text-xs text-fg-faint">
+            3–32 chars: lowercase, numbers, hyphens, underscores
+          </p>
+          {/* Always mounted: a live region only announces changes to a region
+              that already exists, so it cannot appear along with its content. */}
+          <div role="status" aria-live="polite">
+            {slugReserved ? (
+              <Badge variant="error">Reserved</Badge>
+            ) : (
+              slugValid &&
+              (checking ? (
+                <Badge variant="default">Checking…</Badge>
+              ) : available === true ? (
+                <Badge variant="success">Available ✓</Badge>
+              ) : available === false ? (
+                <Badge variant="error">{onChain ? "Taken on-chain" : "Taken"}</Badge>
+              ) : checkFailed ? (
+                <Badge variant="warning">Couldn’t check</Badge>
+              ) : null)
+            )}
+          </div>
         </div>
+
+        {slugCheckable && !checking && checkFailed && (
+          <p role="alert" className="flex items-center gap-2 text-sm text-danger">
+            We couldn’t check whether this slug is available.
+            <button
+              type="button"
+              onClick={() => setRetryNonce((n) => n + 1)}
+              className="underline underline-offset-2 hover:no-underline"
+            >
+              Try again
+            </button>
+          </p>
+        )}
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}
@@ -155,7 +195,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
         type="submit"
         size="lg"
         className="w-full"
-        disabled={!slugValid || checking || !available || saving}
+        disabled={!slugCheckable || checking || !available || saving}
         loading={saving}
       >
         Claim @{slug || "…"}

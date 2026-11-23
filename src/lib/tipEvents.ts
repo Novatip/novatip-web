@@ -33,7 +33,17 @@ function createTipEventBus() {
   return {
     /** Notify all subscribers that a tip succeeded. */
     emit(payload: TipSuccessPayload): void {
-      listeners.forEach((l) => l(payload));
+      // Each listener runs independently — one handler throwing (e.g. a
+      // render error surfacing out of a subscribed component) must not stop
+      // the others from learning about the tip. The error is still reported
+      // rather than silently dropped, just not left to interrupt emit().
+      listeners.forEach((l) => {
+        try {
+          l(payload);
+        } catch (err) {
+          console.error("tipEvents listener threw:", err);
+        }
+      });
     },
 
     /** Register a listener; returns an unsubscribe function. */

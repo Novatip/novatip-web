@@ -1,0 +1,28 @@
+@media print {
+  /* Hide all app navigation, sidebars, and non-printable elements */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Make only the QR card and its children visible and positioned for print */
+  .printable-qr-card,
+  .printable-qr-card * {
+    visibility: visible;
+  }
+
+  .printable-qr-card {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+}

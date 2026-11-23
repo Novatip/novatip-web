@@ -13,7 +13,7 @@
  *   - A blocked clipboard produces visible feedback rather than a silent no-op
  *   - The failure exposes the link for manual copying, pre-selected
  *   - The failure can be dismissed, and clears on a successful retry
- *   - Both the inline "Copy" and the "Copy link" button behave the same way
+ *   - The inline copy control reports success, failure, and recovery
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -21,7 +21,7 @@ import { render, screen, cleanup, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QRDownload } from "./QRDownload";
 
-const SLUG   = "ada";
+const SLUG = "ada";
 const PNG_URL = "https://api.novatip.xyz/qr/ada.png";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -30,9 +30,9 @@ const PNG_URL = "https://api.novatip.xyz/qr/ada.png";
 function grantClipboard() {
   const writeText = vi.fn(async () => {});
   Object.defineProperty(navigator, "clipboard", {
-    value:        { writeText },
+    value: { writeText },
     configurable: true,
-    writable:     true,
+    writable: true,
   });
   return writeText;
 }
@@ -40,9 +40,9 @@ function grantClipboard() {
 /** Strip every copy mechanism — what an insecure origin actually looks like. */
 function blockClipboard() {
   Object.defineProperty(navigator, "clipboard", {
-    value:        undefined,
+    value: undefined,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
   Reflect.deleteProperty(document, "execCommand");
 }
@@ -51,8 +51,7 @@ function expectedTipUrl() {
   return `${window.location.origin}/${SLUG}`;
 }
 
-const inlineCopy = () => screen.getByRole("button", { name: "Copy tip URL" });
-const copyButton = () => screen.getByRole("button", { name: "Copy tip link" });
+const copyButton = () => screen.getByRole("button", { name: "Copy tip URL" });
 
 beforeEach(() => {
   blockClipboard();
@@ -62,6 +61,16 @@ afterEach(() => {
   cleanup();
   blockClipboard();
   vi.restoreAllMocks();
+});
+
+// ── Accessible name ──────────────────────────────────────────────────────────
+
+describe("QRDownload – QR graphic", () => {
+  it("exposes an accessible name describing whose tip page it opens", () => {
+    render(<QRDownload slug={SLUG} pngUrl={PNG_URL} />);
+
+    expect(screen.getByRole("img", { name: `QR code for @${SLUG} tip page` })).toBeInTheDocument();
+  });
 });
 
 // ── Successful copy ───────────────────────────────────────────────────────────
@@ -75,18 +84,9 @@ describe("QRDownload – successful copy", () => {
 
     expect(writeText).toHaveBeenCalledWith(expectedTipUrl());
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Copy tip link" })).toHaveTextContent("✓ Copied"),
+      expect(screen.getByRole("button", { name: "Copy tip URL" })).toHaveTextContent("Copied!"),
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-  });
-
-  it("confirms on the inline copy control too", async () => {
-    grantClipboard();
-    render(<QRDownload slug={SLUG} pngUrl={PNG_URL} />);
-
-    await userEvent.click(inlineCopy());
-
-    await waitFor(() => expect(inlineCopy()).toHaveTextContent("Copied!"));
   });
 });
 
@@ -100,15 +100,18 @@ describe("QRDownload – failed copy", () => {
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/couldn't copy automatically/i);
-    expect(screen.getByRole("button", { name: "Copy tip link" })).toHaveTextContent("Copy failed");
-    expect(inlineCopy()).toHaveTextContent("Failed");
+    expect(screen.getByRole("button", { name: "Copy tip URL" })).toHaveTextContent("Failed");
   });
 
   it("reports the failure when the Clipboard API rejects", async () => {
     Object.defineProperty(navigator, "clipboard", {
-      value:        { writeText: vi.fn(async () => { throw new Error("denied"); }) },
+      value: {
+        writeText: vi.fn(async () => {
+          throw new Error("denied");
+        }),
+      },
       configurable: true,
-      writable:     true,
+      writable: true,
     });
     render(<QRDownload slug={SLUG} pngUrl={PNG_URL} />);
 
@@ -144,14 +147,6 @@ describe("QRDownload – failed copy", () => {
       vi.useRealTimers();
     }
   });
-
-  it("surfaces the same failure from the inline copy control", async () => {
-    render(<QRDownload slug={SLUG} pngUrl={PNG_URL} />);
-
-    await userEvent.click(inlineCopy());
-
-    expect(await screen.findByRole("alert")).toBeInTheDocument();
-  });
 });
 
 // ── Recovering ────────────────────────────────────────────────────────────────
@@ -166,7 +161,7 @@ describe("QRDownload – recovering from a failure", () => {
     await userEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Copy tip link" })).toHaveTextContent("Copy link");
+    expect(screen.getByRole("button", { name: "Copy tip URL" })).toHaveTextContent("Copy");
   });
 
   it("clears the fallback once a copy finally works", async () => {
@@ -179,6 +174,6 @@ describe("QRDownload – recovering from a failure", () => {
     await userEvent.click(copyButton());
 
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(screen.getByRole("button", { name: "Copy tip link" })).toHaveTextContent("✓ Copied");
+    expect(screen.getByRole("button", { name: "Copy tip URL" })).toHaveTextContent("Copied!");
   });
 });

@@ -6,60 +6,32 @@
  * Dashboard page showing the creator's QR code + share link.
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { authApi } from "@/lib/api";
+import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { QRDownload } from "@/components/QRDownload";
-import { config } from "@/lib/config";
+import { getQrPngUrl } from "@/lib/tipUrl";
 
 export default function QRPage() {
-  const { jwt }  = useWallet();
-  const [slug,   setSlug]   = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { jwt } = useWallet();
+  const { data: slug, loading, error, run } = useAbortableRequest<string | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const fetchSlug = useCallback(() => {
+    if (!jwt) return;
+    run((signal) => authApi.me(jwt, { signal }).then((r) => r.user.slug));
+  }, [jwt, run]);
 
   useEffect(() => {
-    if (!jwt) return;
+    fetchSlug();
+  }, [fetchSlug]);
 
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    authApi
-      .me(jwt, { signal: controller.signal })
-      .then((r) => {
-        setSlug(r.user.slug);
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setSlug(null);
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [jwt]);
-
-  const pngUrl = slug
-    ? `${config.apiUrl.replace("/api/v1", "")}/api/v1/qr/${slug}/png`
-    : "";
+  const pngUrl = slug ? getQrPngUrl(slug) : "";
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-md">
       <div>
-        <h1 className="text-2xl font-bold text-fg">QR Code & Link</h1>
+        <h1 className="text-2xl font-bold text-fg">QR Code &amp; Link</h1>
         <p className="text-sm text-fg-subtle mt-1">
           Share or print your QR code so anyone can tap to tip you instantly.
         </p>
@@ -72,14 +44,23 @@ export default function QRPage() {
         </div>
       )}
 
-      {!loading && slug && (
-        <QRDownload slug={slug} pngUrl={pngUrl} />
+      {/* A failed lookup is shown as an error, distinct from simply having no slug yet. */}
+      {!loading && error && (
+        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex flex-col gap-3">
+          <p className="text-sm text-danger">Failed to load your QR code: {error}</p>
+          <button
+            onClick={fetchSlug}
+            className="self-start text-sm font-medium text-brand-400 hover:text-brand-300 transition-colors"
+          >
+            Try again
+          </button>
+        </div>
       )}
 
-      {!loading && !slug && (
-        <p className="text-sm text-fg-faint">
-          Complete onboarding to generate your QR code.
-        </p>
+      {!loading && !error && slug && <QRDownload slug={slug} pngUrl={pngUrl} />}
+
+      {!loading && !error && !slug && (
+        <p className="text-sm text-fg-faint">Complete onboarding to generate your QR code.</p>
       )}
     </div>
   );

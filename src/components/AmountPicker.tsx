@@ -10,33 +10,49 @@
  * <AmountPicker value={amount} onChange={setAmount} />
  */
 
-import { useState } from "react";
+import { useId } from "react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/Input";
-import { isValidTipAmount, usdcToStroops } from "@novatip/sdk";
+import { formatUsdc, isValidTipAmount, usdcToStroops } from "@novatip/sdk";
 import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
 
-const PRESETS = ["1", "2", "5", "10", "25"];
+/** Used when a creator hasn't configured their own preset amounts. */
+export const DEFAULT_AMOUNT_PRESETS = ["1", "2", "5", "10", "25"];
 
 interface AmountPickerProps {
-  value:     string;
-  onChange:  (value: string) => void;
+  value: string;
+  onChange: (value: string) => void;
   disabled?: boolean;
+  /** Preset amount buttons, in display order. Defaults to DEFAULT_AMOUNT_PRESETS. */
+  presets?: string[];
+  /** The connected supporter's USDC balance, if known — null while unknown/loading. */
+  balance?: bigint | null;
 }
 
-export function AmountPicker({ value, onChange, disabled = false }: AmountPickerProps) {
-  const [isCustom, setIsCustom] = useState(false);
+export function AmountPicker({
+  value,
+  onChange,
+  disabled = false,
+  presets = DEFAULT_AMOUNT_PRESETS,
+  balance = null,
+}: AmountPickerProps) {
+  const errorId = useId();
+  const headingId = useId();
 
-  const isPreset = PRESETS.includes(value);
+  const isPreset = presets.includes(value);
+  const isCustom = value !== "" && !isPreset;
 
   function handlePreset(preset: string) {
-    setIsCustom(false);
     onChange(preset);
   }
 
   function handleCustomFocus() {
-    setIsCustom(true);
-    onChange("");
+    // Only clear the amount when the user is switching away from a preset.
+    // If they tab through the custom field (or re-focus it while it is
+    // already active) the existing value should be preserved so the tip
+    // button stays enabled and the amount summary does not disappear.
+    if (isPreset) {
+      onChange("");
+    }
   }
 
   function handleCustomChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -44,9 +60,7 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
     const raw = e.target.value.replace(/[^0-9.]/g, "");
     // Prevent more than one decimal point
     const parts = raw.split(".");
-    let clean  = parts.length > 2
-      ? `${parts[0]}.${parts.slice(1).join("")}`
-      : raw;
+    let clean = parts.length > 2 ? `${parts[0]}.${parts.slice(1).join("")}` : raw;
     // USDC on Stellar supports 7 decimal places — anything finer
     // cannot be represented, so prevent excess precision as the user types.
     if (clean.includes(".")) {
@@ -67,14 +81,38 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
     }
   })();
   const exceedsCeiling = isCustom && !!value && Number(value) > MAX_CUSTOM_TIP_USDC;
+  const showAmountError = isCustom && !!value && !amountValid;
+
+  const insufficientBalance = (() => {
+    if (balance === null || !amountValid) return false;
+    try {
+      return usdcToStroops(value) > balance;
+    } catch {
+      return false;
+    }
+  })();
 
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium text-fg-muted">Amount (USDC)</p>
+      <div className="flex items-center justify-between">
+        <p id={headingId} className="text-sm font-medium text-fg-muted">
+          Amount (USDC)
+        </p>
+        {balance !== null && (
+          <p className={cn("text-xs", insufficientBalance ? "text-danger" : "text-fg-faint")}>
+            Balance: ${formatUsdc(balance, 2)}
+          </p>
+        )}
+      </div>
 
       {/* Preset buttons */}
-      <div className="grid grid-cols-5 gap-2">
-        {PRESETS.map((preset) => (
+      <div
+        role="group"
+        aria-labelledby={headingId}
+        className="grid gap-2"
+        style={{ gridTemplateColumns: `repeat(${presets.length}, minmax(0, 1fr))` }}
+      >
+        {presets.map((preset) => (
           <button
             key={preset}
             type="button"
@@ -84,11 +122,11 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
               "rounded-xl py-3 text-sm font-semibold transition-all duration-150",
               "border focus:outline-none focus:ring-2 focus:ring-brand-500/50",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              !isCustom && value === preset
+              value === preset
                 ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30"
                 : "bg-surface-strong border-hairline text-fg-muted hover:bg-hairline hover:text-fg",
             )}
-            aria-pressed={!isCustom && value === preset}
+            aria-pressed={value === preset}
             aria-label={`Tip $${preset} USDC`}
           >
             ${preset}
@@ -120,6 +158,8 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
               : "border-hairline focus:ring-brand-500/40",
           )}
           aria-label="Enter custom tip amount"
+          aria-invalid={showAmountError}
+          aria-describedby={showAmountError ? errorId : undefined}
         />
         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-fg-faint pointer-events-none">
           USDC
@@ -127,27 +167,34 @@ export function AmountPicker({ value, onChange, disabled = false }: AmountPicker
       </div>
 
       {/* Validation feedback */}
-      {isCustom && value && !amountValid && (
-        <p className="text-xs text-danger">
-          {exceedsCeiling
+      {/* Always mounted so assistive technology registers the live region
+          before the message appears; visually hidden while empty. */}
+      <p id={errorId} role="status" className={showAmountError ? "text-xs text-danger" : "sr-only"}>
+        {showAmountError
+          ? exceedsCeiling
             ? `Custom tips are capped at $${MAX_CUSTOM_TIP_USDC}`
-            : "Enter a valid amount greater than 0"}
-        </p>
-      )}
+            : "Enter a valid amount greater than 0"
+          : null}
+      </p>
 
       {/* Precision hint — shown whenever the custom field is active so the
           user understands why extra decimal digits are dropped automatically */}
-      {isCustom && (
-        <p className="text-xs text-fg-dim">
-          USDC supports up to 7 decimal places.
+      {isCustom && <p className="text-xs text-fg-dim">USDC supports up to 7 decimal places.</p>}
+      {amountValid && insufficientBalance && balance === 0n && (
+        <p className="text-xs text-danger">
+          Your wallet has no USDC on Stellar. The most common cause is a missing USDC trustline —
+          add one from your wallet, then fund it with USDC to send a tip.
         </p>
       )}
 
+      {amountValid && insufficientBalance && balance !== 0n && (
+        <p className="text-xs text-danger">That&apos;s more than your USDC balance.</p>
+      )}
+
       {/* Selected amount summary */}
-      {amountValid && (
+      {amountValid && !insufficientBalance && (
         <p className="text-xs text-fg-faint text-right">
-          Sending{" "}
-          <span className="text-accent font-semibold">${value} USDC</span>
+          Sending <span className="text-accent font-semibold">${value} USDC</span>
         </p>
       )}
     </div>

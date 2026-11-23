@@ -14,28 +14,60 @@
  */
 
 import { useEffect, useState, useRef, useCallback, useId } from "react";
-import { analyticsApi } from "@/lib/api";
+import { ApiError, getErrorMessage, analyticsApi } from "@/lib/api";
 import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import {
+  getChartWindow,
+  getChartMode,
+  storeChartWindow,
+  storeChartMode,
+  DEFAULT_CHART_WINDOW,
+  DEFAULT_CHART_MODE,
+  type ChartWindow,
+  type ChartMode,
+} from "@/lib/tipChartPrefs";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface DataPoint {
-  date:      string; // "YYYY-MM-DD"
-  tipCount:  number;
+  date: string; // "YYYY-MM-DD"
+  tipCount: number;
   amountRaw: string; // raw stroops string
 }
 
 type Window = 7 | 14 | 30;
-type Mode   = "count" | "amount";
+type Mode = "count" | "amount";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
 
 /** Format "YYYY-MM-DD" → short month + day, e.g. "Jun 3" */
 function fmtDate(iso: string): string {
   const [, m, d] = iso.split("-");
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
   return `${months[Number(m) - 1]} ${Number(d)}`;
 }
 
@@ -43,17 +75,15 @@ function fmtDate(iso: string): string {
  * Fill in any calendar gaps so the chart always has exactly `days` points.
  * Zero-activity days are represented as { tipCount: 0, amountRaw: "0" }.
  */
-function fillSeries(raw: DataPoint[], days: number): DataPoint[] {
+export function fillSeries(raw: DataPoint[], days: number): DataPoint[] {
   const byDate = new Map(raw.map((p) => [p.date, p]));
   const result: DataPoint[] = [];
   const now = new Date();
+  const utcToday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - i);
+    const d = new Date(utcToday - i * 24 * 60 * 60 * 1000);
     const key = d.toISOString().slice(0, 10);
-    result.push(
-      byDate.get(key) ?? { date: key, tipCount: 0, amountRaw: "0" },
-    );
+    result.push(byDate.get(key) ?? { date: key, tipCount: 0, amountRaw: "0" });
   }
   return result;
 }
@@ -77,11 +107,11 @@ function buildPath(xs: number[], ys: number[], close?: { width: number; height: 
 // ── Chart SVG ─────────────────────────────────────────────────────────────────
 
 interface ChartSvgProps {
-  series:  DataPoint[];
-  mode:    Mode;
-  width:   number;
-  height:  number;
-  gradId:  string;
+  series: DataPoint[];
+  mode: Mode;
+  width: number;
+  height: number;
+  gradId: string;
 }
 
 function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
@@ -91,11 +121,11 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   const values =
     mode === "count"
       ? series.map((p) => p.tipCount)
-      : series.map((p) => Number(BigInt(p.amountRaw)));
+      : series.map((p) => Number(parseAmount(p.amountRaw) ?? 0n));
 
-  const ys   = toYCoords(values, height);
+  const ys = toYCoords(values, height);
   const step = width / Math.max(n - 1, 1);
-  const xs   = series.map((_, i) => i * step);
+  const xs = series.map((_, i) => i * step);
 
   const linePath = buildPath(xs, ys);
   const areaPath = buildPath(xs, ys, { width, height });
@@ -109,29 +139,27 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   // Value dots: only show non-zero points with a dot
   const dots = series
     .map((p, i) => ({
-      x:     xs[i],
-      y:     ys[i],
+      x: xs[i],
+      y: ys[i],
       value: values[i],
       label:
-        mode === "count"
-          ? String(p.tipCount)
-          : `$${formatUsdc(BigInt(p.amountRaw), 2)}`,
-      date:  p.date,
+        mode === "count" ? String(p.tipCount) : `$${formatUsdc(parseAmount(p.amountRaw) ?? 0n, 2)}`,
+      date: p.date,
     }))
     .filter((d) => d.value > 0);
 
   return (
     <svg
       viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       aria-hidden="true"
       className="w-full overflow-visible"
-      style={{ height }}
+      style={{ height: "auto", aspectRatio: `${width} / ${height}` }}
     >
       <defs>
         {/* Gradient fill — uses CSS vars so it works in light and dark */}
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%"   stopColor="var(--color-accent-stop-top)"    stopOpacity="0.25" />
+          <stop offset="0%" stopColor="var(--color-accent-stop-top)" stopOpacity="0.25" />
           <stop offset="100%" stopColor="var(--color-accent-stop-bottom)" stopOpacity="0.02" />
         </linearGradient>
       </defs>
@@ -140,18 +168,17 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       {[0.25, 0.5, 0.75, 1].map((frac) => (
         <line
           key={frac}
-          x1={0} y1={height * frac * 0.88}
-          x2={width} y2={height * frac * 0.88}
+          x1={0}
+          y1={height * frac * 0.88}
+          x2={width}
+          y2={height * frac * 0.88}
           className="stroke-hairline"
           strokeWidth={0.5}
         />
       ))}
 
       {/* Area fill */}
-      <path
-        d={areaPath}
-        fill={`url(#${gradId})`}
-      />
+      <path d={areaPath} fill={`url(#${gradId})`} />
 
       {/* Line */}
       <path
@@ -159,6 +186,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
         fill="none"
         className="stroke-accent"
         strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -172,14 +200,14 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
           r={3}
           className="fill-accent stroke-canvas"
           strokeWidth={1.5}
+          vectorEffect="non-scaling-stroke"
         />
       ))}
 
       {/* X-axis date labels */}
       {tickIdxs.map((idx) => {
         const x = xs[idx];
-        const anchor =
-          idx === 0 ? "start" : idx === n - 1 ? "end" : "middle";
+        const anchor = idx === 0 ? "start" : idx === n - 1 ? "end" : "middle";
         return (
           <text
             key={idx}
@@ -204,44 +232,56 @@ interface TipChartProps {
 }
 
 const WINDOWS: { label: string; value: Window }[] = [
-  { label: "7d",  value: 7  },
+  { label: "7d", value: 7 },
   { label: "14d", value: 14 },
   { label: "30d", value: 30 },
 ];
 
 export function TipChart({ jwt }: TipChartProps) {
-  const [window,  setWindow]  = useState<Window>(30);
-  const [mode,    setMode]    = useState<Mode>("count");
-  const [series,  setSeries]  = useState<DataPoint[] | null>(null);
+  const [window, setWindow] = useState<Window>(DEFAULT_CHART_WINDOW);
+  const [mode, setMode] = useState<Mode>(DEFAULT_CHART_MODE);
+  const [series, setSeries] = useState<DataPoint[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Restore the creator's saved window and mode after mount — not in the
+  // initial useState, so the server-rendered markup (which has no access to
+  // localStorage) matches the client's first paint and only then updates.
+  // Follows the same pattern as lib/lastTipAmount.ts in TipForm.
+  useEffect(() => {
+    setWindow(getChartWindow() as Window);
+    setMode(getChartMode() as Mode);
+  }, []);
 
   const abortRef = useRef<AbortController | null>(null);
-  const gradId   = useId().replace(/:/g, ""); // SVG id must not contain colons
+  const gradId = useId().replace(/:/g, ""); // SVG id must not contain colons
 
-  const fetchSeries = useCallback((days: Window) => {
-    if (abortRef.current) abortRef.current.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
+  const fetchSeries = useCallback(
+    (days: Window) => {
+      if (abortRef.current) abortRef.current.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
 
-    setLoading(true);
-    analyticsApi
-      .timeSeries(jwt, days, { signal: controller.signal })
-      .then((r) => {
-        setSeries(fillSeries(r.series, days));
-        setError(null);
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message ?? "Failed to load chart data.");
-      })
-      .finally(() => {
-        if (abortRef.current === controller) {
-          abortRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [jwt]);
+      setLoading(true);
+      analyticsApi
+        .timeSeries(jwt, days, { signal: controller.signal })
+        .then((r) => {
+          setSeries(fillSeries(r.series, days));
+          setError(null);
+        })
+        .catch((e: unknown) => {
+          if (e instanceof ApiError && e.code === "ABORTED") return;
+          setError(getErrorMessage(e, "Failed to load chart data."));
+        })
+        .finally(() => {
+          if (abortRef.current === controller) {
+            abortRef.current = null;
+            setLoading(false);
+          }
+        });
+    },
+    [jwt],
+  );
 
   useEffect(() => {
     fetchSeries(window);
@@ -251,9 +291,10 @@ export function TipChart({ jwt }: TipChartProps) {
   }, [fetchSeries, window]);
 
   // ── Derived summary ────────────────────────────────────────────────────────
-  const totalCount  = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
-  const totalAmount = series?.reduce((s, p) => s + Number(BigInt(p.amountRaw)), 0) ?? 0;
-  const activeDays  = series?.filter((p) => p.tipCount > 0).length ?? 0;
+  const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
+  const totalAmount =
+    series?.reduce((s, p) => s + (parseAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
+  const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -266,13 +307,13 @@ export function TipChart({ jwt }: TipChartProps) {
     <Card
       style={{
         // @ts-expect-error -- CSS custom properties
-        "--color-accent-stop-top":    "rgb(var(--color-accent))",
+        "--color-accent-stop-top": "rgb(var(--color-accent))",
         "--color-accent-stop-bottom": "rgb(var(--color-accent))",
       }}
     >
       <CardHeader>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <CardTitle>Tip activity</CardTitle>
+          <CardTitle level={2}>Tip activity</CardTitle>
 
           {/* Controls */}
           <div className="flex items-center gap-2 flex-wrap">
@@ -282,7 +323,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={m}
                   type="button"
-                  onClick={() => setMode(m)}
+                  onClick={() => {
+                    setMode(m);
+                    storeChartMode(m as ChartMode);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     mode === m
@@ -302,7 +346,10 @@ export function TipChart({ jwt }: TipChartProps) {
                 <button
                   key={w.value}
                   type="button"
-                  onClick={() => setWindow(w.value)}
+                  onClick={() => {
+                    setWindow(w.value);
+                    storeChartWindow(w.value as ChartWindow);
+                  }}
                   className={cn(
                     "px-2.5 py-1 transition-colors",
                     window === w.value
@@ -320,14 +367,10 @@ export function TipChart({ jwt }: TipChartProps) {
       </CardHeader>
 
       {/* Loading skeleton */}
-      {loading && (
-        <div className="h-36 rounded-xl bg-hairline/40 animate-pulse" />
-      )}
+      {loading && <div className="h-36 rounded-xl bg-hairline/40 animate-pulse" />}
 
       {/* Error */}
-      {!loading && error && (
-        <p className="text-sm text-danger py-4">{error}</p>
-      )}
+      {!loading && error && <p className="text-sm text-danger py-4">{error}</p>}
 
       {/* Empty state */}
       {!loading && !error && series && activeDays === 0 && (
@@ -348,9 +391,7 @@ export function TipChart({ jwt }: TipChartProps) {
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Earned</span>
-              <p className="font-semibold text-fg">
-                ${formatUsdc(BigInt(Math.round(totalAmount)), 2)}
-              </p>
+              <p className="font-semibold text-fg">${formatUsdc(totalAmount, 2)}</p>
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Active days</span>
@@ -372,6 +413,38 @@ export function TipChart({ jwt }: TipChartProps) {
               gradId={`grad-${gradId}`}
             />
           </div>
+
+          {/*
+            Text alternative for the chart. ChartSvg is aria-hidden because an
+            SVG path is meaningless to a screen reader; this visually hidden
+            table carries the actual daily values instead, and follows both the
+            selected mode and window so it always describes what is on screen.
+          */}
+          <table className="sr-only">
+            <caption>
+              Daily {mode === "count" ? "tip count" : "USDC earned"} over the last {window} days
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">{mode === "count" ? "Tips" : "USDC earned"}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {series.map((point) => (
+                <tr key={point.date}>
+                  <th scope="row">
+                    <time dateTime={point.date}>{fmtDate(point.date)}</time>
+                  </th>
+                  <td>
+                    {mode === "count"
+                      ? point.tipCount.toLocaleString()
+                      : `$${formatUsdc(parseAmount(point.amountRaw) ?? 0n, 2)} USDC`}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </Card>

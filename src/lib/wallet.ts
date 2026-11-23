@@ -11,12 +11,7 @@
  * simply works.
  */
 
-import {
-  getNetwork,
-  TipSplitterClient,
-  usdcToStroops,
-  type NetworkConfig,
-} from "@novatip/sdk";
+import { getNetwork, TipSplitterClient, usdcToStroops, shortenAddress, type NetworkConfig } from "@novatip/sdk";
 import {
   getAddress,
   isConnected,
@@ -61,15 +56,21 @@ export function getNetworkConfig(): NetworkConfig {
 export function getTipSplitterClient(): TipSplitterClient {
   return new TipSplitterClient({
     contractId: config.stellar.tipSplitterContractId,
-    network:    getNetworkConfig(),
+    network: getNetworkConfig(),
   });
 }
 
 // ── Sign helper ───────────────────────────────────────────────────────────────
 
 /**
- * Returns a signTransaction callback bound to the Freighter adapter
- * and the current network passphrase. Passed directly into SDK client methods.
+ * Returns a signTransaction callback bound to the current network passphrase
+ * and the given address, calling @stellar/freighter-api directly. Passed
+ * directly into SDK client methods.
+ *
+ * `address` is passed through to Freighter on every call so it signs with
+ * the account the transaction was built for, not whatever account happens to
+ * be active in the extension — the network rejects a signature from the
+ * wrong account as txBAD_AUTH, so this is how that account must be pinned.
  */
 export function makeSignTransaction(address: string) {
   const network = getNetworkConfig();
@@ -107,15 +108,11 @@ export async function assertActiveAccount(expected: string): Promise<void> {
   const active = await getActiveAddress();
   if (active && active !== expected) {
     throw new Error(
-      `Freighter is currently on ${shorten(active)} but this action is for ` +
-        `${shorten(expected)}. Switch accounts in Freighter, or reconnect your ` +
+      `Freighter is currently on ${shortenAddress(active)} but this action is for ` +
+        `${shortenAddress(expected)}. Switch accounts in Freighter, or reconnect your ` +
         `wallet to use the active one.`,
     );
   }
-}
-
-function shorten(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }
 
 /**

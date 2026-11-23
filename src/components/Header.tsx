@@ -12,19 +12,21 @@ import Image from "next/image";
 import { useWallet } from "@/contexts/WalletContext";
 import { WalletConnectButton } from "./WalletConnectButton";
 import { ThemeToggle } from "./ThemeToggle";
+import { Badge } from "./ui/Badge";
+import { config } from "@/lib/config";
 
 export function Header() {
   const { isConnected } = useWallet();
+  const showNetworkBadge = config.stellar.network !== "mainnet";
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-hairline bg-canvas/80 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
-
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-2 group"
+            className="flex items-center gap-2 group shrink-0"
             aria-label="Novatip home"
           >
             {/* unoptimized: the optimizer refuses SVG unless dangerouslyAllowSVG
@@ -38,25 +40,41 @@ export function Header() {
               unoptimized
               priority
             />
-            <span className="font-semibold text-fg group-hover:text-accent transition-colors">
+            <span
+              className={`${isConnected ? "hidden sm:inline " : ""}font-semibold text-fg group-hover:text-accent transition-colors`}
+            >
               Novatip
             </span>
+            {showNetworkBadge && (
+              <Badge variant="warning" className="ml-2">
+                {config.stellar.network}
+              </Badge>
+            )}
           </Link>
 
           {/* Nav */}
-          <nav className="flex items-center gap-4">
+          <nav className="flex items-center gap-2 sm:gap-4">
             {isConnected && (
               <Link
                 href="/dashboard"
-                className="text-sm text-fg-subtle hover:text-fg transition-colors hidden sm:block"
+                className="p-2 sm:p-0 text-sm text-fg-subtle hover:text-fg transition-colors whitespace-nowrap"
               >
-                Dashboard
+                <svg
+                  className="h-4 w-4 sm:hidden"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z" />
+                </svg>
+                <span className="sr-only sm:not-sr-only">Dashboard</span>
               </Link>
             )}
             <ThemeToggle />
             <WalletConnectButton size="sm" />
           </nav>
-
         </div>
       </div>
     </header>

@@ -5,17 +5,16 @@
  * Step 3 — share your link and download QR code.
  */
 
-import Link from "next/link";
 import { QRDownload } from "@/components/QRDownload";
-import { Button } from "@/components/ui/Button";
-import { config } from "@/lib/config";
+import { LinkButton } from "@/components/ui/LinkButton";
+import { getQrPngUrl } from "@/lib/tipUrl";
 
 interface ShareStepProps {
   slug: string;
 }
 
 export function ShareStep({ slug }: ShareStepProps) {
-  const pngUrl = `${config.apiUrl}/qr/${slug}/png`;
+  const pngUrl = getQrPngUrl(slug);
 
   return (
     <div className="flex flex-col items-center gap-6">
@@ -28,11 +27,9 @@ export function ShareStep({ slug }: ShareStepProps) {
 
       <QRDownload slug={slug} pngUrl={pngUrl} />
 
-      <Link href="/dashboard" className="w-full max-w-xs">
-        <Button size="lg" className="w-full">
-          Go to dashboard →
-        </Button>
-      </Link>
+      <LinkButton href="/dashboard" size="lg" className="w-full max-w-xs">
+        Go to dashboard →
+      </LinkButton>
     </div>
   );
 }

@@ -6,7 +6,7 @@ Next.js 14 frontend for Novatip.
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
-Prerequisites: Node.js >= 18, novatip-backend on port 3001, Freighter browser extension.
+Prerequisites: Node.js (the version in `.nvmrc` — run `nvm use`; `.nvmrc` is the single source of truth, CI reads it too, so bump it there), novatip-backend on port 3001, Freighter browser extension
 
     npm install
     cp .env.example .env.local
@@ -59,36 +59,72 @@ See the [novatip-backend README](https://github.com/Novatip/novatip-backend) for
 the full list of required environment variables (JWT secret, Stellar RPC URL,
 etc.).
 
-### 4. Build the SDK (for local SDK development only)
+### 4. SDK dependency: commit pin and bump workflow
 
 When you install this repo's dependencies with `npm install`, the SDK is
 fetched directly from GitHub (see the `@novatip/sdk` entry in `package.json`).
 No separate build step is needed for normal frontend work.
 
+#### Why the SDK is pinned to an exact commit
+
+In `package.json`, `@novatip/sdk` is pinned to an exact commit SHA:
+
+```json
+"@novatip/sdk": "github:Novatip/novatip-sdk#eeb581655ecc20b7a27ba16705bab62311e491b4"
+```
+
+The pin exists because an unpinned specification (such as pointing to a branch or loose tag) allowed a stale copy of the package to survive in deployment caches (e.g. Vercel and CI). This resulted in production builds deploying against an outdated SDK version that no longer matched updated contract interfaces or backend endpoints.
+
+> **Caution:** Do not loosen the dependency spec (e.g. to `github:Novatip/novatip-sdk#main`). Loosening the spec reintroduces the deployment cache bug.
+
+#### Working on the SDK locally
+
 If you want to work on the SDK and see your changes reflected in this app
 without publishing a new commit, switch the dependency to the local checkout:
 
 1. Edit `package.json` and change:
-   ```
+   ```json
    "@novatip/sdk": "github:Novatip/novatip-sdk#<commit>"
    ```
    to:
-   ```
+   ```json
    "@novatip/sdk": "file:../novatip-sdk"
    ```
 2. Build the SDK:
-   ```
+   ```bash
    cd ../novatip-sdk
    npm install
    npm run build
    ```
 3. Re-link in this repo:
-   ```
+   ```bash
    cd ../novatip-web
    npm install
    ```
 
 Revert the `package.json` change before opening a pull request.
+
+#### Bumping the SDK and regenerating the lockfile
+
+When changes to `novatip-sdk` are merged and need to be pulled into this app:
+
+1. Push or merge the changes in `novatip-sdk` and copy the full 40-character commit SHA.
+2. Update `package.json` and regenerate `package-lock.json`:
+   ```bash
+   npm install github:Novatip/novatip-sdk#<commit-sha>
+   ```
+   or edit `package.json` with the new commit SHA and run `npm install`.
+3. **Verify the lockfile uses HTTPS, not SSH:**
+   Check `package-lock.json` to confirm that the `resolved` entry for `@novatip/sdk` uses an HTTPS URL:
+   ```json
+   "resolved": "git+https://github.com/Novatip/novatip-sdk.git#<commit-sha>"
+   ```
+   The lockfile **must use an https URL, not ssh** (`git+ssh:` or `git@github.com:`). Automated CI environments and deployment platforms (e.g., Vercel) build without SSH keys, and an SSH URL in the lockfile will fail the deployment build.
+4. Verify tests and types:
+   ```bash
+   npm run typecheck
+   npm test
+   ```
 
 ### 5. Deploy the tip_splitter contract
 
@@ -128,6 +164,7 @@ happens before any request is served, not mid-funnel when a supporter presses Ti
 | `NEXT_PUBLIC_SITE_URL` | no | `http://localhost:3000` | Public origin for Open Graph `metadataBase`. Must be an absolute `http(s)` URL. A malformed value fails the build. |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | no | `testnet` | `testnet` or `mainnet`. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | no | `CBIELTK6…QDAMA` | USDC SAC address. Override only for custom local networks. |
+| `NEXT_PUBLIC_DEMO_SLUG` | no | unset | Slug of a claimed creator page that the home page's "See a demo page" button links to. When unset the button is hidden. |
 
 ### NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID
 
@@ -154,6 +191,92 @@ rather than falling back to localhost and shipping broken previews; see
 `resolveSiteUrl` in `src/lib/config.ts`. Trailing slashes, whitespace, and any
 query or fragment are normalised away, so `https://novatip.xyz` and
 `https://novatip.xyz/` are equivalent.
+
+### How NEXT_PUBLIC_ variables are read (important for contributors)
+
+`NEXT_PUBLIC_` variables are substituted into the client bundle **at build
+time** by Next.js matching the exact literal text `process.env.NEXT_PUBLIC_X`
+in source. A computed lookup — `process.env[key]` or
+`process.env[\`NEXT_PUBLIC_${name}\`]` — is **never replaced** and evaluates to
+`undefined` in the browser.
+
+The failure mode is subtle: the computed lookup works fine in `npm run dev`
+(Node has access to the real `process.env`), so a broken read is invisible
+locally and only surfaces in production after a deploy.
+
+`src/lib/config.ts` is written to respect this rule: every variable is read as
+a direct literal member access (`process.env.NEXT_PUBLIC_FOO`) rather than
+through a shared helper that takes a variable name. Do not refactor this into a
+loop or a helper function that receives the key as a string argument — every
+value will be `undefined` in the browser.
+
+---
+
+## Deployment
+
+The app deploys to [Vercel](https://vercel.com) from this repository.
+
+### Environment variables
+
+Set every variable from the [Environment Variables](#environment-variables)
+table above in the Vercel project (**Settings → Environment Variables**), for
+each environment you deploy (Production, Preview, Development). Vercel never
+reads `.env.local` — that file is local-development-only and is not part of
+the deployment.
+
+| Variable | Set it on Vercel? | Why |
+|---|---|---|
+| `NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID` | **Always.** | No default. The build fails without it (see above). |
+| `NEXT_PUBLIC_SITE_URL` | **Always.** | Defaults to `http://localhost:3000`, which is wrong for any deployed environment. Set it to the real domain for Production, and to the deployment's own preview URL for Preview deployments — Open Graph images resolve against this. |
+| `NEXT_PUBLIC_API_URL` | **Always.** | Defaults to `http://localhost:3001/api/v1`. Set it to the deployed novatip-backend's URL, or every dashboard panel and the public tip page will fail to load data. |
+| `NEXT_PUBLIC_STELLAR_NETWORK` | Only to deploy against Mainnet. | Defaults to `testnet`, which is correct for a staging/preview deployment. Production against real funds needs `mainnet`. |
+| `NEXT_PUBLIC_DEMO_SLUG` | Optional. | Unset hides the home page's "See a demo page" button. Set it to the slug of a creator page that exists on that deployment — the app has no `/demo` route of its own. |
+| `NEXT_PUBLIC_USDC_CONTRACT_ID` | Rarely. | The default is the well-known SAC address for both Testnet and Mainnet. Only override for a custom network (e.g. a private Futurenet node). |
+
+### Security headers
+
+`next.config.mjs` defines a `headers()` function that sends these headers on
+every route:
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | Stops browsers guessing a response's content type. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends only the origin on cross-origin requests, never full tip-page paths. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()` | Disables browser features the app does not use. |
+| `X-Frame-Options` | `DENY` | The tip page handles a wallet connection and keeps a session token in `localStorage`, so no other site may frame it. |
+
+A full `Content-Security-Policy` is not set yet and is left for a later
+change. The list is exported as `securityHeaders` from `next.config.mjs` and
+asserted in `src/lib/securityHeaders.test.ts`; update both when changing it.
+
+### Why `vercel.json` pins the install command
+
+```json
+{ "installCommand": "npm ci" }
+```
+
+This exists for the same reason `@novatip/sdk` is pinned to an exact commit
+(see [Why the SDK is pinned to an exact
+commit](#why-the-sdk-is-pinned-to-an-exact-commit) above): an unpinned SDK
+spec previously let a stale copy of the package survive in Vercel's build
+cache, shipping production against an SDK version that no longer matched the
+deployed contract. `npm ci` installs strictly from `package-lock.json` and
+**fails** rather than silently re-resolving if the lockfile and
+`package.json` disagree. Vercel's zero-config default (`npm install`) does
+not give that guarantee — it will happily rewrite the lockfile to make things
+line up, which is exactly the drift that let the stale-SDK bug happen. Do not
+remove `installCommand` from `vercel.json`; doing so re-opens it.
+
+### Changing a `NEXT_PUBLIC_` variable requires a new deployment
+
+`NEXT_PUBLIC_` variables are baked into the client bundle **at build time**
+(see [How NEXT_PUBLIC_ variables are
+read](#how-next_public_-variables-are-read-important-for-contributors)
+above). Editing one in the Vercel dashboard does not change anything about an
+already-built deployment — the live site keeps serving the bundle built with
+the old value until a new build runs. After changing a variable, trigger a
+redeploy (push a commit, or use **Deployments → Redeploy** in the Vercel
+dashboard) — do not expect the change to take effect on its own.
 
 ## Troubleshooting
 
@@ -222,14 +345,120 @@ match) in `.env.local`.
 
 ---
 
+### `Freighter is currently on XXXX…XXXX but this action is for YYYY…YYYY`
+
+**Cause:** The Freighter extension has a different account selected than the one
+that was connected when the session started. The transaction is built for the
+connected address, so a signature from a different key is rejected by the
+network as `txBAD_AUTH`. The app detects the mismatch before building the
+transaction and surfaces a readable message instead of raw XDR.
+
+**Fix:** Either:
+- Switch to the correct account in Freighter (the one shown in the error), **or**
+- Click **Disconnect** in the app and reconnect — the new connect flow will pick
+  up whichever account is currently active in Freighter.
+
+---
+
+### `XXXX…XXXX cannot receive USDC yet` when saving splits
+
+**Cause:** Every recipient in a split must hold a USDC trustline before the jar
+can be saved. The `tip_splitter` contract pays all recipients atomically, so a
+single account without a trustline causes the entire tip to fail — and it fails
+for the supporter, who did nothing wrong and cannot fix it. The app checks
+truslines at save time so the creator can act on it before any supporter is
+affected.
+
+The full message is one of:
+
+> `<addr> cannot receive USDC yet. That account needs to add a USDC trustline before it can be paid, otherwise every tip to this jar fails.`
+
+> `These accounts cannot receive USDC yet: <addr1>, <addr2>. Each needs to add a USDC trustline before it can be paid, otherwise every tip to this jar fails.`
+
+**Fix:** Each flagged account must add a USDC trustline. In Freighter:
+1. Open Freighter and switch to the flagged account.
+2. Go to **Manage Assets** → **Add Asset**.
+3. Search for **USDC** and add the Circle-issued token on the correct network
+   (Testnet or Mainnet to match `NEXT_PUBLIC_STELLAR_NETWORK`).
+4. Once added, retry saving the splits in the dashboard.
+
+A freshly funded Stellar account has no trustlines by default — this step is
+required for any new collaborator account before it can appear in a split.
+
+---
+
 ## Key Pages
 
-/                   - Home landing page
-/[slug]             - Public tip page
-/onboarding         - Creator onboarding wizard
-/dashboard          - Creator earnings overview
-/dashboard/splits   - Collaborator splits manager
-/dashboard/qr       - QR code and share link
+This list reflects all routes under `src/app`. Each route is verified against
+the directory structure rather than written from memory.
+
+/                       - Home landing page
+/[slug]                 - Public tip page for a creator
+/onboarding             - Creator onboarding wizard
+/dashboard              - Creator earnings overview
+/dashboard/history      - Tip history and transaction log
+/dashboard/qr           - QR code and share link
+/dashboard/settings     - Profile and notification preferences
+/dashboard/splits       - Collaborator splits manager
+/dashboard/webhooks     - Webhook configuration and testing
+
+## Screen-to-endpoint mapping
+
+This table maps each screen to the backend API endpoints it calls. The mapping
+is derived from `src/lib/api.ts` (which defines all client methods) and the
+screen component files under `src/app`.
+
+Endpoints marked **[NOT IMPLEMENTED]** do not yet exist on the backend.
+
+| Screen | Endpoints called | Notes |
+|--------|------------------|-------|
+| `/` (home) | None | Static landing page |
+| `/[slug]` (tip page) | `GET /resolve/:slug` | Fetches creator profile, splits, and recent tips |
+| `/onboarding` | `GET /auth/me`<br>`GET /creators/:slug`<br>`POST /creators/claim` | Checks session, fetches existing creator data if resuming, claims slug |
+| `/dashboard` (overview) | `GET /auth/me`<br>`GET /creators/:slug`<br>`GET /analytics/totals` | Fetches creator profile and earnings summary |
+| `/dashboard/history` | `GET /analytics/recent` | Paginated tip history with offset |
+| `/dashboard/qr` | `GET /auth/me` | Fetches slug to generate QR code client-side |
+| `/dashboard/settings` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me`<br>`PATCH /creators/me/slug`<br>`GET /creators/check/:slug` | Profile editing and slug rename |
+| `/dashboard/splits` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me/splits` | Collaborator split configuration |
+| `/dashboard/webhooks` | `GET /webhooks` **[NOT IMPLEMENTED]**<br>`POST /webhooks` **[NOT IMPLEMENTED]**<br>`DELETE /webhooks/:id` **[NOT IMPLEMENTED]**<br>`POST /webhooks/:id/ping` **[NOT IMPLEMENTED]** | Webhook management UI is built but backend routes do not exist yet |
+
+### Authentication flow
+
+The SIWS (Sign-In With Stellar) flow is used across all authenticated screens:
+
+1. `POST /auth/challenge` — request a nonce for the wallet to sign
+2. Wallet signs the nonce (client-side, via Freighter)
+3. `POST /auth/verify` — exchange the signed nonce for a JWT
+
+The JWT is stored in `localStorage.novatip_jwt` and included in the
+`Authorization: Bearer <token>` header for all subsequent authenticated requests.
+
+## Tip page URL shapes
+
+A tip page answers on two URL shapes:
+
+| Shape | Example | Notes |
+|---|---|---|
+| `/alice` | `https://novatip.xyz/alice` | **Canonical.** Share this link and use it in QR codes. |
+| `/@alice` | `https://novatip.xyz/@alice` | Also resolves. Both forms reach the same page. |
+
+**The `@` belongs to the jar ID, not to the URL.** When a creator claims the
+slug `alice`, the corresponding on-chain jar is registered as `@alice`. The web
+URL is `/alice` (without the `@`). Visiting `/@alice` also works — the page
+component strips the leading `@` via `normalizeSlug` before resolving the
+creator — but `/alice` is the form the app generates for share links and QR
+codes.
+
+**Relationship between slug and jar ID:**
+
+- **Slug** (`alice`) — the identifier stored in the backend database and used in
+  all web URLs.
+- **Jar ID** (`@alice`) — the on-chain identifier passed to the `tip_splitter`
+  contract. Derived from the slug by prepending `@`. See `jarIdForSlug` in
+  `src/lib/jar.ts`.
+
+This distinction matters when reading contract state or events: the contract
+always uses `@alice`, while the REST API and web routes always use `alice`.
 
 ## Tip Flow
 
@@ -243,6 +472,92 @@ match) in `.env.local`.
 8.  Confetti fires, success screen shown
 9.  Backend indexer picks up TipReceived event within ~6 seconds
 10. Dashboard analytics update live
+
+### TipForm states
+
+`TipForm` (`src/components/TipForm.tsx`) is a small state machine. The current
+state is `step`, typed as `FormStep`: `input`, `confirm`, `signing`, `success`
+or `error`. The wallet is not a step — it is a condition checked while in
+`input` (see [Guards](#guards-that-stop-a-tip-being-signed)).
+
+```mermaid
+stateDiagram-v2
+    [*] --> input
+    input --> signing: Send tip, under $100
+    input --> confirm: Send tip, $100 or more
+    confirm --> input: Cancel
+    confirm --> signing: Confirm
+    signing --> success: tip() resolves
+    signing --> error: tip() throws
+    error --> input: Retry
+    success --> input: TipSuccess onReset
+```
+
+| State | What the user sees | Leaves when |
+|---|---|---|
+| `input` | Amount picker, message box, send button. Without a connected wallet the button is replaced by a connect prompt. | The send button is clicked (`handleCtaClick`). |
+| `confirm` | A warning naming the amount, with **Cancel** and **Confirm**. The message box is disabled. | **Cancel** returns to `input`; **Confirm** calls `handleTip`. |
+| `signing` | Picker and message box disabled, button shows "Waiting for signature…". The wallet prompt is open. | `client.tip()` resolves (`success`) or throws (`error`). |
+| `success` | `TipSuccess` replaces the whole form. `tipEvents` is emitted and the amount is saved to `localStorage`. | `onReset` returns to `input` with the last tip amount and an empty message. |
+| `error` | Red banner with the error message and a **Retry** button. | **Retry** (`handleRetry`) returns to `input` and clears the error. |
+
+A rejected wallet prompt, a failed simulation and a failed submission all land
+in `error`. The banner shows `err.message` as thrown; the form does not decode
+it (see [Error taxonomy](#error-taxonomy)).
+
+#### The $100 confirmation
+
+`handleCtaClick` sends the user to `confirm` when `isLargeTip(amount)` is true,
+and straight to `handleTip` otherwise. `isLargeTip` and its threshold,
+`LARGE_TIP_CONFIRM_USDC = 100`, live in `src/lib/tipAmount.ts`. The comparison
+is inclusive, so exactly 100 asks for confirmation. Presets stop at $25, so in
+practice only the custom field reaches it.
+
+#### Guards that stop a tip being signed
+
+Every guard below must hold before `client.tip()` is called, so before the
+wallet prompt opens. They are checked in two places: `canSubmit` decides
+whether the send button is enabled, and `handleTip` re-checks a subset when it
+runs.
+
+| Guard | Stops the tip when | Where it lives | Checked by |
+|---|---|---|---|
+| Wallet connected | No wallet is connected. The connect prompt replaces the button. | `isConnected` from `useWallet()`; `src/contexts/WalletContext` | `canSubmit`; the `isConnected ? … : …` branch of the CTA. `handleTip` also returns early without `publicKey`. |
+| Valid amount | The amount is not a positive number the SDK accepts. | `amountValid` = `isValidTipAmount(usdcToStroops(amount))` from `@novatip/sdk` | `canSubmit` and `handleTip` |
+| Jar has recipients | `splits` is empty, so the contract would have nobody to pay. The button reads "Jar not configured". | `hasRecipients` in `TipForm.tsx` | `canSubmit` and `handleTip` |
+| Enough balance | The amount is more than the supporter's USDC balance. Skipped while the balance is unknown. | `insufficientBalance`; balance from `getUsdcBalance` in `src/lib/balance.ts` | `canSubmit` only |
+| Message length | The trimmed message is over 280 **bytes** (not characters). | `utf8ByteLength` and `MAX_MESSAGE_BYTES` in `src/lib/tipMessage.ts` | `canSubmit` only |
+| Idle form | The form is in any step other than `input`, so a second submit cannot start while one is in flight. | `step === "input"` | `canSubmit` only |
+
+Not a blocker, but shown: when a collaborator's share would round to zero,
+`zeroPaidCount` drives a warning in the form. It does not disable the button.
+
+#### Gaps to know about
+
+These are how the code behaves today, not how it is meant to behave. Each is
+a candidate for its own issue.
+
+- **Retry cannot be clicked.** In `error`, the button is `disabled={!canSubmit}`
+  and `canSubmit` requires `step === "input"`, so the **Retry** button
+  (`handleRetry`) is always disabled. Nothing else resets `step`, so `error` is
+  a dead end until the page is reloaded.
+- **The wrong-account check is not applied to tips.** `TipForm` imports
+  `assertActiveAccount` but never calls it; only `src/lib/jar.ts` does (split
+  saves). `makeSignTransaction(publicKey)` only tells Freighter which address to
+  use; it does not compare it with the active account. A tip signed on the wrong
+  account fails at submission, and `TipForm` shows the raw error rather than the
+  `describeSubmissionError` text. See
+  [Wallet account requirements](#wallet-account-requirements).
+- **The $1000 ceiling is not checked in `TipForm`.** `isWithinTipCeiling`
+  (`MAX_CUSTOM_TIP_USDC`) is imported but unused here. `AmountPicker` uses it to
+  show its own error, and `lastTipAmount.ts` uses it to reject stored values,
+  but `canSubmit` relies on `isValidTipAmount` alone. `tipAmount.ts` notes the
+  real SDK has no upper bound of its own, so the ceiling only holds if the SDK
+  enforces one.
+- **`confirm` re-checks less than `input`.** The amount picker stays enabled in
+  `confirm` (only the message box is disabled), and **Confirm** calls
+  `handleTip`, which skips the balance, message-length and idle-form checks.
+  Changing the amount while the confirmation is open therefore bypasses them.
 
 ## Onboarding Flow
 
@@ -296,6 +611,73 @@ work. No IE11 or legacy-browser polyfills are included.
 
 ---
 
+## Browser storage keys
+
+The app stores the following keys in `localStorage`. This list is verified
+against the constants in `src/contexts/WalletContext.tsx`, `src/lib/theme.ts`,
+and `src/lib/lastTipAmount.ts`.
+
+| Key | Contents | Removed by | Sensitive? |
+|---|---|---|---|
+| `novatip_jwt` | Session JWT issued by the backend after wallet sign-in (SIWS). Used to authenticate creator dashboard requests. | Session expiry (detected client-side), any 401 response from the backend, or explicit disconnect. | **Yes** — grants read access to the creator's dashboard. Does not control funds or allow writes without a fresh wallet signature. |
+| `novatip_pk` | Connected wallet's public key (Stellar address). Identifies which account is connected for tipping and dashboard access. | Explicit disconnect or any 401 response. | No — public keys are inherently public. |
+| `novatip_theme` | User's explicit theme preference: `"light"`, `"dark"`, or absent (meaning "system"). | Switching back to system preference removes the key. | No. |
+| `novatip_last_tip_amount` | The last amount entered in the tip picker. Pre-fills the amount field on the next visit. | Never removed automatically. Invalid values (non-numeric, exceeds ceiling) are ignored on read. | No. |
+
+### Which keys to clear when debugging
+
+- **Stuck session or "unauthorized" loop:** Clear `novatip_jwt`. The next connect
+  will generate a fresh session.
+- **Testing a first-time visitor:** Clear all four keys. This resets the app to
+  the state of someone who has never connected or visited before.
+- **Freighter account mismatch errors:** Clear `novatip_pk` and `novatip_jwt`,
+  then reconnect with the correct account active in Freighter.
+
+### Sensitive data and session security
+
+Only `novatip_jwt` holds anything sensitive. See the [Session token storage:
+localStorage and its tradeoffs](#session-token-storage-localstorage-and-its-tradeoffs)
+section for why the session is stored in `localStorage` instead of an `httpOnly`
+cookie, what risks that carries, and what limits the damage.
+
+---
+
+## Wallet account requirements
+
+Two conditions must be met before a tip or a split save can succeed. Both are
+enforced in code and produce clear messages, but they are worth knowing before
+you test with fresh accounts.
+
+### The signing account must match the connected account
+
+Freighter signs with whichever account is currently active in the extension.
+The transaction is built for the address that was connected at login, so if you
+switch accounts in Freighter between connecting and tipping, the network rejects
+the submission as `txBAD_AUTH`. The app catches this before submitting and shows:
+
+> `Freighter is currently on XXXX…XXXX but this action is for YYYY…YYYY. Switch accounts in Freighter, or reconnect your wallet to use the active one.`
+
+The guard lives in `src/lib/wallet.ts` (`assertActiveAccount`). Split saves call
+it (`src/lib/jar.ts`); `TipForm` does not yet — see
+[TipForm states](#tipform-states).
+
+### Every split recipient needs a USDC trustline
+
+On Stellar an account cannot hold an asset it has not explicitly opted in to.
+The `tip_splitter` contract pays all split recipients in a single atomic call,
+so one collaborator without a USDC trustline fails the whole tip. The app checks
+truslines when splits are saved rather than when a tip arrives, so the creator
+(not the supporter) sees the error at the moment they can act on it:
+
+> `<addr> cannot receive USDC yet. That account needs to add a USDC trustline before it can be paid, otherwise every tip to this jar fails.`
+
+A freshly created Stellar account has no trustlines. Any new collaborator must
+add the USDC asset in Freighter (**Manage Assets → Add Asset**) before being
+added to a split. The guard lives in `src/lib/trustline.ts`
+(`assertRecipientsCanReceive`).
+
+---
+
 ## Wallet Auth (SIWS)
 
 1. Request nonce: POST /auth/challenge
@@ -303,6 +685,95 @@ work. No IE11 or legacy-browser polyfills are included.
 3. Verify signature: POST /auth/verify
 4. JWT stored in localStorage
 5. JWT attached to all authenticated API requests
+
+### Session token storage: localStorage and its tradeoffs
+
+The creator session JWT is stored in `localStorage` rather than an `httpOnly` cookie. This section documents why that choice was made and what security costs it carries.
+
+#### Why localStorage
+
+**Cross-origin architecture**
+
+The frontend (`novatip.xyz`) and backend API (`api.novatip.xyz`) are separate origins. An `httpOnly` cookie set by the API cannot be read by JavaScript (which is the security benefit), but it also cannot be sent with `fetch()` requests to the API unless:
+
+1. The API sets `Access-Control-Allow-Credentials: true`, **and**
+2. Every fetch includes `credentials: 'include'`, **and**
+3. The `Access-Control-Allow-Origin` response header is set to the exact frontend origin (wildcards are forbidden with credentials).
+
+This works, but it makes local development harder (every developer needs matching CORS config) and makes the API harder to use from other clients (mobile apps, CLI tools, third-party integrations). `localStorage` with a bearer token in the `Authorization` header has none of these constraints.
+
+**No server-side rendering for authenticated pages**
+
+The creator dashboard pages are client-side only (`"use client"` directive). There is no server component that needs to read the session to pre-render personalized HTML. If the session lived in an `httpOnly` cookie, the Next.js server still could not read it (the cookie is `httpOnly` precisely so JavaScript cannot), so SSR would not work anyway.
+
+Because the dashboard is always hydrated client-side, there is no SSR benefit to giving up the flexibility of `localStorage`.
+
+**The tip flow does not involve the session**
+
+Sending a tip is an on-chain transaction: the tipper signs it with their wallet and submits it directly to the Stellar network. The backend is not in that path — there is no API call, so there is no session token to protect. The session is only needed for creator-facing features (onboarding, splits, analytics), and those are behind wallet signature verification (SIWS) at sign-in time.
+
+A compromised session token lets an attacker read a creator's dashboard. It does **not** let them:
+- Steal funds (tips go to on-chain addresses, not to "whoever holds the session")
+- Change splits or claim a new slug (those endpoints re-verify the wallet signature)
+- Send tips on someone else's behalf (tips are signed by the sender's wallet, not by a session)
+
+The blast radius is dashboard read access, not write or financial access.
+
+#### Security costs
+
+**Script injection can read the token**
+
+Any script running on the page can call `localStorage.getItem("novatip_jwt")` and exfiltrate the session. This includes:
+
+- A compromised third-party script (analytics, ads, a supply-chain attack on a dependency)
+- A stored XSS vulnerability (if user input is ever rendered unescaped — this app does not render user HTML, but the risk is non-zero)
+- A browser extension with overly broad permissions
+
+An `httpOnly` cookie would be invisible to all of those, which is why it is the default recommendation for session tokens.
+
+**Mitigations in place:**
+
+1. **Short token expiry**: The JWT expires after a limited time (configured server-side). An exfiltrated token becomes useless once it expires, limiting the window for abuse.
+
+2. **No write operations without wallet re-verification**: Sensitive endpoints (claiming a slug, updating splits) require a fresh wallet signature, not just the session token. A stolen JWT grants read access to the dashboard but cannot change on-chain state or modify the creator's profile.
+
+3. **Server remains the authority**: The token's `exp` claim is checked client-side as a UX optimization (to skip a guaranteed-failing request), but the server validates every token on every request. A manipulated or forged token is rejected immediately.
+
+4. **Minimal third-party scripts**: The app includes no analytics, no ads, and no third-party scripts beyond the essential SDK and wallet libraries. The attack surface for script injection is kept small.
+
+5. **Content Security Policy (future work)**: A strict CSP would block inline scripts and restrict script sources to a known allowlist, further reducing XSS risk. This is not currently implemented but is planned.
+
+**What is not protected:**
+
+- If an attacker gains script execution on the page (via XSS or a compromised dependency), they can read the session token and any other `localStorage` data. This is the inherent cost of client-side storage.
+
+- A session token does not prove wallet ownership at request time — it proves it was owned at sign-in. If a creator's wallet is compromised separately (phishing, leaked seed phrase), the session token does not add protection, but it also does not make things worse (the attacker already has the wallet, which is the real credential).
+
+#### What limits the damage
+
+| Defense | What it prevents |
+|---------|-----------------|
+| Short token expiry | An exfiltrated token becomes useless after expiry (hours, not days or weeks) |
+| Wallet re-verification on writes | Stolen session cannot change splits, claim slugs, or modify on-chain state |
+| No financial access via session | Tips are on-chain transactions; session tokens do not control funds |
+| Server-side validation on every request | Forged or tampered tokens are rejected immediately |
+| Minimal third-party scripts | Reduces the number of scripts that could exfiltrate the token |
+
+#### The alternative: httpOnly cookies
+
+An `httpOnly` cookie would be invisible to scripts, eliminating the XSS exfiltration risk. The costs:
+
+- CORS complexity (see above)
+- No SSR benefit (the dashboard is client-only, and the cookie is `httpOnly`)
+- Harder to use from non-browser clients (mobile apps, CLI tools)
+- CSRF risk (though that can be mitigated with SameSite and CSRF tokens)
+
+The current choice prioritizes flexibility and simplicity over defense-in-depth against XSS. The tradeoff is acceptable because:
+1. The session grants only read access to the dashboard, not write or financial access.
+2. Write operations require fresh wallet signatures, not just the session.
+3. The token expires quickly, limiting the blast radius of a compromised session.
+
+If XSS defense becomes a higher priority (e.g., if the app begins rendering user-generated HTML, or if a security audit recommends it), switching to `httpOnly` cookies is a reversible decision. The backend already supports stateless JWT validation, so no server-side session store is needed — the cookie would carry the JWT just as `localStorage` does today.
 
 ## Theming
 
@@ -315,8 +786,11 @@ the server render cannot know the result, `<html>` carries `suppressHydrationWar
 
 Two rules keep it flash-free:
 
-- **Never re-derive the theme after hydration.** `ThemeToggle` reads the class the
-  script already applied (`getAppliedTheme()`), it does not read storage and re-apply.
+- **Never re-apply the theme after hydration.** The class the script already applied
+  is the source of truth for what is painted (`getAppliedTheme()`). `ThemeToggle`
+  does read the stored *preference* after hydration so it can distinguish "system"
+  from an explicit light/dark choice, but it never re-applies the theme and its first
+  render uses the server-safe "system" default so hydration still matches.
 - **Style with the semantic tokens, not raw colours.** Use `bg-canvas`, `bg-surface`,
   `border-hairline`, `text-fg` / `-muted` / `-subtle` / `-faint` / `-dim`, `text-accent`,
   and `success` / `warning` / `danger`. They are CSS variables defined for both themes in
@@ -426,9 +900,11 @@ Notice:
     npm run start     - production server
     npm run typecheck - tsc --noEmit
     npm run lint      - eslint
-    npm run format    - prettier
-    npm test          - run tests once (Vitest)
-    npm run test:watch - run tests in watch mode
+    npm run format    - prettier --write
+    npm run format:check - prettier --check (also runs in CI)
+    npm test               - run tests once (Vitest)
+    npm run test:watch     - run tests in watch mode
+    npm run test:coverage  - run tests with v8 coverage report
 
 ## Testing
 
@@ -436,8 +912,14 @@ The project uses [Vitest](https://vitest.dev) with [React Testing Library](https
 
 **Running tests**
 
-    npm test            # single run, exits with pass/fail
-    npm run test:watch  # watch mode — re-runs on file changes
+    npm test                # single run, exits with pass/fail
+    npm run test:watch      # watch mode — re-runs on file changes
+    npm run test:coverage   # single run with v8 coverage report (text + lcov)
+
+Coverage output goes to `coverage/`. The lcov report (`coverage/lcov.info`) is
+consumed by editor plugins and CI coverage services. Requires
+`@vitest/coverage-v8` which is listed in `devDependencies`; run `npm install`
+before the first coverage run.
 
 **Writing tests**
 
@@ -450,6 +932,83 @@ If a test depends on `@novatip/sdk`, the stub at `src/test/mocks/novatip-sdk.ts`
 **CI**
 
 `npm test` runs as part of the GitHub Actions CI pipeline defined in `.github/workflows/ci.yml`, alongside lint, typecheck, and build steps.
+
+### The SDK test stub
+
+Tests run against a hand-maintained stub of `@novatip/sdk` located at `src/test/mocks/novatip-sdk.ts`. The stub exists because the real SDK depends on Node crypto APIs and Stellar transaction primitives that are difficult to run in a jsdom test environment.
+
+`vitest.config.mts` aliases `@novatip/sdk` to this stub, so every test import of the SDK resolves to the mock rather than the real package. The stub is **not automatically synchronized** with the real SDK — when the SDK's public interface changes, the stub must be updated by hand.
+
+#### What the stub provides
+
+The stub exports the following to match the real SDK's public API:
+
+| Export | Type | Purpose |
+|--------|------|---------|
+| `usdcToStroops` | function | Converts a USDC string to stroops (`1 USDC = 10_000_000 stroops`) |
+| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` only — the SDK has no upper bound; use `isWithinTipCeiling` from `lib/tipAmount.ts` for the app's 1000 USDC ceiling) |
+| `formatUsdc` | function | Formats stroops as a USDC decimal string |
+| `shortenAddress` | function | Abbreviates a Stellar address to `GABC…WXYZ` format |
+| `validateSplitsBps` | function | Validates that an array of basis points sums to exactly `10_000` |
+| `ContractErrorCode` | enum | Error codes mirroring the `tip_splitter` contract's `Error` enum |
+| `NovatipContractError` | class | SDK-level error wrapping a contract error code |
+| `Split` | interface | `{ to: string; bps: number }` |
+| `Jar` | interface | `{ owner: string; splits: Split[] }` |
+
+The stub intentionally omits blockchain interaction classes like `TipSplitterClient` and wallet signing helpers, since those are not unit-testable in isolation. Tests that need those behaviors should use `vi.mock('@novatip/sdk', ...)` to provide test doubles for the specific functions under test.
+
+#### When to update the stub
+
+Update the stub whenever you bump the SDK pin in `package.json` **and** the SDK's public API has changed. Common triggers:
+
+- A new helper function is added to the SDK and production code begins using it
+- An existing function's signature changes (new parameter, different return type)
+- `ContractErrorCode` gains or loses a variant because the contract's `Error` enum changed
+- Type definitions for `Split`, `Jar`, or other interfaces are modified
+
+**The stub does not need to match private SDK internals** — only the exports that production code actually imports.
+
+#### How to update the stub
+
+1. Identify which SDK exports changed by reviewing the commit that bumped the pin.
+2. Open `src/test/mocks/novatip-sdk.ts` and add, remove, or update the affected exports.
+3. Ensure the stub's behavior matches the real SDK's documented behavior (especially for validation functions like `isValidTipAmount` and `validateSplitsBps`).
+4. Run `npm test` to verify that existing tests still pass with the updated stub.
+5. If a test fails after updating the stub, the failure indicates either:
+   - The stub was changed incorrectly (fix the stub), or
+   - The production code depends on old SDK behavior and needs updating (fix the production code)
+
+**Do not introduce behavior that the real SDK does not have.** The stub exists to let tests run, not to add test-only features. If a test needs behavior the SDK does not provide, mock the SDK in that specific test file rather than polluting the shared stub.
+
+#### Example: Adding a new SDK export to the stub
+
+Suppose the SDK adds a new function `parseJarId` that extracts the slug from a jar ID:
+
+```ts
+// Real SDK: novatip-sdk/src/jar.ts
+export function parseJarId(jarId: string): string | null {
+  if (!jarId.startsWith('@')) return null;
+  return jarId.slice(1);
+}
+```
+
+After bumping the SDK pin and seeing production code import `parseJarId`, add it to the stub:
+
+```ts
+// src/test/mocks/novatip-sdk.ts
+export function parseJarId(jarId: string): string | null {
+  if (!jarId.startsWith('@')) return null;
+  return jarId.slice(1);
+}
+```
+
+Then verify the change:
+
+```bash
+npm test
+```
+
+If tests fail, inspect the failure to determine whether the stub's implementation matches the real SDK's behavior.
 
 ## Client-side architecture
 
@@ -578,6 +1137,37 @@ sees the tip immediately; the re-fetch in step 5 is the source of truth.
 
 ---
 
+### Optimistic tip feed and polling windows
+
+The `RecentTips` component (`src/components/RecentTips.tsx`) displays live tips on the creator dashboard. It combines optimistic updates with adaptive polling to balance responsiveness with backend load.
+
+#### How it works
+
+1. **Normal cadence (15s):** In steady state, `RecentTips` polls `analyticsApi.recent()` every 15 seconds (`NORMAL_INTERVAL = 15_000`). Polling automatically pauses when the browser tab is hidden and aborts in-flight requests via `usePolling` / `useAbortableRequest`.
+2. **Optimistic prepending on tip success:** When a tip succeeds, `TipForm` emits an event on `tipEvents`. `RecentTips` immediately creates an optimistic entry with `kind: "pending"`, a unique client ID, and an expiration timestamp `expiresAt = Date.now() + 30_000`, prepending it to the list with a "confirming…" status.
+3. **Fast polling burst (3s for 30s):** To catch the indexed tip as soon as possible, `RecentTips` temporarily switches its polling interval from 15 seconds to 3 seconds (`FAST_INTERVAL = 3_000`) for a 30-second window (`FAST_WINDOW_MS = 30_000`). Once the window expires, it reverts to the 15-second interval.
+4. **Reconciliation and replacement:** When a fresh batch of indexed tips arrives from the API, `mergeWithPending()` reconciles pending entries with indexed records. An entry is confirmed when `isMatch(indexed, pending)` matches both the sender's address AND the amount. Confirmed pending items are removed from state, seamlessly replaced by the persisted indexed record.
+5. **Downgrade to unconfirmed:** If the 30-second window elapses without the tip appearing in the indexed response, `mergeWithPending()` downgrades the entry to `kind: "unconfirmed"`, allowing the UI to notify the user rather than leaving a permanent "confirming…" state.
+
+#### Why indexer lag makes this necessary
+
+When a transaction is confirmed on Stellar by Soroban, the client's wallet knows immediately. However:
+- The backend indexer must observe the new ledger, extract the `TipReceived` contract event, process splits, and write records to PostgreSQL.
+- This indexing cycle introduces an inherent delay of **~5–10 seconds** (typically ~6 seconds).
+- Polling at a normal 15-second interval after transaction confirmation would force users to wait anywhere from 6 to 21 seconds to see their tip reflected.
+- The optimistic update provides instant visual confirmation, while the 3-second fast polling burst ensures the canonical indexed record replaces the placeholder almost as soon as the indexer commits it to the database.
+
+#### Failure modes to watch for
+
+Contributors modifying `RecentTips`, matching helpers, or event payloads should be vigilant about these potential pitfalls:
+
+- **Duplicate entries ("ghost duplicates"):** If `isMatch()` is too strict (e.g. strict string matching on amounts formatted differently) or if fields don't match, the optimistic entry will never be reconciled with the indexed counterpart. Both the pending item and the indexed record will render simultaneously.
+- **Premature clearing of pending tips:** If `isMatch()` matches *only* on sender address without verifying amount (or timestamp), an earlier tip from a returning supporter will falsely match and clear their new pending tip before it actually indexes.
+- **Stuck pending rows:** If the backend indexer drops an event, hangs, or experiences an extended lag exceeding 30 seconds, pending items without expiration handling would spin forever. Always preserve the `expiresAt` expiration check and the downgrade to `kind: "unconfirmed"`.
+- **In-flight request races on visibility change:** When a tab is backgrounded or brought into focus, un-aborted in-flight requests could resolve out of order. Ensure requests use abort signals so stale polling responses never overwrite newer state.
+
+---
+
 ### Worked example — adding a feature that needs shared state
 
 **Scenario:** you want to show a "New tip!" badge in the dashboard sidebar
@@ -616,6 +1206,45 @@ dashboard-local UI state, not identity state.
 If it needed to survive a full page reload, you would persist it in
 `localStorage` yourself — but that is almost never the right call for a
 transient UI indicator.
+
+---
+
+### Error taxonomy
+
+Failures across the client arrive in four distinct shapes depending on where in the stack the failure originates. Knowing the error type determines where the error should be handled or translated into user-facing text:
+
+| Source | Error Type / Format | Example | Responsible Module |
+|---|---|---|---|
+| **Backend API** | `ApiError` class instance | `new ApiError(404, "NOT_FOUND", "Creator not found")` | `src/lib/api.ts` constructs `ApiError` from response payloads (`status`, `code`, `message`). UI components and pages inspect `err.status`/`err.code` or display `err.message`. |
+| **Contract (typed)** | `NovatipContractError` from `@novatip/sdk` | `NovatipContractError` with `code: ContractErrorCode.JarNotFound` | `@novatip/sdk` parses contract error codes from simulations. Feature modules such as `src/lib/jar.ts` inspect `err.code` or map contract codes to friendly messages. |
+| **Simulation (raw)** | Plain `Error` with simulation diagnostic string | `Error("HostError: Error(Contract, #3)")` | Soroban RPC / Stellar SDK produces raw diagnostic strings when simulation fails without a structured SDK contract error. Modules such as `src/lib/jar.ts` check `err.message` via pattern matching. |
+| **Transaction Submission** | Base64-encoded `TransactionResult` XDR | `Error("Transaction submission failed: AAAAAAAA+QT////6AAAAAA==")` | `src/lib/txerror.ts` (`describeSubmissionError`, `decodeResultCode`) decodes the base64 XDR using `@stellar/stellar-sdk` and translates result codes (e.g., `txBadAuth`, `txInsufficientBalance`, `txBadSeq`) into actionable human prose. |
+
+#### Detailed breakdown
+
+1. **Backend `ApiError` (`src/lib/api.ts`)**
+   - **When it occurs:** Thrown by `request()` in `src/lib/api.ts` whenever the REST backend returns a non-2xx HTTP status, as well as on network timeouts or aborted requests.
+   - **Shape:** `ApiError` instance with properties `status` (number), `code` (string), and `message` (string).
+   - **Example:** `throw new ApiError(404, "NOT_FOUND", "Creator not found");`
+   - **Handling:** UI components and route handlers (such as `src/app/[slug]/page.tsx`) catch `ApiError` and branch on `error.status` or `error.code` to show specific UI states (like 404 views) or display `error.message`.
+
+2. **Contract `NovatipContractError` (`@novatip/sdk`)**
+   - **When it occurs:** Thrown by `@novatip/sdk` methods when a Soroban contract call simulation fails with a known contract error code.
+   - **Shape:** An instance of `NovatipContractError` with a typed `code` property (`ContractErrorCode`).
+   - **Example:** `new NovatipContractError(ContractErrorCode.JarNotFound)`
+   - **Handling:** Catch blocks in feature modules (e.g. `src/lib/jar.ts`) check `err instanceof NovatipContractError` and test `err.code` against `ContractErrorCode` to handle known states (for example, treating `JarNotFound` as `null` during onboarding).
+
+3. **Raw Simulation String**
+   - **When it occurs:** Soroban RPC returns simulation diagnostic failures that the SDK could not parse into a typed `NovatipContractError` (e.g., host errors, budget exhaustion, or contract panics).
+   - **Shape:** A standard JavaScript `Error` whose `message` contains diagnostic strings like `"HostError: Error(Contract, #3)"`.
+   - **Example:** `new Error("Transaction simulation failed: HostError: Error(Contract, #3)")`
+   - **Handling:** Catch blocks perform regex or substring matching on `err.message` (e.g. `isJarNotFound` in `src/lib/jar.ts` tests `/Error\(Contract,\s*#3\)/`) to identify the failure when SDK error typing is unavailable.
+
+4. **Transaction Submission Failures (`src/lib/txerror.ts`)**
+   - **When it occurs:** The transaction was simulated successfully and signed by the wallet, but the Stellar network rejected it during submission.
+   - **Shape:** The SDK surfaces the error as a raw message ending in a base64-encoded `TransactionResult` XDR.
+   - **Example:** `Error: Transaction submission failed: AAAAAAAA+QT////6AAAAAA==`
+   - **Handling:** Wrap transaction submission promises with `describeSubmissionError()` from `src/lib/txerror.ts` (as in `src/lib/jar.ts`). `lib/txerror.ts` extracts the base64 XDR, decodes the union result code via `xdr.TransactionResult.fromXDR()`, and maps cryptic codes (such as `txBadAuth`, `txBadSeq`, `txInsufficientBalance`) to clear, actionable user messages (e.g. switching Freighter accounts or acquiring XLM).
 
 ## Accessibility
 

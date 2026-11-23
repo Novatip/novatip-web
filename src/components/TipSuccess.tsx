@@ -61,6 +61,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
       origin: { y: 0.55 },
       // No pure white — it disappears against the light theme's canvas.
       colors: ["#38bdf8", "#0ea5e9", "#7dd3fc", "#22d3ee", "#2775ca"],
+      disableForReducedMotion: true,
     });
 
     // Second burst after a short delay for extra flair
@@ -70,14 +71,15 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
         spread: 120,
         origin: { y: 0.5 },
         scalar: 0.8,
+        disableForReducedMotion: true,
       });
     }, 400);
 
     return () => clearTimeout(timer);
   }, []);
 
-  const shareText    = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
-  const shareUrl     = getTipUrl(slug);
+  const shareText = `I just tipped @${slug} $${amount} USDC on Novatip! 💸`;
+  const shareUrl = getTipUrl(slug);
   const shareMessage = `${shareText} ${shareUrl}`;
   const shareData: ShareData = { title: `Tip @${slug} on Novatip`, text: shareText, url: shareUrl };
 
@@ -114,8 +116,19 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
   }
 
   return (
-    <Card className="text-center animate-slide-up" ref={successRef} tabIndex={-1} role="status" aria-live="polite">
+    <Card
+      className="text-center animate-slide-up"
+      ref={successRef}
+      tabIndex={-1}
+      role="status"
+      aria-live="polite"
+    >
       <div className="flex flex-col items-center gap-5 py-4">
+        {/* The copy buttons are named by their visible text, so the outcome is
+            announced here, through this card's polite status region. */}
+        <span className="sr-only">
+          {failed ? "Couldn't copy the link." : copied ? "Link copied to the clipboard." : ""}
+        </span>
 
         {/* Success icon */}
         <div
@@ -132,13 +145,9 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
 
         {/* Headline */}
         <div>
-          <h2 className="text-2xl font-bold text-fg mb-1">
-            Tip sent!
-          </h2>
+          <h2 className="text-2xl font-bold text-fg mb-1">Tip sent!</h2>
           <p className="text-fg-subtle text-sm">
-            Your{" "}
-            <span className="text-accent font-semibold">${amount} USDC</span>{" "}
-            tip landed in{" "}
+            Your <span className="text-accent font-semibold">${amount} USDC</span> tip landed in{" "}
             <span className="text-fg font-medium">@{slug}</span>&rsquo;s jar.
           </p>
         </div>
@@ -170,7 +179,6 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
                 variant={failed ? "danger" : "secondary"}
                 className="w-full"
                 onClick={() => copy(shareMessage)}
-                aria-label="Copy link to clipboard"
               >
                 {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link"}
               </Button>
@@ -181,15 +189,12 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
               variant={failed ? "danger" : "secondary"}
               className="w-full"
               onClick={handleShare}
-              aria-label="Copy link to clipboard"
             >
               {failed ? "Couldn't copy" : copied ? "✓ Link copied" : "Copy link 🔗"}
             </Button>
           )}
 
-          {failed && (
-            <CopyFallback text={shareMessage} onDismiss={reset} noun="message" />
-          )}
+          {failed && <CopyFallback text={shareMessage} onDismiss={reset} noun="message" />}
 
           <Button
             size="lg"
@@ -201,7 +206,6 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
             Send another tip
           </Button>
         </div>
-
       </div>
     </Card>
   );

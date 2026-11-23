@@ -1,7 +1,14 @@
 /**
  * src/components/TipSuccess.test.tsx
  *
- * Unit tests for TipSuccess's share action.
+ * Unit tests for TipSuccess's share actions.
+ *
+ * The component renders two different layouts. Where the browser has a native
+ * share sheet it leads with a share button and keeps copy alongside it; where
+ * it does not, copy is the only control. Which one appears is decided after
+ * mount — the server has no `navigator`, so guessing during render would mean
+ * hydrating a different button than was sent — hence the `findBy*` queries
+ * below rather than synchronous ones.
  *
  * Covers:
  *   - The native share sheet is preferred when the browser has one
@@ -9,6 +16,8 @@
  *   - A share that genuinely fails falls through to the clipboard
  *   - Without either API the button reports the failure and offers the message
  *   - A working clipboard confirms the copy
+ *   - The copy button's accessible name is its visible text in every state,
+ *     and the result is announced through the status region
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -20,16 +29,16 @@ import { TipSuccess } from "./TipSuccess";
 // what these tests are about.
 vi.mock("canvas-confetti", () => ({ default: vi.fn() }));
 
-const SLUG   = "ada";
+const SLUG = "ada";
 const AMOUNT = "5.00";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function defineOnNavigator(key: "share" | "clipboard", value: unknown) {
+function defineOnNavigator(key: "share" | "canShare" | "clipboard", value: unknown) {
   Object.defineProperty(navigator, key, {
     value,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
 }
 
@@ -42,15 +51,29 @@ function grantClipboard() {
 /** No share sheet, no clipboard, no execCommand — an insecure origin. */
 function blockEverything() {
   defineOnNavigator("share", undefined);
+  defineOnNavigator("canShare", undefined);
   defineOnNavigator("clipboard", undefined);
   Reflect.deleteProperty(document, "execCommand");
 }
 
-function expectedMessage() {
-  return `I just tipped @${SLUG} $${AMOUNT} USDC on Novatip! 💸 ${window.location.origin}/${SLUG}`;
+function expectedText() {
+  return `I just tipped @${SLUG} $${AMOUNT} USDC on Novatip! 💸`;
 }
 
-const shareButton = () => screen.getByRole("button", { name: "Share this tip" });
+function expectedUrl() {
+  return `${window.location.origin}/${SLUG}`;
+}
+
+function expectedMessage() {
+  return `${expectedText()} ${expectedUrl()}`;
+}
+
+/** Only rendered once the share sheet has been detected after mount. */
+const findShareButton = () => screen.findByRole("button", { name: `Share @${SLUG}'s tip page` });
+
+/** Named by its visible text, which changes with the copy state. */
+const copyButton = () =>
+  screen.getByRole("button", { name: /copy link|link copied|couldn't copy/i });
 
 function renderSuccess() {
   return render(<TipSuccess amount={AMOUNT} slug={SLUG} onReset={vi.fn()} />);
@@ -75,40 +98,49 @@ describe("TipSuccess – native share", () => {
     const writeText = grantClipboard();
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(await findShareButton());
 
     expect(share).toHaveBeenCalledWith({
-      title: "Novatip",
-      text:  `I just tipped @${SLUG} $${AMOUNT} USDC on Novatip! 💸`,
-      url:   `${window.location.origin}/${SLUG}`,
+      title: `Tip @${SLUG} on Novatip`,
+      text: expectedText(),
+      url: expectedUrl(),
     });
     expect(writeText).not.toHaveBeenCalled();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
   it("treats a cancelled share as a non-event", async () => {
-    defineOnNavigator("share", vi.fn(async () => {
-      throw Object.assign(new Error("cancelled"), { name: "AbortError" });
-    }));
-    renderSuccess();
-
-    await userEvent.click(shareButton());
-
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-    expect(shareButton()).toHaveTextContent("Share 🔗");
-  });
-
-  it("falls back to the clipboard when the share itself fails", async () => {
-    defineOnNavigator("share", vi.fn(async () => {
-      throw new Error("Permission denied");
-    }));
+    defineOnNavigator(
+      "share",
+      vi.fn(async () => {
+        throw Object.assign(new Error("cancelled"), { name: "AbortError" });
+      }),
+    );
     const writeText = grantClipboard();
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(await findShareButton());
+
+    // Backing out is a decision, not a failure: nothing is reported and the
+    // clipboard is deliberately not used as a consolation.
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the clipboard when the share itself fails", async () => {
+    defineOnNavigator(
+      "share",
+      vi.fn(async () => {
+        throw new Error("Permission denied");
+      }),
+    );
+    const writeText = grantClipboard();
+    renderSuccess();
+
+    await userEvent.click(await findShareButton());
 
     expect(writeText).toHaveBeenCalledWith(expectedMessage());
-    await waitFor(() => expect(shareButton()).toHaveTextContent("✓ Link copied"));
+    await waitFor(() => expect(copyButton()).toHaveTextContent("✓ Link copied"));
   });
 });
 
@@ -119,26 +151,26 @@ describe("TipSuccess – clipboard fallback", () => {
     const writeText = grantClipboard();
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(copyButton());
 
     expect(writeText).toHaveBeenCalledWith(expectedMessage());
-    await waitFor(() => expect(shareButton()).toHaveTextContent("✓ Link copied"));
+    await waitFor(() => expect(copyButton()).toHaveTextContent("✓ Link copied"));
   });
 
   it("does not fail silently when nothing can copy", async () => {
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(copyButton());
 
     const alert = await screen.findByRole("alert");
     expect(alert).toHaveTextContent(/couldn't copy automatically/i);
-    expect(shareButton()).toHaveTextContent("Couldn't copy");
+    expect(copyButton()).toHaveTextContent("Couldn't copy");
   });
 
   it("offers the share message for manual copying, pre-selected", async () => {
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(copyButton());
 
     const field = await screen.findByLabelText(/message to copy manually/i);
     expect(field).toHaveValue(expectedMessage());
@@ -148,13 +180,69 @@ describe("TipSuccess – clipboard fallback", () => {
   it("clears the failure on a successful retry", async () => {
     renderSuccess();
 
-    await userEvent.click(shareButton());
+    await userEvent.click(copyButton());
     await screen.findByRole("alert");
 
     grantClipboard();
-    await userEvent.click(shareButton());
+    await userEvent.click(copyButton());
 
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
-    expect(shareButton()).toHaveTextContent("✓ Link copied");
+    expect(copyButton()).toHaveTextContent("✓ Link copied");
+  });
+});
+
+// ── Accessible names ──────────────────────────────────────────────────────────
+
+describe("TipSuccess – copy button accessible name", () => {
+  it("is the visible text before, after and when a copy fails", async () => {
+    const writeText = grantClipboard();
+    renderSuccess();
+
+    expect(copyButton()).toHaveAccessibleName("Copy link 🔗");
+    expect(copyButton()).not.toHaveAttribute("aria-label");
+
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("✓ Link copied"));
+    expect(writeText).toHaveBeenCalled();
+
+    cleanup();
+    blockEverything();
+    renderSuccess();
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("Couldn't copy"));
+  });
+
+  it("matches the visible text in the layout that also offers sharing", async () => {
+    defineOnNavigator("share", vi.fn(async () => {}));
+    grantClipboard();
+    renderSuccess();
+    await findShareButton();
+
+    expect(copyButton()).toHaveAccessibleName("Copy link");
+
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("✓ Link copied"));
+  });
+
+  it("announces the result through the polite status region", async () => {
+    grantClipboard();
+    renderSuccess();
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).not.toHaveTextContent(/copied to the clipboard/i);
+
+    await userEvent.click(copyButton());
+
+    await waitFor(() => expect(status).toHaveTextContent(/link copied to the clipboard/i));
+  });
+
+  it("announces a failed copy through the status region", async () => {
+    renderSuccess();
+
+    await userEvent.click(copyButton());
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/couldn't copy the link/i),
+    );
   });
 });

@@ -10,13 +10,16 @@
 import type { PublicTip } from "@/lib/api";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { TimeAgo } from "@/components/ui/TimeAgo";
+import { timeAgo } from "@/lib/time";
 
-function timeAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60)    return `${diff}s ago`;
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
+/** Parse amount safely — returns null when the string is not a valid integer. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
 }
 
 interface PublicSupportersFeedProps {
@@ -24,42 +27,51 @@ interface PublicSupportersFeedProps {
 }
 
 export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
-  // Nothing to show a visitor yet — an empty "Recent Supporters" card reads
-  // as a bug, not as proof, so skip the section entirely rather than showing
-  // it empty.
-  if (tips.length === 0) return null;
+  // Rows whose amount cannot be parsed are dropped up front, so "nothing to
+  // show" means the same thing whether the list came back empty or every row
+  // in it was unusable.
+  const rows = tips.flatMap((tip) => {
+    const amount = parseAmount(tip.amount);
+    return amount === null ? [] : [{ tip, amount }];
+  });
+
+  // A new creator's page would otherwise end after the QR code with no hint
+  // that supporters will ever appear. A full "Recent Supporters" card with no
+  // rows reads as a bug, so show a short invitation instead of that heading.
+  if (rows.length === 0) {
+    return (
+      <Card className="text-center">
+        <p className="text-sm font-medium text-fg">Be the first to tip</p>
+        <p className="text-xs text-fg-faint mt-1">Supporters will show up here.</p>
+      </Card>
+    );
+  }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Supporters</CardTitle>
+        <CardTitle level={2}>Recent Supporters</CardTitle>
       </CardHeader>
 
       <ul className="space-y-3" aria-label="Recent supporters">
-        {tips.map((tip) => (
+        {rows.map(({ tip, amount }) => (
           <li key={tip.id} className="flex items-start gap-3">
             <div className="h-8 w-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0">
               <span className="text-xs">💸</span>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm text-fg">
-                <span className="font-mono text-fg-subtle">
-                  {shortenAddress(tip.fromAddress)}
-                </span>
-                {" "}tipped{" "}
-                <span className="font-semibold text-accent">
-                  ${formatUsdc(BigInt(tip.amount), 2)} USDC
-                </span>
+                <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span>{" "}
+                tipped{" "}
+                <span className="font-semibold text-accent">${formatUsdc(amount, 2)} USDC</span>
               </p>
               {tip.message && (
-                <p className="text-xs text-fg-faint mt-0.5 truncate">
-                  &ldquo;{tip.message}&rdquo;
-                </p>
+                <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
               )}
             </div>
-            <span className="text-xs text-fg-dim shrink-0 mt-0.5">
+            <TimeAgo iso={tip.ledgerAt} className="text-xs text-fg-dim shrink-0 mt-0.5">
               {timeAgo(tip.ledgerAt)}
-            </span>
+            </TimeAgo>
           </li>
         ))}
       </ul>

@@ -5,8 +5,9 @@
  * All methods throw ApiError on non-2xx responses.
  */
 
-import { config } from "./config";
+import { config, DEFAULT_REQUEST_TIMEOUT_MS, RETRY_DELAY_MS } from "./config";
 import { emitUnauthorized } from "./authEvents";
+import { emitConnectionFailure, emitConnectionSuccess } from "./connectionEvents";
 
 export interface RequestOptions extends Omit<RequestInit, "signal"> {
   timeout?: number;
@@ -35,21 +36,64 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * Safely read a message out of a caught value of unknown shape.
+ *
+ * A rejected request is almost always an ApiError or a plain Error, but
+ * nothing guarantees it — `throw "oops"` is valid JS. Narrow before reading
+ * `.message` rather than trusting every catch's shape.
+ */
+export function getErrorMessage(err: unknown, fallback = "Something went wrong."): string {
+  return err instanceof Error ? err.message : fallback;
+}
+
 // ── Base fetch ────────────────────────────────────────────────────────────────
 
-async function request<T>(
+/** Statuses a sleeping or restarting backend answers with while it comes up. */
+const RETRYABLE_STATUSES = new Set([502, 503, 504]);
+
+/**
+ * Only a GET with no body is safe to send twice. Anything that carries a body
+ * (POST, PATCH, PUT, DELETE with a payload) may already have taken effect when
+ * the response is lost, and sending it again could apply it twice.
+ */
+function isRetryable(init: RequestOptions): boolean {
+  return (init.method ?? "GET").toUpperCase() === "GET" && init.body == null;
+}
+
+/** Wait before the retry, but stop waiting the moment the caller aborts. */
+function waitBeforeRetry(signal: AbortSignal | null | undefined): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const aborted = () => new ApiError(0, "ABORTED", "Request aborted");
+    if (signal?.aborted) return reject(aborted());
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(aborted());
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, RETRY_DELAY_MS);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * One attempt: builds the timeout/abort signal and calls fetch().
+ *
+ * Resolves with whatever response came back, whatever its status. Rejects with
+ * an ApiError for a timeout or a caller abort, and with the raw error for a
+ * network failure. `willRetry` says another attempt follows a network failure,
+ * so the connection banner is not told about one that is about to be retried.
+ */
+async function fetchOnce(
   path: string,
-  init: RequestOptions = {},
-  jwt?: string,
-): Promise<T> {
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    ...(init.headers as Record<string, string>),
-  };
-
-  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
-
-  const timeoutMs = init.timeout ?? 10000;
+  init: RequestOptions,
+  headers: Record<string, string>,
+  willRetry: boolean,
+): Promise<Response> {
+  const timeoutMs = init.timeout ?? DEFAULT_REQUEST_TIMEOUT_MS;
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const callerSignal = init.signal;
 
@@ -81,34 +125,78 @@ async function request<T>(
     signal = timeoutSignal;
   }
 
-  let res: Response;
   try {
-    res = await fetch(`${config.apiUrl}${path}`, {
+    const res = await fetch(`${config.apiUrl}${path}`, {
       ...init,
       headers,
       signal,
     });
     cleanup?.();
-  } catch (err: any) {
+    return res;
+  } catch (err: unknown) {
     cleanup?.();
+    // fetch() rejects with a DOMException (AbortError) or a TypeError
+    // (network failure) — neither is guaranteed to be an Error instance, so
+    // .name is read via a duck-typed check rather than assuming the shape.
+    const errName =
+      typeof err === "object" && err !== null && "name" in err
+        ? String((err as { name: unknown }).name)
+        : undefined;
     const isAbort =
-      err.name === "AbortError" ||
-      err.name === "TimeoutError" ||
+      errName === "AbortError" ||
+      errName === "TimeoutError" ||
       callerSignal?.aborted ||
       timeoutSignal.aborted;
 
     if (isAbort) {
       if (timeoutSignal.aborted && (!callerSignal || !callerSignal.aborted)) {
+        emitConnectionFailure();
         throw new ApiError(408, "TIMEOUT", "Request timed out");
       }
+      // A caller-initiated abort says nothing about the backend's health.
       throw new ApiError(0, "ABORTED", "Request aborted");
     }
+    // A failure that is about to be retried is not yet news about the
+    // backend's health; only the final outcome is reported.
+    if (!willRetry) emitConnectionFailure();
     throw err;
   }
+}
+
+async function request<T>(path: string, init: RequestOptions = {}, jwt?: string): Promise<T> {
+  const headers: Record<string, string> = {
+    ...(init.body ? { "Content-Type": "application/json" } : {}),
+    ...(init.headers as Record<string, string>),
+  };
+
+  if (jwt) headers["Authorization"] = `Bearer ${jwt}`;
+
+  const canRetry = isRetryable(init);
+  let retried = false;
+
+  let res: Response;
+  try {
+    res = await fetchOnce(path, init, headers, canRetry);
+  } catch (err: unknown) {
+    // An ApiError here is a timeout or an abort: neither is retried. Anything
+    // else is a network failure, which is what a sleeping backend looks like.
+    if (!canRetry || err instanceof ApiError) throw err;
+    await waitBeforeRetry(init.signal);
+    retried = true;
+    res = await fetchOnce(path, init, headers, false);
+  }
+
+  if (canRetry && !retried && RETRYABLE_STATUSES.has(res.status)) {
+    await waitBeforeRetry(init.signal);
+    res = await fetchOnce(path, init, headers, false);
+  }
+
+  // Any HTTP response, even an error status, proves the backend is reachable.
+  emitConnectionSuccess();
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>;
-    const err  = body["error"] as Record<string, unknown> | undefined;
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const err = body["error"] as Record<string, unknown> | undefined;
 
     // A 401 from any endpoint means the session is no longer valid, whether
     // it expired or was never valid to begin with. Handle it in one place
@@ -125,7 +213,21 @@ async function request<T>(
   // 204 No Content
   if (res.status === 204) return undefined as T;
 
-  return res.json() as Promise<T>;
+  try {
+    return (await res.json()) as T;
+  } catch (err: unknown) {
+    // A proxy or error page can answer 200 with HTML. json() then rejects with
+    // a SyntaxError about a parse position, which means nothing to a creator.
+    // Anything else (e.g. an abort while the body streams) is passed through.
+    if (err instanceof SyntaxError) {
+      throw new ApiError(
+        res.status,
+        "INVALID_RESPONSE",
+        "The server sent a response we couldn't read. Please try again in a moment.",
+      );
+    }
+    throw err;
+  }
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -148,94 +250,136 @@ export const authApi = {
     }),
 
   me: (jwt: string, options?: RequestOptions) =>
-    request<{ user: { sub: string; wallet: string; slug: string } }>(
-      "/auth/me",
-      options,
-      jwt,
-    ),
+    request<{ user: { sub: string; wallet: string; slug: string } }>("/auth/me", options, jwt),
 };
 
 // ── Creators ──────────────────────────────────────────────────────────────────
 
 export interface CreatorProfile {
-  id:          string;
-  slug:        string;
+  id: string;
+  slug: string;
   displayName: string | null;
-  bio:         string | null;
-  avatarUrl:   string | null;
-  jarId:       string;
-  splits:      Array<{ to: string; bps: number }>;
-  createdAt:   string;
+  bio: string | null;
+  avatarUrl: string | null;
+  /** Address tip-received emails are sent to. Null means notifications are off. */
+  email: string | null;
+  jarId: string;
+  splits: Array<{ to: string; bps: number }>;
+  createdAt: string;
 }
 
 export const creatorApi = {
   getBySlug: (slug: string, options?: RequestOptions) =>
-    request<{ creator: CreatorProfile }>(`/creators/${slug}`, options),
+    request<{ creator: CreatorProfile }>(`/creators/${encodeURIComponent(slug)}`, options),
 
   checkSlug: (slug: string, options?: RequestOptions) =>
-    request<{ slug: string; available: boolean }>(`/creators/check/${slug}`, options),
+    request<{ slug: string; available: boolean }>(
+      `/creators/check/${encodeURIComponent(slug)}`,
+      options,
+    ),
 
   claim: (
     jwt: string,
     data: { slug: string; jarId: string; displayName?: string; bio?: string },
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/claim", {
-      ...options,
-      method: "POST",
-      body: JSON.stringify(data),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/claim",
+      {
+        ...options,
+        method: "POST",
+        body: JSON.stringify(data),
+      },
+      jwt,
+    ),
 
   updateProfile: (
     jwt: string,
-    data: { displayName?: string; bio?: string; avatarUrl?: string },
+    data: { displayName?: string; bio?: string; avatarUrl?: string; email?: string | null },
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/me", {
-      ...options,
-      method: "PATCH",
-      body: JSON.stringify(data),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/me",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify(data),
+      },
+      jwt,
+    ),
 
   updateSplits: (
     jwt: string,
     splits: Array<{ to: string; bps: number }>,
     options?: RequestOptions,
   ) =>
-    request<{ creator: CreatorProfile }>("/creators/me/splits", {
-      ...options,
-      method: "PATCH",
-      body: JSON.stringify({ splits }),
-    }, jwt),
+    request<{ creator: CreatorProfile }>(
+      "/creators/me/splits",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify({ splits }),
+      },
+      jwt,
+    ),
+
+  // Renames the creator's public slug. Does not touch jarId — the on-chain
+  // jar stays registered under the id it was created with, so a rename only
+  // ever changes where the tip page and links resolve, never the contract
+  // state splits are paid through.
+  updateSlug: (jwt: string, slug: string, options?: RequestOptions) =>
+    request<{ creator: CreatorProfile }>(
+      "/creators/me/slug",
+      {
+        ...options,
+        method: "PATCH",
+        body: JSON.stringify({ slug }),
+      },
+      jwt,
+    ),
 };
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
 export interface PublicTip {
-  id:          string;
+  id: string;
   fromAddress: string;
-  amount:      string;
-  message:     string;
-  ledgerAt:    string;
+  amount: string;
+  message: string;
+  ledgerAt: string;
 }
 
 export interface ResolvedPage {
-  creator:    CreatorProfile;
-  tipUrl:     string;
-  qrSvgUrl:   string;
-  qrPngUrl:   string;
+  creator: CreatorProfile;
+  tipUrl: string;
+  qrSvgUrl: string;
+  qrPngUrl: string;
   recentTips: PublicTip[];
 }
 
 export const resolverApi = {
   resolve: (slug: string, options?: RequestOptions) =>
-    request<ResolvedPage>(`/resolve/${slug}`, options),
+    request<ResolvedPage>(`/resolve/${encodeURIComponent(slug)}`, options),
 };
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
 /** The largest `limit` the backend accepts on /analytics/recent. */
 export const RECENT_TIPS_MAX_LIMIT = 100;
+
+/** Bounds the backend accepts on /analytics/timeseries `days`. */
+export const TIMESERIES_MIN_DAYS = 1;
+export const TIMESERIES_MAX_DAYS = 365;
+
+/** Bounds the backend accepts on /analytics/top-supporters `limit`. */
+export const TOP_SUPPORTERS_MIN_LIMIT = 1;
+export const TOP_SUPPORTERS_MAX_LIMIT = 100;
+
+/** Clamp to [min, max]; a non-finite value falls back to `min`. */
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
 
 export const analyticsApi = {
   totals: (jwt: string, options?: RequestOptions) =>
@@ -247,14 +391,16 @@ export const analyticsApi = {
 
   timeSeries: (jwt: string, days = 30, options?: RequestOptions) =>
     request<{ series: Array<{ date: string; tipCount: number; amountRaw: string }> }>(
-      `/analytics/timeseries?days=${days}`,
+      `/analytics/timeseries?days=${clampInt(days, TIMESERIES_MIN_DAYS, TIMESERIES_MAX_DAYS)}`,
       options,
       jwt,
     ),
 
   topSupporters: (jwt: string, limit = 10, options?: RequestOptions) =>
-    request<{ supporters: Array<{ fromAddress: string; tipCount: number; totalAmountRaw: string }> }>(
-      `/analytics/top-supporters?limit=${limit}`,
+    request<{
+      supporters: Array<{ fromAddress: string; tipCount: number; totalAmountRaw: string }>;
+    }>(
+      `/analytics/top-supporters?limit=${clampInt(limit, TOP_SUPPORTERS_MIN_LIMIT, TOP_SUPPORTERS_MAX_LIMIT)}`,
       options,
       jwt,
     ),
@@ -274,24 +420,28 @@ export const analyticsApi = {
       options,
       jwt,
     ),
+
+  collaborators: (jwt: string, options?: RequestOptions) =>
+    request<{
+      collaborators: Array<{
+        address: string;
+        totalAmountRaw: string;
+      }>;
+    }>("/analytics/collaborators", options, jwt),
 };
 
 // ── Notifications ─────────────────────────────────────────────────────────────
 
 export interface NotificationPreferences {
   /** Receive an email after each indexed tip. */
-  emailEnabled:   boolean;
+  emailEnabled: boolean;
   /** Receive a webhook POST after each indexed tip. */
   webhookEnabled: boolean;
 }
 
 export const notificationsApi = {
   getPreferences: (jwt: string, options?: RequestOptions) =>
-    request<{ preferences: NotificationPreferences }>(
-      "/notifications/preferences",
-      options,
-      jwt,
-    ),
+    request<{ preferences: NotificationPreferences }>("/notifications/preferences", options, jwt),
 
   updatePreferences: (
     jwt: string,
@@ -306,6 +456,13 @@ export const notificationsApi = {
 };
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
+
+export interface WebhookDelivery {
+  id: string;
+  status: number;
+  attempt: number;
+  createdAt: string;
+}
 
 export const webhookApi = {
   list: (jwt: string, options?: RequestOptions) =>
@@ -323,5 +480,26 @@ export const webhookApi = {
     ),
 
   remove: (jwt: string, id: string, options?: RequestOptions) =>
-    request<void>(`/webhooks/${id}`, { ...options, method: "DELETE" }, jwt),
+    request<void>(`/webhooks/${encodeURIComponent(id)}`, { ...options, method: "DELETE" }, jwt),
+
+  deliveries: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ deliveries: WebhookDelivery[] }>(
+      `/webhooks/${encodeURIComponent(id)}/deliveries`,
+      options,
+      jwt,
+    ),
+
+  rotateSecret: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ secret: string }>(
+      `/webhooks/${encodeURIComponent(id)}/secret`,
+      { ...options, method: "POST" },
+      jwt,
+    ),
+
+  update: (jwt: string, id: string, data: { enabled: boolean }, options?: RequestOptions) =>
+    request<{ webhook: { id: string; url: string; enabled: boolean } }>(
+      `/webhooks/${encodeURIComponent(id)}`,
+      { ...options, method: "PATCH", body: JSON.stringify(data) },
+      jwt,
+    ),
 };

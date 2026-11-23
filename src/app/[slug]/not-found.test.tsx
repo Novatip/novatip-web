@@ -14,6 +14,8 @@
  *   - A backend fault is rethrown for the error boundary instead
  *   - A leading @ is stripped before the lookup
  *   - Metadata reflects the creator, or the failure
+ *   - normalizeSlug: bare slug, @ prefix, percent-encoded @, and an @ that
+ *     isn't a prefix are each handled correctly
  */
 
 import { describe, it, expect, afterEach, vi } from "vitest";
@@ -21,6 +23,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import { ApiError } from "@/lib/api";
 import CreatorNotFound from "./not-found";
 import TipPage, { generateMetadata } from "./page";
+import { normalizeSlug } from "@/lib/slug";
 
 vi.mock("@/components/Header", () => ({
   Header: () => <header data-testid="header" />,
@@ -30,6 +33,12 @@ vi.mock("@/components/Header", () => ({
 // import time. None of that is under test here.
 vi.mock("@/components/TipForm", () => ({
   TipForm: () => <form data-testid="tip-form" />,
+}));
+
+// Avatar is outside this page-boundary test's scope. Mocking it also keeps this
+// branch independent from the separate avatar accessibility fix in #223.
+vi.mock("@/components/Avatar", () => ({
+  Avatar: () => <div data-testid="avatar" />,
 }));
 
 // notFound() throws a sentinel in Next; reproduce that shape so the tests can
@@ -51,11 +60,16 @@ vi.mock("@/lib/api", async (importOriginal) => ({
 function creatorPayload() {
   return {
     creator: {
-      id: "c1", slug: "alice", displayName: "Alice", bio: "Street violinist",
-      avatarUrl: null, jarId: "jar1", splits: [{ to: "GABC", bps: 10_000 }],
+      id: "c1",
+      slug: "alice",
+      displayName: "Alice",
+      bio: "Street violinist",
+      avatarUrl: null,
+      jarId: "jar1",
+      splits: [{ to: "GABC", bps: 10_000 }],
       createdAt: "2026-01-01T00:00:00Z",
     },
-    tipUrl:   "https://novatip.xyz/alice",
+    tipUrl: "https://novatip.xyz/alice",
     qrSvgUrl: "https://novatip.xyz/qr/alice.svg",
     qrPngUrl: "https://novatip.xyz/qr/alice.png",
   };
@@ -72,9 +86,7 @@ describe("app/[slug]/not-found", () => {
   it("renders a branded 404 for an unknown creator", () => {
     render(<CreatorNotFound />);
 
-    expect(
-      screen.getByRole("heading", { name: /no tip jar here/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /no tip jar here/i })).toBeInTheDocument();
   });
 
   it("routes the visitor back to the homepage", () => {
@@ -90,6 +102,13 @@ describe("app/[slug]/not-found", () => {
       "href",
       "/onboarding",
     );
+  });
+
+  it("renders one interactive element per recovery action", () => {
+    const { container } = render(<CreatorNotFound />);
+
+    expect(container.querySelector("a button")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("link")).toHaveLength(2);
   });
 
   it("says nothing that blames the visitor for a broken link", () => {
@@ -138,6 +157,44 @@ describe("app/[slug]/page – choosing a boundary", () => {
   });
 });
 
+// ── normalizeSlug ─────────────────────────────────────────────────────────────
+
+describe("normalizeSlug", () => {
+  it("leaves a bare slug unchanged", () => {
+    expect(normalizeSlug("alice")).toBe("alice");
+  });
+
+  it("strips a leading @", () => {
+    expect(normalizeSlug("@alice")).toBe("alice");
+  });
+
+  it("decodes a percent-encoded @ and then strips it", () => {
+    expect(normalizeSlug("%40alice")).toBe("alice");
+  });
+
+  it("does not touch an @ that is not a prefix", () => {
+    expect(normalizeSlug("ali@ce")).toBe("ali@ce");
+  });
+
+  it("handles malformed percent sequences like %zz without throwing", () => {
+    expect(normalizeSlug("%zz")).toBe("%zz");
+  });
+
+  it("handles incomplete percent sequences like %E0%A4%A without throwing", () => {
+    expect(normalizeSlug("%E0%A4%A")).toBe("%e0%a4%a");
+  });
+
+  it("handles malformed sequences with leading @ by stripping the @ and returning the malformed part", () => {
+    expect(normalizeSlug("%40%zz")).toBe("%zz");
+  });
+
+  it("does not throw on other malformed percent sequences", () => {
+    expect(() => normalizeSlug("%")).not.toThrow();
+    expect(() => normalizeSlug("%G")).not.toThrow();
+    expect(() => normalizeSlug("alice%zz")).not.toThrow();
+  });
+});
+
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 describe("app/[slug]/page – metadata", () => {
@@ -146,37 +203,41 @@ describe("app/[slug]/page – metadata", () => {
 
     // No `images` in either block — opengraph-image.tsx supplies those via the
     // Next file convention, so generateMetadata must not set them itself.
-    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
-      title:       "Tip Alice on Novatip",
-      description: "Street violinist",
-      openGraph: {
-        title:       "Tip Alice on Novatip",
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual(
+      {
+        title: "Tip Alice on Novatip",
         description: "Street violinist",
-        url:         "https://novatip.xyz/alice",
-        siteName:    "Novatip",
-        type:        "profile",
+        openGraph: {
+          title: "Tip Alice on Novatip",
+          description: "Street violinist",
+          url: "https://novatip.xyz/alice",
+          siteName: "Novatip",
+          type: "profile",
+        },
+        twitter: {
+          card: "summary_large_image",
+          title: "Tip Alice on Novatip",
+          description: "Street violinist",
+        },
       },
-      twitter: {
-        card:        "summary_large_image",
-        title:       "Tip Alice on Novatip",
-        description: "Street violinist",
-      },
-    });
+    );
   });
 
   it("bails out so a dead link is not titled as a live page", async () => {
     resolve.mockRejectedValue(new ApiError(404, "NOT_FOUND", "No such creator"));
 
-    await expect(
-      generateMetadata({ params: Promise.resolve({ slug: "nobody" }) }),
-    ).rejects.toBe(NOT_FOUND);
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "nobody" }) })).rejects.toBe(
+      NOT_FOUND,
+    );
   });
 
   it("stays generic — and does not 404 — on a backend fault", async () => {
     resolve.mockRejectedValue(new ApiError(500, "INTERNAL", "backend on fire"));
 
-    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual({
-      title: "Novatip",
-    });
+    await expect(generateMetadata({ params: Promise.resolve({ slug: "alice" }) })).resolves.toEqual(
+      {
+        title: "Novatip",
+      },
+    );
   });
 });

@@ -1,0 +1,139 @@
+/**
+ * src/lib/slug.test.ts
+ *
+ * Covers SLUG_REGEX and isValidSlug — the single source of truth for the
+ * slug format used by both onboarding and the settings rename flow.
+ *
+ * Covers:
+ *   - Valid slugs: minimum length, maximum length, all allowed characters
+ *   - Invalid slugs: too short, too long, disallowed characters, empty
+ *
+ * Also covers normalizeSlug's case folding: mixed case with and without an @
+ * prefix, percent-encoded prefixes, and the malformed-sequence fallback.
+ */
+
+import { describe, it, expect } from "vitest";
+import { RESERVED_SLUGS, SLUG_REGEX, isReservedSlug, isValidSlug, normalizeSlug } from "./slug";
+
+describe("isValidSlug – valid slugs", () => {
+  it("accepts a minimal 3-character slug", () => {
+    expect(isValidSlug("abc")).toBe(true);
+  });
+
+  it("accepts a maximum 32-character slug", () => {
+    expect(isValidSlug("a".repeat(32))).toBe(true);
+  });
+
+  it("accepts lowercase letters", () => {
+    expect(isValidSlug("helloworld")).toBe(true);
+  });
+
+  it("accepts digits", () => {
+    expect(isValidSlug("abc123")).toBe(true);
+  });
+
+  it("accepts hyphens", () => {
+    expect(isValidSlug("hello-world")).toBe(true);
+  });
+
+  it("accepts underscores", () => {
+    expect(isValidSlug("hello_world")).toBe(true);
+  });
+
+  it("accepts a mix of all allowed characters", () => {
+    expect(isValidSlug("my_tip-page-99")).toBe(true);
+  });
+});
+
+describe("isValidSlug – invalid slugs", () => {
+  it("rejects an empty string", () => {
+    expect(isValidSlug("")).toBe(false);
+  });
+
+  it("rejects a slug shorter than 3 characters", () => {
+    expect(isValidSlug("ab")).toBe(false);
+    expect(isValidSlug("a")).toBe(false);
+  });
+
+  it("rejects a slug longer than 32 characters", () => {
+    expect(isValidSlug("a".repeat(33))).toBe(false);
+  });
+
+  it("rejects uppercase letters", () => {
+    expect(isValidSlug("Hello")).toBe(false);
+    expect(isValidSlug("HELLO")).toBe(false);
+  });
+
+  it("rejects spaces", () => {
+    expect(isValidSlug("hello world")).toBe(false);
+  });
+
+  it("rejects the @ prefix (that belongs to jar ids, not slugs)", () => {
+    expect(isValidSlug("@alice")).toBe(false);
+  });
+
+  it("rejects special characters beyond hyphen and underscore", () => {
+    expect(isValidSlug("hello.world")).toBe(false);
+    expect(isValidSlug("hello/world")).toBe(false);
+    expect(isValidSlug("hello+world")).toBe(false);
+  });
+});
+
+describe("SLUG_REGEX", () => {
+  it("is the same rule isValidSlug uses", () => {
+    const slug = "valid-slug_99";
+    expect(SLUG_REGEX.test(slug)).toBe(isValidSlug(slug));
+  });
+});
+
+describe("normalizeSlug – case folding", () => {
+  it("lowercases a mixed-case slug", () => {
+    expect(normalizeSlug("Alice")).toBe("alice");
+    expect(normalizeSlug("ALICE")).toBe("alice");
+    expect(normalizeSlug("aLiCe_99")).toBe("alice_99");
+  });
+
+  it("lowercases a mixed-case slug with an @ prefix", () => {
+    expect(normalizeSlug("@Alice")).toBe("alice");
+  });
+
+  it("lowercases a mixed-case slug with a percent-encoded @ prefix", () => {
+    expect(normalizeSlug("%40Alice")).toBe("alice");
+  });
+
+  it("lowercases a percent-encoded uppercase letter", () => {
+    expect(normalizeSlug("%41lice")).toBe("alice");
+  });
+
+  it("leaves an already-lowercase slug unchanged", () => {
+    expect(normalizeSlug("alice")).toBe("alice");
+    expect(normalizeSlug("@alice")).toBe("alice");
+  });
+
+  it("lowercases the malformed-sequence fallback, with and without a prefix", () => {
+    expect(normalizeSlug("Al%zz")).toBe("al%zz");
+    expect(normalizeSlug("@Al%zz")).toBe("al%zz");
+    expect(normalizeSlug("%40Al%zz")).toBe("al%zz");
+  });
+
+  it("produces a slug that isValidSlug accepts for a mixed-case link", () => {
+    expect(isValidSlug(normalizeSlug("@Alice"))).toBe(true);
+  });
+});
+
+describe("isReservedSlug", () => {
+  it("flags reserved slugs", () => {
+    expect(isReservedSlug("dashboard")).toBe(true);
+    expect(isReservedSlug("_next")).toBe(true);
+  });
+
+  it("does not flag a normal slug", () => {
+    expect(isReservedSlug("alice")).toBe(false);
+  });
+
+  it("only lists slugs that pass the format check, so each one is worth listing", () => {
+    for (const slug of RESERVED_SLUGS) {
+      expect(isValidSlug(slug)).toBe(true);
+    }
+  });
+});

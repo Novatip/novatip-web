@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { ConnectionProvider } from "@/contexts/ConnectionContext";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { AccountChangeBanner } from "@/components/AccountChangeBanner";
+import { SkipLink } from "@/components/SkipLink";
 import { config } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -23,12 +27,24 @@ export const metadata: Metadata = {
   */
   metadataBase: new URL(config.siteUrl),
 
-  title:       "Novatip — Tap to tip any creator",
-  description: "Cross-border micro-tipping for creators, streamers, and street musicians. Powered by Stellar.",
+  title: "Novatip — Tap to tip any creator",
+  description:
+    "Cross-border micro-tipping for creators, streamers, and street musicians. Powered by Stellar.",
   openGraph: {
-    title:       "Novatip",
+    title: "Novatip",
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
-    type:        "website",
+    type: "website",
+  },
+  /*
+    No `images` on openGraph or twitter on purpose: app/opengraph-image.tsx and
+    app/twitter-image.tsx are Next file conventions that inject the absolute
+    image URLs here, resolved against metadataBase above.  The card type is
+    stated so the injected image renders as a large preview.
+  */
+  twitter: {
+    card: "summary_large_image",
+    title: "Novatip",
+    description: "Tap-to-tip any creator in 2 seconds, cross-border.",
   },
   icons: {
     /*
@@ -37,14 +53,11 @@ export const metadata: Metadata = {
                                SVG favicons (Firefox, Chrome 80+) use the
                                media-query-aware version that adapts to dark
                                browser chrome.
-      apple-icon.svg — served by Next.js at /apple-icon.svg for iOS home screen.
+      apple-touch-icon.png in public/ — 180×180 PNG for the iOS home screen,
+                               which does not use SVG icons.
     */
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -52,15 +65,11 @@ export const viewport: Viewport = {
   colorScheme: "light dark",
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f8fafc" },
-    { media: "(prefers-color-scheme: dark)",  color: "#030712" },
+    { media: "(prefers-color-scheme: dark)", color: "#030712" },
   ],
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     // suppressHydrationWarning: the script below adds a `dark` class that the
     // server render cannot know about, so <html> legitimately differs between
@@ -76,9 +85,14 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
       <body>
-        <WalletProvider>
-          {children}
-        </WalletProvider>
+        <SkipLink />
+        <ConnectionProvider>
+          <ConnectionBanner />
+          <WalletProvider>
+            <AccountChangeBanner />
+            {children}
+          </WalletProvider>
+        </ConnectionProvider>
       </body>
     </html>
   );

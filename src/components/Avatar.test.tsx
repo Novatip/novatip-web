@@ -1,0 +1,106 @@
+/**
+ * src/components/Avatar.test.tsx
+ *
+ * Unit tests for Avatar and its pure getInitials helper.
+ *
+ * Covers:
+ *   - getInitials for one-word, two-word, empty and @-prefixed names
+ *   - The no-src fallback
+ *   - The onError fallback when a real image fails to load
+ *   - The error resetting when src changes, so a new image gets a chance
+ */
+
+import { describe, it, expect, afterEach } from "vitest";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { Avatar, getInitials } from "./Avatar";
+
+afterEach(cleanup);
+
+const FIRST_SRC = "https://example.com/alice.png";
+const SECOND_SRC = "https://example.com/alice-2.png";
+
+// ── getInitials ───────────────────────────────────────────────────────────────
+
+describe("getInitials", () => {
+  it("uses the first letters of a two-word name", () => {
+    expect(getInitials("Alice Smith")).toBe("AS");
+  });
+
+  it("uses the first letters of the first two words of a longer name", () => {
+    expect(getInitials("Alice  Beatrice Smith")).toBe("AB");
+  });
+
+  it("uses the first two letters of a one-word name", () => {
+    expect(getInitials("Alice")).toBe("AL");
+  });
+
+  it("keeps Unicode code points intact in names and slug fallbacks", () => {
+    expect(getInitials("\u{10400}lice Smith")).toBe("\u{10400}S");
+    expect(getInitials("\u{10400}lice")).toBe("\u{10400}L");
+    expect(getInitials("", "\u{10400}lice")).toBe("\u{10400}L");
+  });
+
+  it("strips a leading @ before taking initials", () => {
+    expect(getInitials("@alice")).toBe("AL");
+    expect(getInitials("  @alice  ")).toBe("AL");
+  });
+
+  it("falls back to the slug when the display name is empty", () => {
+    expect(getInitials("", "alice")).toBe("AL");
+    expect(getInitials("   ", "bob")).toBe("BO");
+  });
+
+  it("falls back to ? when both the name and slug are empty", () => {
+    expect(getInitials("")).toBe("?");
+    expect(getInitials("   ", "")).toBe("?");
+  });
+});
+
+// ── Avatar fallback rendering ─────────────────────────────────────────────────
+
+describe("Avatar", () => {
+  it("renders local initials when there is no src", () => {
+    render(<Avatar displayName="Alice Smith" slug="alice" />);
+
+    const fallback = screen.getByRole("img", { name: "Alice Smith avatar" });
+    expect(fallback).toBeInTheDocument();
+    expect(screen.getByText("AS")).toHaveAttribute("aria-hidden", "true");
+  });
+
+  it("renders the image when src is present", () => {
+    render(<Avatar src={FIRST_SRC} displayName="Alice Smith" slug="alice" />);
+
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toHaveAttribute(
+      "src",
+      FIRST_SRC,
+    );
+    expect(screen.queryByLabelText("Alice Smith avatar fallback")).not.toBeInTheDocument();
+  });
+
+  it("falls back to initials when the image fails to load", () => {
+    render(<Avatar src={FIRST_SRC} displayName="Alice Smith" slug="alice" />);
+
+    fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
+
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toBeInTheDocument();
+    expect(screen.getByText("AS")).toBeInTheDocument();
+    expect(document.querySelector("img")).not.toBeInTheDocument();
+  });
+
+  it("resets the error when src changes so the new image is attempted", () => {
+    const { container, rerender } = render(
+      <Avatar src={FIRST_SRC} displayName="Alice Smith" slug="alice" />,
+    );
+
+    fireEvent.error(screen.getByRole("img", { name: "Alice Smith avatar" }));
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toBeInTheDocument();
+
+    rerender(<Avatar src={SECOND_SRC} displayName="Alice Smith" slug="alice" />);
+
+    expect(screen.getByRole("img", { name: "Alice Smith avatar" })).toHaveAttribute(
+      "src",
+      SECOND_SRC,
+    );
+    expect(container.querySelector('div[role="img"]')).not.toBeInTheDocument();
+  });
+});

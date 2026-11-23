@@ -4,20 +4,21 @@
  * SplitsManager.tsx
  *
  * UI for managing collaborator splits on a tip jar.
- * Validates that all bps values sum to exactly 10,000 before
- * allowing the creator to save changes on-chain + backend.
+ * Validates that every share is above 0 bps and all shares sum to
+ * exactly 10,000 before allowing a creator to save changes.
  */
 
 import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
-import { validateSplitsBps } from "@novatip/sdk";
+import { shortenAddress, validateSplitsBps } from "@novatip/sdk";
 import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
+import { formatBps, splitEqually } from "@/lib/splits";
 
 export interface SplitRow {
-  to:  string;
+  to: string;
   bps: number;
 }
 
@@ -27,8 +28,8 @@ export interface SplitRow {
 // not parsed until save, so an unparseable entry can never collapse into
 // NaN in state.
 interface SplitRowState {
-  id:  string;
-  to:  string;
+  id: string;
+  to: string;
   bps: string;
 }
 
@@ -62,22 +63,38 @@ function parseBpsInput(raw: string): number | null {
 }
 
 interface SplitsManagerProps {
-  initial:    SplitRow[];
-  onSave:     (splits: SplitRow[]) => Promise<void>;
-  disabled?:  boolean;
+  initial: SplitRow[];
+  onSave: (splits: SplitRow[]) => Promise<void>;
+  disabled?: boolean;
+  /**
+   * The creator's own connected wallet, if known. Used only to warn when it
+   * is missing from the splits being saved — every tip would then go
+   * entirely to the listed collaborators, which is sometimes intentional
+   * (a charity jar) but far more often a mistake.
+   */
+  connectedAddress?: string;
 }
 
-export function SplitsManager({ initial, onSave, disabled = false }: SplitsManagerProps) {
-  const [rows,    setRows]    = useState<SplitRowState[]>(
+export function SplitsManager({
+  initial,
+  onSave,
+  disabled = false,
+  connectedAddress,
+}: SplitsManagerProps) {
+  const [rows, setRows] = useState<SplitRowState[]>(
     (initial.length > 0 ? initial : [{ to: "", bps: 10000 }]).map(withId),
   );
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  // True while the "your wallet isn't in this list" warning is up, waiting
+  // for the creator to either back out or confirm it is intentional.
+  const [confirmingMissingWallet, setConfirmingMissingWallet] = useState(false);
 
-  const parsedBps   = rows.map((r) => parseBpsInput(r.bps));
-  const totalBps    = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
-  const bpsValid    = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
+  const parsedBps = rows.map((r) => parseBpsInput(r.bps));
+  const totalBps = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
+  const bpsValid =
+    parsedBps.every((v) => v !== null && v > 0) && validateSplitsBps(parsedBps as number[]);
   const addressesOk = rows.every((r) => isValidAddress(r.to));
   // The contract rejects a jar that lists the same recipient twice
   // (DuplicateRecipient), so duplicates block saving rather than just warn.
@@ -86,28 +103,55 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
     if (key) counts.set(key, (counts.get(key) ?? 0) + 1);
     return counts;
   }, new Map());
-  const isDuplicate   = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
+  const isDuplicate = rows.map((r) => (addressCounts.get(normalizeAddress(r.to)) ?? 0) > 1);
   const hasDuplicates = isDuplicate.some(Boolean);
-  const canSave       = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
+  const canSave = bpsValid && addressesOk && !hasDuplicates && !saving && !disabled;
+
+  // Only ever warns when the connected wallet is known — an anonymous/absent
+  // wallet is not itself suspicious, so there is nothing to compare against.
+  const walletMissing =
+    !!connectedAddress &&
+    !rows.some((r) => normalizeAddress(r.to) === normalizeAddress(connectedAddress));
 
   function updateRow(index: number, field: keyof SplitRow, value: string) {
     setSuccess(false);
-    setRows((prev) =>
-      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)),
-    );
+    setConfirmingMissingWallet(false);
+    setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
 
   function addRow() {
+    setConfirmingMissingWallet(false);
     setRows((prev) => [...prev, { id: crypto.randomUUID(), to: "", bps: "" }]);
+  }
+
+  function splitEvenly() {
+    setSuccess(false);
+    setConfirmingMissingWallet(false);
+    const shares = splitEqually(rows.length);
+    setRows((prev) => prev.map((row, i) => ({ ...row, bps: String(shares[i]) })));
   }
 
   function removeRow(index: number) {
     if (rows.length === 1) return;
+    setConfirmingMissingWallet(false);
     setRows((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Gates the actual save behind the missing-wallet warning, once, rather
+  // than requiring a second click every time — see handleSave for the
+  // outcome once the creator has confirmed (or the warning didn't apply).
+  function requestSave() {
+    if (!canSave) return;
+    if (walletMissing && !confirmingMissingWallet) {
+      setConfirmingMissingWallet(true);
+      return;
+    }
+    void handleSave();
   }
 
   async function handleSave() {
     if (!canSave) return;
+    setConfirmingMissingWallet(false);
     setSaving(true);
     setError(null);
     setSuccess(false);
@@ -126,12 +170,10 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
 
   return (
     <div className="flex flex-col gap-5">
-
       {/* Rows */}
       <div className="flex flex-col gap-3">
         {rows.map((row, i) => (
           <div key={row.id} className="flex items-start gap-2">
-
             {/* Address */}
             <div className="flex-1 min-w-0">
               <Input
@@ -162,10 +204,12 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
                   disabled={saving || disabled}
                   placeholder="bps"
                   aria-label={`Recipient ${i + 1} basis points`}
-                  aria-invalid={row.bps !== "" && parsedBps[i] === null}
+                  aria-invalid={row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)}
                   className={cn(
                     "w-full rounded-xl bg-surface-strong border",
-                    row.bps !== "" && parsedBps[i] === null ? "border-danger" : "border-hairline",
+                    row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)
+                      ? "border-danger"
+                      : "border-hairline",
                     "px-3 pr-10 py-2.5 text-sm text-fg text-right",
                     "focus:outline-none focus:ring-2 focus:ring-brand-500/50",
                     "disabled:opacity-50 transition-all duration-200",
@@ -178,14 +222,18 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
               <p
                 className={cn(
                   "text-right text-xs mt-1",
-                  row.bps !== "" && parsedBps[i] === null ? "text-danger" : "text-fg-dim",
+                  row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)
+                    ? "text-danger"
+                    : "text-fg-dim",
                 )}
               >
-                {row.bps !== "" && parsedBps[i] === null
-                  ? "Whole number only"
-                  : parsedBps[i] !== null
-                    ? `${(parsedBps[i]! / 100).toFixed(1)}%`
-                    : "0%"}
+                {parsedBps[i] === 0
+                  ? "Share must be above 0%"
+                  : row.bps !== "" && parsedBps[i] === null
+                    ? "Whole number only"
+                    : parsedBps[i] !== null
+                      ? `${formatBps(parsedBps[i]!)}`
+                      : "0%"}
               </p>
             </div>
 
@@ -199,43 +247,54 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
             >
               ✕
             </button>
-
           </div>
         ))}
       </div>
 
-      {/* Add row */}
-      {rows.length < MAX_RECIPIENTS && (
+      {/* Add row / split equally */}
+      <div className="flex flex-wrap items-center gap-2">
+        {rows.length < MAX_RECIPIENTS && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={addRow}
+            disabled={saving || disabled}
+          >
+            + Add collaborator
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={addRow}
+          onClick={splitEvenly}
           disabled={saving || disabled}
-          className="self-start"
         >
-          + Add collaborator
+          Split equally
         </Button>
-      )}
+      </div>
 
       {/* BPS total indicator */}
       <div className="flex items-center justify-between rounded-xl bg-surface-strong border border-hairline px-4 py-3">
         <span className="text-sm text-fg-subtle">Total allocation</span>
         <div className="flex items-center gap-2">
-          <span className={cn(
-            "text-sm font-semibold font-mono",
-            bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
-          )}>
+          <span
+            className={cn(
+              "text-sm font-semibold font-mono",
+              bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
+            )}
+          >
             {totalBps.toLocaleString()} / 10,000 bps
           </span>
           <Badge variant={bpsValid ? "success" : "error"}>
-            {bpsValid ? "100%" : `${(totalBps / 100).toFixed(1)}%`}
+            {bpsValid ? "100%" : formatBps(totalBps)}
           </Badge>
         </div>
       </div>
 
       {/* Validation hint */}
-      {!bpsValid && (
+      {!bpsValid && totalBps !== 10000 && (
         <p className="text-xs text-warning">
           Splits must sum to exactly 10,000 bps (100%).
           {totalBps < 10000
@@ -246,31 +305,71 @@ export function SplitsManager({ initial, onSave, disabled = false }: SplitsManag
 
       {hasDuplicates && (
         <p className="text-xs text-warning">
-          Each recipient can only appear once. Merge duplicate rows into a single
-          share before saving.
+          Each recipient can only appear once. Merge duplicate rows into a single share before
+          saving.
         </p>
       )}
 
       {/* Error / success */}
       {error && (
-        <p role="alert" className="text-sm text-danger">{error}</p>
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
       )}
       {success && (
-        <p role="status" className="text-sm text-success">Splits saved successfully!</p>
+        <p role="status" className="text-sm text-success">
+          Splits saved successfully!
+        </p>
       )}
 
-      {/* Save */}
-      <Button
-        size="lg"
-        className="w-full"
-        disabled={!canSave}
-        loading={saving}
-        onClick={handleSave}
-        aria-label="Save collaborator splits"
-      >
-        {saving ? "Saving…" : "Save splits"}
-      </Button>
-
+      {/* Missing-wallet warning — gates the save once rather than blocking it */}
+      {confirmingMissingWallet ? (
+        <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3 flex flex-col gap-3">
+          <p className="text-sm text-fg">
+            Your connected wallet
+            {connectedAddress && (
+              <>
+                {" "}
+                (<span className="font-mono">{shortenAddress(connectedAddress)}</span>)
+              </>
+            )}{" "}
+            isn&rsquo;t one of these recipients. Every tip will go entirely to the addresses listed
+            above and you won&rsquo;t receive anything — that&rsquo;s expected for a charity jar,
+            but worth double-checking otherwise.
+          </p>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="md"
+              className="flex-1"
+              onClick={() => setConfirmingMissingWallet(false)}
+            >
+              Go back
+            </Button>
+            <Button
+              type="button"
+              size="md"
+              className="flex-1"
+              onClick={() => void handleSave()}
+              aria-label="Save splits without my wallet as a recipient"
+            >
+              Save anyway
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button
+          size="lg"
+          className="w-full"
+          disabled={!canSave}
+          loading={saving}
+          onClick={requestSave}
+          aria-label="Save collaborator splits"
+        >
+          {saving ? "Saving…" : "Save splits"}
+        </Button>
+      )}
     </div>
   );
 }

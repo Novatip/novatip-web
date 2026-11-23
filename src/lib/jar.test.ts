@@ -10,16 +10,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ContractErrorCode, NovatipContractError } from "@novatip/sdk";
 
-const getJar       = vi.fn();
-const createJar    = vi.fn();
+const getJar = vi.fn();
+const createJar = vi.fn();
 const updateSplits = vi.fn();
 
 const assertActiveAccount = vi.fn(async (_expected: string) => {});
 
 vi.mock("./wallet", () => ({
   getTipSplitterClient: () => ({ getJar, createJar, updateSplits }),
-  makeSignTransaction:  () => async (xdr: string) => xdr,
-  assertActiveAccount:  (expected: string) => assertActiveAccount(expected),
+  makeSignTransaction: () => async (xdr: string) => xdr,
+  assertActiveAccount: (expected: string) => assertActiveAccount(expected),
 }));
 
 const { jarIdForSlug, readJar, syncJarToChain } = await import("./jar");
@@ -44,16 +44,12 @@ describe("jarIdForSlug", () => {
 
 describe("readJar", () => {
   it("returns null for a typed JarNotFound rather than throwing", async () => {
-    getJar.mockRejectedValue(
-      new NovatipContractError(ContractErrorCode.JarNotFound),
-    );
+    getJar.mockRejectedValue(new NovatipContractError(ContractErrorCode.JarNotFound));
     await expect(readJar("@nope")).resolves.toBeNull();
   });
 
   it("returns null when the error is only a raw simulation message", async () => {
-    getJar.mockRejectedValue(
-      new Error("Simulation failed: HostError: Error(Contract, #3)"),
-    );
+    getJar.mockRejectedValue(new Error("Simulation failed: HostError: Error(Contract, #3)"));
     await expect(readJar("@nope")).resolves.toBeNull();
   });
 
@@ -65,14 +61,12 @@ describe("readJar", () => {
 
 describe("syncJarToChain", () => {
   it("creates the jar when the contract has no record of it", async () => {
-    getJar.mockRejectedValue(
-      new NovatipContractError(ContractErrorCode.JarNotFound),
-    );
+    getJar.mockRejectedValue(new NovatipContractError(ContractErrorCode.JarNotFound));
     createJar.mockResolvedValue(undefined);
 
-    await expect(
-      syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS }),
-    ).resolves.toBe("created");
+    await expect(syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS })).resolves.toBe(
+      "created",
+    );
 
     expect(createJar).toHaveBeenCalledWith(
       { owner: OWNER, jarId: "@doryjar", splits: SPLITS },
@@ -85,9 +79,9 @@ describe("syncJarToChain", () => {
     getJar.mockResolvedValue({ owner: OWNER, splits: [{ to: OWNER, bps: 5000 }] });
     updateSplits.mockResolvedValue(undefined);
 
-    await expect(
-      syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS }),
-    ).resolves.toBe("updated");
+    await expect(syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS })).resolves.toBe(
+      "updated",
+    );
 
     expect(createJar).not.toHaveBeenCalled();
   });
@@ -95,9 +89,9 @@ describe("syncJarToChain", () => {
   it("writes nothing when the chain already matches", async () => {
     getJar.mockResolvedValue({ owner: OWNER, splits: SPLITS });
 
-    await expect(
-      syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS }),
-    ).resolves.toBe("unchanged");
+    await expect(syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS })).resolves.toBe(
+      "unchanged",
+    );
 
     expect(createJar).not.toHaveBeenCalled();
     expect(updateSplits).not.toHaveBeenCalled();
@@ -117,9 +111,7 @@ describe("syncJarToChain", () => {
 
 describe("syncJarToChain account guard", () => {
   it("checks the active wallet account before touching the chain", async () => {
-    getJar.mockRejectedValue(
-      new NovatipContractError(ContractErrorCode.JarNotFound),
-    );
+    getJar.mockRejectedValue(new NovatipContractError(ContractErrorCode.JarNotFound));
     createJar.mockResolvedValue(undefined);
 
     await syncJarToChain({ owner: OWNER, jarId: "@doryjar", splits: SPLITS });

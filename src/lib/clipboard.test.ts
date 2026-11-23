@@ -28,9 +28,9 @@ import {
  */
 function stubClipboard(writeText: ((text: string) => Promise<void>) | null) {
   Object.defineProperty(navigator, "clipboard", {
-    value:        writeText ? { writeText } : undefined,
+    value: writeText ? { writeText } : undefined,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
 }
 
@@ -46,9 +46,9 @@ function stubExecCommand(impl: () => boolean) {
   });
 
   Object.defineProperty(document, "execCommand", {
-    value:        execCommand,
+    value: execCommand,
     configurable: true,
-    writable:     true,
+    writable: true,
   });
 
   return { execCommand, seen };
@@ -84,9 +84,9 @@ describe("clipboard – capability checks", () => {
 
   it("does not trust a clipboard object without a usable writeText", () => {
     Object.defineProperty(navigator, "clipboard", {
-      value:        {},
+      value: {},
       configurable: true,
-      writable:     true,
+      writable: true,
     });
     expect(isClipboardApiAvailable()).toBe(false);
   });

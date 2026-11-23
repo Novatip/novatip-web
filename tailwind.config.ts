@@ -31,7 +31,12 @@ const config: Config = {
           800: "#075985",
           900: "#0c4a6e",
         },
-        usdc: "#2775ca",
+        usdc: {
+          DEFAULT: "#2775ca",
+          // Theme-aware: the brand blue on light, lifted for contrast on dark.
+          fg:      token("usdc-fg"),
+          border:  token("usdc-border"),
+        },
 
         // ── Theme-aware tokens ───────────────────────────────────────────
         // Surfaces, ordered from the page background upwards.

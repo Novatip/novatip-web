@@ -8,6 +8,7 @@
  * which redirects to the connect flow if not connected.
  */
 
+import { useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useWallet } from "@/contexts/WalletContext";
 
@@ -15,15 +16,16 @@ export function useAuth() {
   const wallet = useWallet();
   const router = useRouter();
   const pathname = usePathname();
+  const { isConnected } = wallet;
 
-  function requireAuth() {
-    if (!wallet.isConnected) {
+  const requireAuth = useCallback(() => {
+    if (!isConnected) {
       const redirect = encodeURIComponent(pathname);
       router.push(`/?connect=true&redirect=${redirect}`);
       return false;
     }
     return true;
-  }
+  }, [isConnected, pathname, router]);
 
   return {
     ...wallet,

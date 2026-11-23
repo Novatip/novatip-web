@@ -8,8 +8,11 @@
 import { config } from "./config";
 
 export function getTipUrl(slug: string): string {
-  const origin = typeof window !== "undefined"
-    ? window.location.origin
-    : config.siteUrl.replace(/\/$/, "");
-  return `${origin}/${slug}`;
+  const origin =
+    typeof window !== "undefined" ? window.location.origin : config.siteUrl.replace(/\/$/, "");
+  return `${origin}/${encodeURIComponent(slug)}`;
+}
+
+export function getQrPngUrl(slug: string): string {
+  return `${config.apiUrl}/qr/${encodeURIComponent(slug)}/png`;
 }

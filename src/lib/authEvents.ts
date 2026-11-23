@@ -16,5 +16,15 @@ export function onUnauthorized(listener: Listener): () => void {
 }
 
 export function emitUnauthorized(): void {
-  for (const listener of listeners) listener();
+  // Each listener runs independently — one handler throwing must not stop
+  // the others from tearing down their part of the session. The error is
+  // still reported rather than silently dropped, just not left to interrupt
+  // the loop.
+  for (const listener of listeners) {
+    try {
+      listener();
+    } catch (err) {
+      console.error("authEvents listener threw:", err);
+    }
+  }
 }

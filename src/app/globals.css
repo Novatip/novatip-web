@@ -16,56 +16,72 @@
    */
   :root {
     --font-inter: "Inter", system-ui, sans-serif;
-    --font-mono:  "JetBrains Mono", monospace;
+    --font-mono: "JetBrains Mono", monospace;
 
     color-scheme: light;
 
     /* Surfaces — canvas is the page, each step up sits on top of the last. */
-    --color-canvas:          248 250 252; /* slate-50  */
-    --color-surface:         255 255 255; /* white     */
-    --color-surface-strong:  241 245 249; /* slate-100 */
-    --color-hairline:        226 232 240; /* slate-200 */
+    --color-canvas: 248 250 252; /* slate-50  */
+    --color-surface: 255 255 255; /* white     */
+    --color-surface-strong: 241 245 249; /* slate-100 */
+    --color-hairline: 226 232 240; /* slate-200 */
     --color-hairline-strong: 203 213 225; /* slate-300 */
 
     /* Text — most to least prominent. */
-    --color-fg:        15 23 42;    /* slate-900 */
-    --color-fg-muted:  51 65 85;    /* slate-700 */
-    --color-fg-subtle: 71 85 105;   /* slate-600 */
-    --color-fg-faint:  100 116 139; /* slate-500 */
-    --color-fg-dim:    148 163 184; /* slate-400 */
+    --color-fg: 15 23 42; /* slate-900 */
+    --color-fg-muted: 51 65 85; /* slate-700 */
+    --color-fg-subtle: 71 85 105; /* slate-600 */
+    --color-fg-faint: 100 116 139; /* slate-500 */
+    --color-fg-dim: 148 163 184; /* slate-400 */
 
     /* Accent + status — deepened so they stay readable on light surfaces. */
-    --color-accent:        2 132 199; /* brand-600  */
+    --color-accent: 2 132 199; /* brand-600  */
     --color-accent-strong: 3 105 161; /* brand-700  */
-    --color-success:      22 163 74;  /* green-600  */
-    --color-warning:     202 138 4;   /* yellow-600 */
-    --color-danger:      220 38 38;   /* red-600    */
+    --color-success: 22 163 74; /* green-600  */
+    --color-warning: 202 138 4; /* yellow-600 */
+    --color-danger: 220 38 38; /* red-600    */
+
+    /* USDC badge — brand blue (#2775ca) on light. */
+    --color-usdc-fg: 39 117 202;
+    --color-usdc-border: 39 117 202;
   }
 
   .dark {
     color-scheme: dark;
 
-    --color-canvas:            3 7 18;  /* gray-950 */
-    --color-surface:         17 24 39;  /* gray-900 */
-    --color-surface-strong:  31 41 55;  /* gray-800 */
-    --color-hairline:        38 47 62;
-    --color-hairline-strong: 55 65 81;  /* gray-700 */
+    --color-canvas: 3 7 18; /* gray-950 */
+    --color-surface: 17 24 39; /* gray-900 */
+    --color-surface-strong: 31 41 55; /* gray-800 */
+    --color-hairline: 38 47 62;
+    --color-hairline-strong: 55 65 81; /* gray-700 */
 
-    --color-fg:        243 244 246; /* gray-100 */
-    --color-fg-muted:  209 213 219; /* gray-300 */
+    --color-fg: 243 244 246; /* gray-100 */
+    --color-fg-muted: 209 213 219; /* gray-300 */
     --color-fg-subtle: 156 163 175; /* gray-400 */
-    --color-fg-faint:  107 114 128; /* gray-500 */
-    --color-fg-dim:     75 85 99;   /* gray-600 */
+    --color-fg-faint: 107 114 128; /* gray-500 */
+    --color-fg-dim: 75 85 99; /* gray-600 */
 
-    --color-accent:         56 189 248; /* brand-400  */
+    --color-accent: 56 189 248; /* brand-400  */
     --color-accent-strong: 125 211 252; /* brand-300  */
-    --color-success:        74 222 128; /* green-400  */
-    --color-warning:       250 204 21;  /* yellow-400 */
-    --color-danger:        248 113 113; /* red-400    */
+    --color-success: 74 222 128; /* green-400  */
+    --color-warning: 250 204 21; /* yellow-400 */
+    --color-danger: 248 113 113; /* red-400    */
+
+    --color-usdc-fg: 147 197 253; /* blue-300 */
+    --color-usdc-border: 59 130 246; /* blue-500 */
   }
 
   html {
-    @apply antialiased scroll-smooth;
+    /*
+     * Both headers (Header.tsx, dashboard/layout.tsx) are `sticky top-0` at
+     * h-16 (4rem). Without scroll-pt-16, scrolling a focused element or an
+     * in-page anchor into view lands it flush with the top of the viewport,
+     * right under the header — focused but invisible. scroll-padding-top
+     * reserves that space for every such scroll-into-view, keyboard or
+     * anchor alike, without touching ordinary mouse/wheel scrolling, which
+     * it never applies to.
+     */
+    @apply antialiased scroll-smooth scroll-pt-16;
   }
 
   body {
@@ -74,6 +90,27 @@
 
   * {
     @apply box-border;
+  }
+}
+
+/*
+ * Respect the user's reduced-motion preference (WCAG 2.3.3).
+ *
+ * Collapsing animation-duration to 1ms stops decorative motion (slide-up,
+ * fade-in, spin, pulse) without removing elements or hiding loading skeletons.
+ * Skeleton shapes remain visible — only the pulse animation stops.
+ * Transition-duration is also collapsed so hover/focus state changes are
+ * instant rather than animated.
+ *
+ * This sits outside @layer base so it always wins over Tailwind utilities.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }
 

@@ -9,18 +9,28 @@ import { cn } from "@/lib/utils";
 
 interface StepIndicatorProps {
   currentStep: number;
-  totalSteps:  number;
-  labels:      string[];
+  totalSteps: number;
+  labels: string[];
 }
+
+const STATE_TEXT = {
+  done: "Completed",
+  active: "Current",
+  upcoming: "Not started",
+} as const;
 
 export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-2 w-full" role="list" aria-label="Onboarding steps">
       {Array.from({ length: totalSteps }).map((_, i) => {
-        const state =
-          i < currentStep ? "done" : i === currentStep ? "active" : "upcoming";
+        const state = i < currentStep ? "done" : i === currentStep ? "active" : "upcoming";
         return (
-          <div key={i} className="flex items-center gap-2 flex-1" role="listitem">
+          <div
+            key={i}
+            className="flex items-center gap-2 flex-1"
+            role="listitem"
+            aria-current={state === "active" ? "step" : undefined}
+          >
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div
                 className={cn(
@@ -28,25 +38,29 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
                   state === "done"
                     ? "bg-brand-500 border-brand-500 text-white"
                     : state === "active"
-                    ? "border-brand-500 text-accent bg-brand-500/10"
-                    : "border-hairline-strong text-fg-dim bg-surface-strong",
+                      ? "border-brand-500 text-accent bg-brand-500/10"
+                      : "border-hairline-strong text-fg-dim bg-surface-strong",
                 )}
-                aria-current={state === "active" ? "step" : undefined}
               >
                 {state === "done" ? "✓" : i + 1}
               </div>
-              <span className={cn(
-                "text-xs hidden sm:block",
-                state === "active" ? "text-accent font-medium" : "text-fg-dim",
-              )}>
+              <span
+                className={cn(
+                  "text-xs sr-only sm:not-sr-only",
+                  state === "active" ? "text-accent font-medium" : "text-fg-dim",
+                )}
+              >
                 {labels[i]}
               </span>
+              <span className="sr-only">{STATE_TEXT[state]}</span>
             </div>
             {i < totalSteps - 1 && (
-              <div className={cn(
-                "flex-1 h-0.5 rounded-full transition-all",
-                i < currentStep ? "bg-brand-500" : "bg-hairline",
-              )} />
+              <div
+                className={cn(
+                  "flex-1 h-0.5 rounded-full transition-all",
+                  i < currentStep ? "bg-brand-500" : "bg-hairline",
+                )}
+              />
             )}
           </div>
         );

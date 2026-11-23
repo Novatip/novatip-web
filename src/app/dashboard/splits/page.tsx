@@ -9,55 +9,33 @@
  * then to the backend.
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { creatorApi, authApi, type CreatorProfile } from "@/lib/api";
 import { syncJarToChain } from "@/lib/jar";
+import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ErrorPanel } from "@/components/ui/ErrorPanel";
 
 export default function SplitsPage() {
   const { jwt, publicKey } = useWallet();
-  const [creator, setCreator] = useState<CreatorProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const { data: creator, loading, error, run } = useAbortableRequest<CreatorProfile | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const fetchCreator = useCallback(() => {
+    if (!jwt) return;
+    // Fetch the creator profile via the auth/me + creator slug
+    run((signal) =>
+      authApi
+        .me(jwt, { signal })
+        .then((r) => creatorApi.getBySlug(r.user.slug, { signal }))
+        .then((r) => r.creator),
+    );
+  }, [jwt, run]);
 
   useEffect(() => {
-    if (!jwt) return;
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    setLoading(true);
-    // Fetch the creator profile via the auth/me + creator slug
-    authApi
-      .me(jwt, { signal: controller.signal })
-      .then((r) => creatorApi.getBySlug(r.user.slug, { signal: controller.signal }))
-      .then((r) => {
-        setCreator(r.creator);
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message);
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
-  }, [jwt]);
+    fetchCreator();
+  }, [fetchCreator]);
 
   /**
    * Splits are written to the contract before the backend, because the
@@ -72,12 +50,12 @@ export default function SplitsPage() {
   async function handleSave(splits: SplitRow[]) {
     if (!jwt || !creator || !publicKey) return;
     await syncJarToChain({
-      owner:  publicKey,
-      jarId:  creator.jarId,
+      owner: publicKey,
+      jarId: creator.jarId,
       splits,
     });
     const result = await creatorApi.updateSplits(jwt, splits);
-    setCreator(result.creator);
+    run(async () => result.creator);
   }
 
   return (
@@ -85,20 +63,16 @@ export default function SplitsPage() {
       <div>
         <h1 className="text-2xl font-bold text-fg">Collaborator Splits</h1>
         <p className="text-sm text-fg-subtle mt-1">
-          Define how each incoming tip is split between you and your collaborators.
-          All basis points must total exactly 10,000 (100%).
+          Define how each incoming tip is split between you and your collaborators. All basis points
+          must total exactly 10,000 (100%).
         </p>
       </div>
 
-      {error && (
-        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
-          <p className="text-sm text-danger">{error}</p>
-        </div>
-      )}
+      {error && <ErrorPanel message={error} onRetry={fetchCreator} retrying={loading} />}
 
       <Card>
         <CardHeader>
-          <CardTitle>Split configuration</CardTitle>
+          <CardTitle level={2}>Split configuration</CardTitle>
         </CardHeader>
 
         {loading ? (
@@ -115,15 +89,16 @@ export default function SplitsPage() {
           <SplitsManager
             initial={(creator?.splits as SplitRow[]) ?? []}
             onSave={handleSave}
+            connectedAddress={publicKey ?? undefined}
           />
         )}
       </Card>
 
       <div className="rounded-xl bg-surface-strong border border-hairline px-4 py-3">
         <p className="text-xs text-fg-faint">
-          Changes are saved to the backend immediately. To update your on-chain splits,
-          call <code className="text-accent">update_splits</code> on the tip_splitter
-          contract using the Novatip SDK or the Stellar CLI.
+          Saving updates your splits on-chain first, then in Novatip. Your wallet will ask you to
+          sign the transaction, and the Stellar network charges a small XLM fee for it. The new
+          splits apply to tips once the transaction is confirmed.
         </p>
       </div>
     </div>

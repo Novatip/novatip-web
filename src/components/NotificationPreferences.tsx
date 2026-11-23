@@ -21,20 +21,25 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { notificationsApi, type NotificationPreferences as Prefs } from "@/lib/api";
+import {
+  ApiError,
+  getErrorMessage,
+  notificationsApi,
+  type NotificationPreferences as Prefs,
+} from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
 
 interface ToggleProps {
-  id:       string;
-  checked:  boolean;
+  id: string;
+  checked: boolean;
   disabled: boolean;
   onChange: (next: boolean) => void;
-  label:    string;
+  label: string;
   description: string;
-  badge?:   string;
+  badge?: string;
 }
 
 function Toggle({ id, checked, disabled, onChange, label, description, badge }: ToggleProps) {
@@ -59,25 +64,32 @@ function Toggle({ id, checked, disabled, onChange, label, description, badge }: 
         <span className="text-xs text-fg-subtle">{description}</span>
       </div>
 
-      {/* The actual checkbox is visually hidden; the styled div acts as the
-          visible indicator. Both are labelled via htmlFor/id above. */}
-      <div className="relative shrink-0 mt-0.5" aria-hidden="true">
+      {/* The actual checkbox is visually hidden; the styled divs act as the
+          visible indicator. The input is a peer of the track so that
+          peer-focus-visible can draw a focus ring when keyboard focus lands
+          on it — the aria-hidden wrapper is kept only around the decorative
+          divs, not around the input itself. */}
+      <div className="relative shrink-0 mt-0.5">
         <input
           type="checkbox"
+          role="switch"
           id={id}
           checked={checked}
           disabled={disabled}
           onChange={(e) => onChange(e.target.checked)}
-          className="sr-only"
+          className="peer sr-only"
         />
         <div
+          aria-hidden="true"
           className={cn(
             "w-10 h-6 rounded-full transition-colors",
+            "peer-focus-visible:ring-2 peer-focus-visible:ring-brand-500 peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-surface",
             checked ? "bg-brand-500" : "bg-hairline",
             disabled && "opacity-50",
           )}
         />
         <div
+          aria-hidden="true"
           className={cn(
             "absolute top-1 left-1 w-4 h-4 rounded-full bg-white shadow transition-transform",
             checked && "translate-x-4",
@@ -95,10 +107,10 @@ interface NotificationPreferencesProps {
 }
 
 export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
-  const [prefs,   setPrefs]   = useState<Prefs | null>(null);
+  const [prefs, setPrefs] = useState<Prefs | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -110,14 +122,20 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
     abortControllerRef.current = controller;
 
     setLoading(true);
+    setPrefs(null);
+    setError(null);
     notificationsApi
       .getPreferences(jwt, { signal: controller.signal })
       .then((r) => {
         if (abortControllerRef.current === controller) setPrefs(r.preferences);
       })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message ?? "Failed to load notification preferences.");
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "ABORTED") return;
+        setError(
+          e instanceof ApiError && e.status === 404
+            ? "Notification preferences are not available yet."
+            : getErrorMessage(e, "Failed to load notification preferences."),
+        );
       })
       .finally(() => {
         if (abortControllerRef.current === controller) {
@@ -126,7 +144,9 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
         }
       });
 
-    return () => { abortControllerRef.current?.abort(); };
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [jwt]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
@@ -143,10 +163,10 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
     try {
       const r = await notificationsApi.updatePreferences(jwt, { [key]: next });
       setPrefs(r.preferences);
-    } catch (e: any) {
+    } catch (e: unknown) {
       // Revert on failure so displayed state matches server state
       setPrefs(previous);
-      setError(e.message ?? "Failed to save. Please try again.");
+      setError(getErrorMessage(e, "Failed to save. Please try again."));
     } finally {
       setSaving(false);
     }
@@ -161,7 +181,6 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
       </CardHeader>
 
       <div className="flex flex-col gap-3 px-4 pb-4">
-
         {/* Honest channel status note */}
         <p className="text-xs text-fg-subtle">
           Choose which channels fire after each tip is indexed.{" "}
@@ -172,17 +191,18 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
 
         {/* Error banner */}
         {error && (
-          <div
-            role="alert"
-            className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2"
-          >
+          <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2">
             <p className="text-xs text-danger">{error}</p>
           </div>
         )}
 
         {/* Loading skeleton */}
         {loading && (
-          <div className="flex flex-col gap-3 animate-pulse" aria-busy="true" aria-label="Loading notification preferences">
+          <div
+            className="flex flex-col gap-3 animate-pulse"
+            aria-busy="true"
+            aria-label="Loading notification preferences"
+          >
             <div className="h-16 rounded-xl bg-hairline" />
             <div className="h-16 rounded-xl bg-hairline" />
           </div>
@@ -219,7 +239,6 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
             No notification settings found. Complete onboarding first.
           </p>
         )}
-
       </div>
     </Card>
   );

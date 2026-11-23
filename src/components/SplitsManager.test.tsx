@@ -16,12 +16,16 @@
  *   - onSave called with the current rows on submit
  *   - onSave error is displayed
  *   - Success message appears after a successful save
+ *   - Missing-wallet warning: shown only when connectedAddress is known and
+ *     absent from the recipients, gates the save without blocking it, and
+ *     can be dismissed to go back and edit instead
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SplitsManager } from "./SplitsManager";
+import { shortenAddress } from "@novatip/sdk";
 
 // Valid Stellar G-addresses (correct version byte and CRC16 checksum)
 const VALID_ADDR_1 = "GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF";
@@ -32,9 +36,10 @@ const SOLO_SPLIT = [{ to: VALID_ADDR_1, bps: 10_000 }];
 function setup(
   initial = SOLO_SPLIT,
   onSave: () => Promise<void> = () => Promise.resolve(),
+  connectedAddress?: string,
 ) {
   const saveSpy = vi.fn(onSave);
-  render(<SplitsManager initial={initial} onSave={saveSpy} />);
+  render(<SplitsManager initial={initial} onSave={saveSpy} connectedAddress={connectedAddress} />);
   return { saveSpy };
 }
 
@@ -43,9 +48,7 @@ function setup(
 describe("SplitsManager – initial render", () => {
   it("renders the address from initial props", () => {
     setup();
-    expect(
-      screen.getByDisplayValue(VALID_ADDR_1),
-    ).toBeInTheDocument();
+    expect(screen.getByDisplayValue(VALID_ADDR_1)).toBeInTheDocument();
   });
 
   it("defaults to one empty row when initial is empty", () => {
@@ -65,7 +68,6 @@ describe("SplitsManager – initial render", () => {
 
 describe("SplitsManager – BPS total", () => {
   it("shows total as sum of all rows", async () => {
-    const user = userEvent.setup();
     setup([
       { to: VALID_ADDR_1, bps: 7_000 },
       { to: VALID_ADDR_2, bps: 3_000 },
@@ -95,9 +97,7 @@ describe("SplitsManager – validation hint", () => {
 
   it("hides the hint when total is exactly 10 000", () => {
     setup();
-    expect(
-      screen.queryByText(/splits must sum to exactly/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/splits must sum to exactly/i)).not.toBeInTheDocument();
   });
 });
 
@@ -143,6 +143,21 @@ describe("SplitsManager – save", () => {
   it("disables Save when bps does not total 10 000", () => {
     setup([{ to: VALID_ADDR_1, bps: 5_000 }]);
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+  });
+
+  it("rejects a zero share even when another row makes the total 10 000", () => {
+    const { saveSpy } = setup([
+      { to: VALID_ADDR_1, bps: 10_000 },
+      { to: VALID_ADDR_2, bps: 0 },
+    ]);
+
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByText("Share must be above 0%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+    expect(saveSpy).not.toHaveBeenCalled();
   });
 
   it("disables Save when an address is invalid", () => {
@@ -239,6 +254,67 @@ describe("SplitsManager – recipient cap (MAX_RECIPIENTS = 20)", () => {
   });
 });
 
+// ── Missing-wallet warning ────────────────────────────────────────────────────
+
+describe("SplitsManager – missing wallet warning", () => {
+  it("does not warn when no connectedAddress is known", async () => {
+    const user = userEvent.setup();
+    const { saveSpy } = setup(SOLO_SPLIT, () => Promise.resolve(), undefined);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/isn.t one of these recipients/i)).not.toBeInTheDocument();
+  });
+
+  it("does not warn when the connected wallet is among the recipients", async () => {
+    const user = userEvent.setup();
+    const { saveSpy } = setup(SOLO_SPLIT, () => Promise.resolve(), VALID_ADDR_1);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText(/isn.t one of these recipients/i)).not.toBeInTheDocument();
+  });
+
+  it("warns instead of saving immediately when the connected wallet is absent", async () => {
+    const user = userEvent.setup();
+    const { saveSpy } = setup(SOLO_SPLIT, () => Promise.resolve(), VALID_ADDR_2);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+
+    expect(screen.getByText(/isn.t one of these recipients/i)).toBeInTheDocument();
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it("dismisses the warning and does not save when 'Go back' is clicked", async () => {
+    const user = userEvent.setup();
+    const { saveSpy } = setup(SOLO_SPLIT, () => Promise.resolve(), VALID_ADDR_2);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+    await user.click(screen.getByRole("button", { name: /go back/i }));
+
+    expect(screen.queryByText(/isn.t one of these recipients/i)).not.toBeInTheDocument();
+    expect(saveSpy).not.toHaveBeenCalled();
+    // The Save button is back, ready to try again.
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeInTheDocument();
+  });
+
+  it("saves once the warning is confirmed with 'Save anyway'", async () => {
+    const user = userEvent.setup();
+    const { saveSpy } = setup(SOLO_SPLIT, () => Promise.resolve(), VALID_ADDR_2);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+    await user.click(screen.getByRole("button", { name: /save splits without my wallet/i }));
+
+    expect(saveSpy).toHaveBeenCalledWith(SOLO_SPLIT);
+    await waitFor(() => {
+      expect(screen.getByText(/splits saved successfully/i)).toBeInTheDocument();
+    });
+  });
+
+  it("includes a shortened form of the connected wallet in the warning", async () => {
+    const user = userEvent.setup();
+    setup(SOLO_SPLIT, () => Promise.resolve(), VALID_ADDR_2);
+    await user.click(screen.getByRole("button", { name: /save collaborator splits/i }));
+
+    expect(screen.getByText(new RegExp(shortenAddress(VALID_ADDR_2)))).toBeInTheDocument();
+  });
+});
+
 // ── Row field updates ─────────────────────────────────────────────────────────
 
 describe("SplitsManager – field editing", () => {
@@ -246,7 +322,26 @@ describe("SplitsManager – field editing", () => {
     setup([{ to: VALID_ADDR_1, bps: 10_000 }]);
     const bpsInput = screen.getByRole("textbox", { name: /recipient 1 basis points/i });
     fireEvent.change(bpsInput, { target: { value: "5000" } });
-    // 5,000 bps renders as 50.0% twice — once on the row, once as the total.
-    expect(screen.getAllByText("50.0%")).toHaveLength(2);
+    // 5,000 bps renders as 50% twice — once on the row, once as the total.
+    expect(screen.getAllByText("50%")).toHaveLength(2);
+  });
+});
+
+// ── Split equally ─────────────────────────────────────────────────────────────
+
+describe("SplitsManager – split equally", () => {
+  it("fills every row so the total is exactly 10,000", async () => {
+    const user = userEvent.setup();
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: VALID_ADDR_2, bps: 0 },
+    ]);
+    await user.click(screen.getByRole("button", { name: /add collaborator/i }));
+    await user.click(screen.getByRole("button", { name: /split equally/i }));
+
+    expect(screen.getByRole("textbox", { name: /recipient 1 basis points/i })).toHaveValue("3334");
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveValue("3333");
+    expect(screen.getByRole("textbox", { name: /recipient 3 basis points/i })).toHaveValue("3333");
+    expect(screen.getByText(/10,000 \/ 10,000 bps/)).toBeInTheDocument();
   });
 });

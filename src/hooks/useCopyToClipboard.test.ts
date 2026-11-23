@@ -185,7 +185,11 @@ describe("useCopyToClipboard – repeated attempts", () => {
 describe("useCopyToClipboard – unmounting", () => {
   it("does not set state after the component has gone away", async () => {
     let settle: (ok: boolean) => void = () => {};
-    copySpy.mockReturnValue(new Promise<boolean>((resolve) => { settle = resolve; }));
+    copySpy.mockReturnValue(
+      new Promise<boolean>((resolve) => {
+        settle = resolve;
+      }),
+    );
 
     const { result, unmount } = renderHook(() => useCopyToClipboard());
 

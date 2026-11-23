@@ -18,13 +18,14 @@ import { getTipUrl } from "@/lib/tipUrl";
 import { cn } from "@/lib/utils";
 
 interface QRDownloadProps {
-  slug:       string;
-  pngUrl:     string;
+  slug: string;
+  pngUrl: string;
   className?: string;
 }
 
 export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
   const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const { copied, failed, copy, reset } = useCopyToClipboard();
 
   const tipUrl = getTipUrl(slug);
@@ -40,17 +41,26 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
   // ── Download PNG ───────────────────────────────────────────────────────────
   async function handleDownload() {
     setDownloading(true);
+    setDownloadError(null);
     try {
-      const res  = await fetch(pngUrl);
+      const res = await fetch(pngUrl);
+      if (!res.ok) {
+        setDownloadError("Couldn\u2019t fetch the QR code. Please try again.");
+        return;
+      }
       const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
       a.download = `novatip-${slug}.png`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+      }, 100);
     } catch {
-      // Silently fail — user can still right-click the QR image
+      setDownloadError("Couldn\u2019t fetch the QR code. Please try again.");
     } finally {
       setDownloading(false);
     }
@@ -58,12 +68,8 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
 
   return (
     <div className={cn("flex flex-col items-center gap-4", className)}>
-
       {/* QR preview — always on white so scanners keep their contrast */}
-      <div
-        className="rounded-2xl bg-white p-4 shadow-xl shadow-black/10 dark:shadow-black/30"
-        aria-label={`QR code for @${slug} tip page`}
-      >
+      <div className="rounded-2xl bg-white p-4 shadow-xl shadow-black/10 dark:shadow-black/30">
         <QRCodeSVG
           value={tipUrl}
           size={180}
@@ -71,22 +77,19 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
           fgColor="#000000"
           level="M"
           includeMargin={false}
+          title={`QR code for @${slug} tip page`}
         />
       </div>
 
       {/* Tip URL display */}
       <div className="flex items-center gap-2 rounded-xl bg-surface-strong border border-hairline px-4 py-2.5 w-full max-w-xs">
-        <span className="flex-1 text-xs text-fg-subtle font-mono truncate">
-          {tipUrl}
-        </span>
+        <span className="flex-1 text-xs text-fg-subtle font-mono truncate">{tipUrl}</span>
         <button
           type="button"
           onClick={handleCopy}
           className={cn(
             "text-xs transition-colors shrink-0 font-medium",
-            failed
-              ? "text-danger hover:text-danger"
-              : "text-accent hover:text-accent-strong",
+            failed ? "text-danger hover:text-danger" : "text-accent hover:text-accent-strong",
           )}
           aria-label="Copy tip URL"
         >
@@ -96,36 +99,24 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
 
       {/* Manual escape hatch when the browser refuses the clipboard */}
       {failed && (
-        <CopyFallback
-          text={tipUrl}
-          onDismiss={reset}
-          noun="tip link"
-          className="max-w-xs"
-        />
+        <CopyFallback text={tipUrl} onDismiss={reset} noun="tip link" className="max-w-xs" />
       )}
 
       {/* Action buttons */}
-      <div className="flex gap-3 w-full max-w-xs">
+      <div className="w-full max-w-xs">
         <Button
           variant="secondary"
           size="sm"
-          className="flex-1"
+          className="w-full"
           loading={downloading}
           onClick={handleDownload}
           aria-label="Download QR code as PNG"
         >
           Download PNG
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="flex-1"
-          onClick={handleCopy}
-          aria-label="Copy tip link"
-        >
-          {failed ? "Copy failed" : copied ? "✓ Copied" : "Copy link"}
-        </Button>
       </div>
+
+      {downloadError && <p className="text-xs text-danger text-center">{downloadError}</p>}
 
       <p className="text-xs text-fg-faint text-center">
         Print or share your QR code so anyone can tap to tip you

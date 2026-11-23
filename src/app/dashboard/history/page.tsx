@@ -8,81 +8,164 @@
  * sender address, amount, message, and ledger timestamp.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { analyticsApi, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
-import { formatUsdc } from "@novatip/sdk";
-import { shortenAddress } from "@novatip/sdk";
+import { analyticsApi, ApiError, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
+import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
+import { timeAgo } from "@/lib/time";
+
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One message cell. A message is truncated to a single line by default; the
+ * full text is available as a tooltip (title) and the cell toggles open on
+ * click, Enter or Space — a native button, so touch and keyboard users can
+ * read it too.
+ */
+function MessageCell({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!message) {
+    return (
+      <span role="cell" className="col-span-4 text-sm text-fg-dim italic">
+        No message
+      </span>
+    );
+  }
+
+  return (
+    <span role="cell" className="col-span-4 min-w-0 text-sm">
+      <button
+        type="button"
+        title={message}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        className={cn(
+          "block w-full text-left text-fg-muted rounded",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
+          expanded ? "whitespace-pre-wrap break-words" : "truncate",
+        )}
+      >
+        {message}
+      </button>
+    </span>
+  );
+}
 
 interface Tip {
-  id:          string;
+  id: string;
   fromAddress: string;
-  amount:      string;
-  message:     string;
-  ledgerAt:    string;
+  amount: string;
+  message: string;
+  ledgerAt: string;
 }
 
 // Every request asks for one page, never the running total, so it stays
 // within the backend's cap however far back the creator scrolls.
 const PAGE_SIZE = Math.min(20, RECENT_TIPS_MAX_LIMIT);
 
-function timeAgo(iso: string): string {
-  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
-  if (diff < 60)   return `${diff}s ago`;
-  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day:   "numeric",
-    year:  "numeric",
-  });
-}
-
 export default function HistoryPage() {
-  const { jwt }  = useWallet();
-  const [tips,    setTips]    = useState<Tip[]>([]);
+  const { jwt } = useWallet();
+  const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
+  // True only while a *later* page is in flight, so the button can say so
+  // without the initial page load also flipping its label.
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Announced politely after a page lands. Focus stays on the button, so this
+  // is the only signal a screen reader user gets that rows were appended.
+  const [announcement, setAnnouncement] = useState("");
+
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Mirrors `tips` so a landed page can be deduplicated and counted without
+  // reading state inside a setState updater. React queues updaters rather than
+  // running them synchronously, so a count assigned inside one is still zero
+  // on the next line — which made the announcement always say "0 more tips".
+  const tipsRef = useRef<Tip[]>([]);
 
   // Each call fetches one page starting after the rows already shown and
   // appends it, so a load more costs one page rather than the whole history,
   // and existing rows are never replaced.
-  const fetchPage = useCallback((offset: number) => {
-    if (!jwt) return;
-    setLoading(true);
-    analyticsApi
-      .recent(jwt, PAGE_SIZE, undefined, offset)
-      .then((r) => {
-        // A tip indexed between pages shifts the offset by one, which would
-        // repeat the last row of the previous page — skip ids already shown.
-        setTips((prev) => {
-          const seen = new Set(prev.map((t) => t.id));
-          return [...prev, ...r.tips.filter((t) => !seen.has(t.id))];
+  const fetchPage = useCallback(
+    (offset: number) => {
+      if (!jwt) return;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      setLoading(true);
+      if (offset > 0) setLoadingMore(true);
+      analyticsApi
+        .recent(jwt, PAGE_SIZE, { signal: controller.signal }, offset)
+        .then((r) => {
+          // A tip indexed between pages shifts the offset by one, which would
+          // repeat the last row of the previous page — skip ids already shown.
+          const shown = offset === 0 ? [] : tipsRef.current;
+          const seen = new Set(shown.map((t) => t.id));
+          const fresh = r.tips.filter((t) => !seen.has(t.id));
+          const added = fresh.length;
+
+          const next = [...shown, ...fresh];
+          tipsRef.current = next;
+          setTips(next);
+          setHasMore(r.tips.length === PAGE_SIZE);
+          setError(null);
+          setPageError(null);
+          // Only announce for appended pages; the first page is already
+          // conveyed by the page itself loading.
+          if (offset > 0) {
+            setAnnouncement(added === 1 ? "1 more tip loaded." : `${added} more tips loaded.`);
+          }
+        })
+        .catch((e: unknown) => {
+          // Ignore aborted requests — component is unmounted or jwt changed.
+          if (e instanceof ApiError && e.code === "ABORTED") return;
+          const message = e instanceof Error ? e.message : "Something went wrong.";
+          // A failed later page must not replace the rows already shown with
+          // a page-level error — report it beside the button so it can retry.
+          if (offset === 0) setError(message);
+          else setPageError("Couldn't load more tips. Try again.");
+        })
+        .finally(() => {
+          if (abortControllerRef.current === controller) {
+            abortControllerRef.current = null;
+            setLoading(false);
+            setLoadingMore(false);
+          }
         });
-        setHasMore(r.tips.length === PAGE_SIZE);
-        setError(null);
-        setPageError(null);
-      })
-      .catch((e: Error) => {
-        // A failed later page must not replace the rows already shown with
-        // a page-level error — report it beside the button so it can retry.
-        if (offset === 0) setError(e.message);
-        else setPageError("Couldn't load more tips. Try again.");
-      })
-      .finally(() => setLoading(false));
-  }, [jwt]);
+    },
+    [jwt],
+  );
 
   useEffect(() => {
+    tipsRef.current = [];
     setTips([]);
     setHasMore(true);
     setPageError(null);
     fetchPage(0);
+
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [fetchPage]);
 
   function loadMore() {
@@ -92,109 +175,129 @@ export default function HistoryPage() {
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
-
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-white">Tip History</h1>
-        <p className="text-sm text-gray-400 mt-1">
-          All tips received, newest first
-        </p>
+        <h1 className="text-2xl font-bold text-fg">Tip History</h1>
+        <p className="text-sm text-fg-subtle mt-1">All tips received, newest first</p>
       </div>
+
+      {/*
+        Appended rows land below the button, which keeps focus — so without a
+        live region a screen reader user gets no signal that anything happened
+        or how much arrived. Polite rather than assertive: it is a confirmation,
+        not an interruption. Empty on the first page, which the page load
+        already conveys.
+      */}
+      <p role="status" aria-live="polite" className="sr-only">
+        {announcement}
+      </p>
 
       {/* Error */}
       {error && (
-        <div className="rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div role="alert" className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+          <p className="text-sm text-danger">{error}</p>
         </div>
       )}
 
       {/* Table */}
       <Card glass={false}>
-        {/* Column headers */}
-        <div className="grid grid-cols-12 gap-4 pb-3 border-b border-white/10 text-xs text-gray-500 uppercase tracking-wider">
-          <span className="col-span-4">From</span>
-          <span className="col-span-2 text-right">Amount</span>
-          <span className="col-span-4">Message</span>
-          <span className="col-span-2 text-right">When</span>
+        <div role="table" aria-label="Tip history" className="w-full">
+          {/* Column headers */}
+          <div role="rowgroup">
+            <div
+              role="row"
+              className="grid grid-cols-12 gap-4 pb-3 border-b border-hairline text-xs text-fg-faint uppercase tracking-wider"
+            >
+              <span role="columnheader" className="col-span-4">
+                From
+              </span>
+              <span role="columnheader" className="col-span-2 text-right">
+                Amount
+              </span>
+              <span role="columnheader" className="col-span-4">
+                Message
+              </span>
+              <span role="columnheader" className="col-span-2 text-right">
+                When
+              </span>
+            </div>
+          </div>
+
+          {/* Loading skeletons */}
+          {loading && tips.length === 0 && (
+            <div role="rowgroup" className="divide-y divide-hairline">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} role="row" className="grid grid-cols-12 gap-4 py-3 animate-pulse">
+                  <div role="cell" className="col-span-4 h-4 rounded bg-hairline" />
+                  <div role="cell" className="col-span-2 h-4 rounded bg-hairline" />
+                  <div role="cell" className="col-span-4 h-4 rounded bg-hairline/50" />
+                  <div role="cell" className="col-span-2 h-4 rounded bg-hairline" />
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && tips.length === 0 && !error && (
+            <p role="status" className="text-sm text-fg-faint py-8 text-center">
+              No tips received yet. Share your link to get started!
+            </p>
+          )}
+
+          {/* Tip rows */}
+          {tips.length > 0 && (
+            <div role="rowgroup" className="divide-y divide-hairline">
+              {tips.map((tip) => (
+                <div
+                  key={tip.id}
+                  role="row"
+                  className="grid grid-cols-12 gap-4 py-3 hover:bg-surface-strong transition-colors rounded-lg"
+                >
+                  {/* Sender */}
+                  <span role="cell" className="col-span-4 font-mono text-sm text-fg-muted truncate">
+                    {shortenAddress(tip.fromAddress)}
+                  </span>
+
+                  {/* Amount */}
+                  <span
+                    role="cell"
+                    className="col-span-2 text-right text-sm font-semibold text-accent"
+                  >
+                    {(() => {
+                      const amount = parseAmount(tip.amount);
+                      return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
+                    })()}
+                  </span>
+
+                  {/* Message */}
+                  <MessageCell message={tip.message} />
+
+                  {/* Time */}
+                  <TimeAgo
+                    iso={tip.ledgerAt}
+                    className="col-span-2 text-right text-xs text-fg-faint"
+                  >
+                    {timeAgo(tip.ledgerAt)}
+                  </TimeAgo>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
-
-        {/* Loading skeletons */}
-        {loading && tips.length === 0 && (
-          <div className="divide-y divide-white/5">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-12 gap-4 py-3 animate-pulse">
-                <div className="col-span-4 h-4 rounded bg-white/10" />
-                <div className="col-span-2 h-4 rounded bg-white/10" />
-                <div className="col-span-4 h-4 rounded bg-white/5" />
-                <div className="col-span-2 h-4 rounded bg-white/10" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Empty state */}
-        {!loading && tips.length === 0 && !error && (
-          <p className="text-sm text-gray-500 py-8 text-center">
-            No tips received yet. Share your link to get started!
-          </p>
-        )}
-
-        {/* Tip rows */}
-        {tips.length > 0 && (
-          <div className="divide-y divide-white/5">
-            {tips.map((tip) => (
-              <div
-                key={tip.id}
-                className="grid grid-cols-12 gap-4 py-3 hover:bg-white/3 transition-colors rounded-lg"
-              >
-                {/* Sender */}
-                <span className="col-span-4 font-mono text-sm text-gray-300 truncate">
-                  {shortenAddress(tip.fromAddress)}
-                </span>
-
-                {/* Amount */}
-                <span className="col-span-2 text-right text-sm font-semibold text-brand-400">
-                  ${formatUsdc(BigInt(tip.amount), 2)}
-                </span>
-
-                {/* Message */}
-                <span className={cn(
-                  "col-span-4 text-sm truncate",
-                  tip.message ? "text-gray-300" : "text-gray-600 italic",
-                )}>
-                  {tip.message || "No message"}
-                </span>
-
-                {/* Time */}
-                <span className="col-span-2 text-right text-xs text-gray-500">
-                  {timeAgo(tip.ledgerAt)}
-                </span>
-              </div>
-            ))}
-          </div>
-        )}
 
         {hasMore && tips.length > 0 && (
           <div className="pt-4 flex flex-col items-center gap-2">
-            {pageError && <p className="text-xs text-red-400">{pageError}</p>}
-            <Button
-              variant="ghost"
-              size="sm"
-              loading={loading}
-              onClick={loadMore}
-            >
-              {pageError ? "Retry" : "Load more"}
+            {pageError && <p className="text-xs text-danger">{pageError}</p>}
+            <Button variant="ghost" size="sm" loading={loadingMore} onClick={loadMore}>
+              {pageError ? "Retry" : loadingMore ? "Loading more…" : "Load more"}
             </Button>
           </div>
         )}
 
         {!hasMore && tips.length > 0 && (
-          <p className="pt-4 text-center text-xs text-gray-500">
-            That&apos;s all your tips.
-          </p>
+          <p className="pt-4 text-center text-xs text-fg-faint">That&rsquo;s all your tips.</p>
         )}
       </Card>
-
     </div>
   );
 }

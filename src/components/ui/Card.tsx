@@ -38,10 +38,16 @@ export function CardHeader({ className, children, ...props }: HTMLAttributes<HTM
   );
 }
 
-export function CardTitle({ className, children, ...props }: HTMLAttributes<HTMLHeadingElement>) {
+interface CardTitleProps extends HTMLAttributes<HTMLHeadingElement> {
+  /** Heading level to render, so callers can keep the page's outline unbroken. */
+  level?: 1 | 2 | 3 | 4 | 5 | 6;
+}
+
+export function CardTitle({ level = 3, className, children, ...props }: CardTitleProps) {
+  const Heading = `h${level}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6";
   return (
-    <h3 className={cn("text-lg font-semibold text-fg", className)} {...props}>
+    <Heading className={cn("text-lg font-semibold text-fg", className)} {...props}>
       {children}
-    </h3>
+    </Heading>
   );
 }

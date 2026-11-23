@@ -17,7 +17,7 @@
  */
 
 import { Contract, nativeToScVal, rpc } from "@stellar/stellar-sdk";
-import { buildTransactionBuilder, createRpcServer } from "@novatip/sdk";
+import { buildTransactionBuilder, createRpcServer, shortenAddress } from "@novatip/sdk";
 import { config } from "./config";
 import { getNetworkConfig } from "./wallet";
 
@@ -28,8 +28,8 @@ import { getNetworkConfig } from "./wallet";
  */
 export async function canReceiveUsdc(address: string): Promise<boolean> {
   const network = getNetworkConfig();
-  const server  = createRpcServer(network);
-  const token   = new Contract(config.stellar.usdcContractId);
+  const server = createRpcServer(network);
+  const token = new Contract(config.stellar.usdcContractId);
 
   const builder = await buildTransactionBuilder(address, network, server);
   const tx = builder
@@ -71,7 +71,7 @@ export async function assertRecipientsCanReceive(
   const blocked = results.filter((r) => !r.ok).map((r) => r.address);
   if (blocked.length === 0) return;
 
-  const list = blocked.map(shorten).join(", ");
+  const list = blocked.map((address) => shortenAddress(address)).join(", ");
   throw new Error(
     blocked.length === 1
       ? `${list} cannot receive USDC yet. That account needs to add a USDC ` +
@@ -79,8 +79,4 @@ export async function assertRecipientsCanReceive(
       : `These accounts cannot receive USDC yet: ${list}. Each needs to add a ` +
           `USDC trustline before it can be paid, otherwise every tip to this jar fails.`,
   );
-}
-
-function shorten(address: string): string {
-  return `${address.slice(0, 4)}…${address.slice(-4)}`;
 }

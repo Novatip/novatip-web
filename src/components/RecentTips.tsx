@@ -24,13 +24,24 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { analyticsApi } from "@/lib/api";
 import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
 import { usePolling } from "@/hooks/usePolling";
+import { useAbortableRequest } from "@/hooks/useAbortableRequest";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
+import { TimeAgo } from "@/components/ui/TimeAgo";
+import { timeAgo } from "@/lib/time";
+
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-interface IndexedTip {
+export interface IndexedTip {
   kind: "indexed";
   id: string;
   fromAddress: string;
@@ -39,7 +50,7 @@ interface IndexedTip {
   ledgerAt: string;
 }
 
-interface PendingTip {
+export interface PendingTip {
   kind: "pending";
   /** Unique client-side id — never collides with real indexed ids. */
   id: string;
@@ -54,24 +65,13 @@ interface PendingTip {
   expiresAt: number;
 }
 
-interface UnconfirmedTip extends Omit<PendingTip, "kind"> {
+export interface UnconfirmedTip extends Omit<PendingTip, "kind"> {
   kind: "unconfirmed";
 }
 
-type FeedEntry = IndexedTip | PendingTip | UnconfirmedTip;
+export type FeedEntry = IndexedTip | PendingTip | UnconfirmedTip;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-
-export function timeAgo(iso: string): string {
-  // Clamp to 0 so a client clock slightly behind the ledger reads "just now"
-  // rather than producing a negative value like "-4s ago".
-  const diff = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
-  if (diff < 5) return "just now";
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
 
 /**
  * Convert a dollar display string (e.g. "5" or "2.50") to raw stroops
@@ -89,7 +89,7 @@ function displayAmountToStroops(display: string): bigint {
  * optimistic entry — same sender AND the raw amount corresponds to the dollar
  * value the user submitted (≥ to survive rounding and split scenarios).
  */
-function isMatch(indexed: IndexedTip, pending: PendingTip): boolean {
+export function isMatch(indexed: IndexedTip, pending: PendingTip): boolean {
   if (indexed.fromAddress !== pending.fromAddress) return false;
   try {
     return BigInt(indexed.amount) >= displayAmountToStroops(pending.displayAmount);
@@ -112,7 +112,7 @@ function isMatch(indexed: IndexedTip, pending: PendingTip): boolean {
  * downgraded to "unconfirmed" so the UI can signal that something may have
  * gone wrong — rather than leaving a pulsing "confirming…" row indefinitely.
  */
-function mergeWithPending(
+export function mergeWithPending(
   indexed: IndexedTip[],
   pending: PendingTip[],
   now = Date.now(),
@@ -138,9 +138,14 @@ function mergeWithPending(
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const NORMAL_INTERVAL = 15_000; // 15 s — steady-state
-const FAST_INTERVAL = 3_000; // 3 s  — right after a tip
-const FAST_WINDOW_MS = 30_000; // stay fast for 30 s
+/** Steady-state poll interval — frequent enough to feel live without hammering the backend. */
+export const NORMAL_INTERVAL = 15_000;
+
+/** Poll interval while a tip is awaiting confirmation, so it shows up promptly once indexed. */
+export const FAST_INTERVAL = 3_000;
+
+/** How long to keep polling at FAST_INTERVAL after a tip, matching typical ledger-indexing latency. */
+export const FAST_WINDOW_MS = 30_000;
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -150,61 +155,54 @@ interface RecentTipsProps {
 }
 
 export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
-  const [indexedTips, setIndexedTips] = useState<IndexedTip[]>([]);
+  const {
+    data: indexedTips,
+    loading,
+    error,
+    run,
+    abort: abortInFlight,
+  } = useAbortableRequest<IndexedTip[]>([]);
   const [pendingTips, setPendingTips] = useState<PendingTip[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [intervalMs, setIntervalMs] = useState(NORMAL_INTERVAL);
 
   const fastUntilRef = useRef<number | null>(null);
 
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Tracks ids from the previous successful fetch so new arrivals can be
+  // announced. Stays null until the first fetch resolves, which is how we
+  // avoid announcing the initial page load as "new" tips.
+  const previousIndexedIdsRef = useRef<Set<string> | null>(null);
+  const [announcement, setAnnouncement] = useState("");
 
   // Keep a ref to pendingTips so the fetch callback can read the latest value
   // without being re-created every time pendingTips changes.
   const pendingRef = useRef<PendingTip[]>([]);
-  useEffect(() => { pendingRef.current = pendingTips; }, [pendingTips]);
+  useEffect(() => {
+    pendingRef.current = pendingTips;
+  }, [pendingTips]);
 
   const fetchTips = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-
-    analyticsApi
-      .recent(jwt, limit, { signal: controller.signal })
-      .then((r) => {
+    run((signal) =>
+      analyticsApi.recent(jwt, limit, { signal }).then((r) => {
         const fresh: IndexedTip[] = r.tips.map((t) => ({ kind: "indexed" as const, ...t }));
-        setIndexedTips(fresh);
-        setError(null);
 
         // Drop optimistic entries whose indexed counterpart has arrived,
         // matched by both address AND amount — not just address alone.
-        setPendingTips((prev) =>
-          prev.filter((p) => !fresh.some((t) => isMatch(t, p))),
-        // Drop optimistic entries that have now been indexed.
-        // Uses the shared isPendingConfirmed rule — the only place this logic lives.
-        setPendingTips((prev) =>
-          prev.filter((p) => !isPendingConfirmed(p, fresh)),
-        );
-      })
-      .catch((e: any) => {
-        if (e.code === "ABORTED") return;
-        setError(e.message);
-      })
-      .finally(() => {
-        if (abortControllerRef.current === controller) {
-          abortControllerRef.current = null;
-          setLoading(false);
-        }
-      });
-  }, [jwt, limit]);
+        setPendingTips((prev) => prev.filter((p) => !fresh.some((t) => isMatch(t, p))));
 
-  const abortInFlight = useCallback(() => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-  }, []);
+        // Announce newly-arrived tips, skipping the very first fetch so the
+        // initial page load isn't read out as an "arrival".
+        if (previousIndexedIdsRef.current !== null) {
+          const newCount = fresh.filter((t) => !previousIndexedIdsRef.current!.has(t.id)).length;
+          if (newCount > 0) {
+            setAnnouncement(`${newCount} new tip${newCount !== 1 ? "s" : ""} received`);
+          }
+        }
+        previousIndexedIdsRef.current = new Set(fresh.map((t) => t.id));
+
+        return fresh;
+      }),
+    );
+  }, [jwt, limit, run]);
 
   const poll = useCallback(() => {
     fetchTips();
@@ -218,11 +216,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
     }
   }, [fetchTips]);
 
-  // Initial fetch + polling, paused while the tab is hidden
+  // Initial fetch + polling, paused while the tab is hidden.
+  // useAbortableRequest aborts any in-flight request on unmount itself.
   usePolling(poll, intervalMs, { onHidden: abortInFlight });
-
-  // Abort any in-flight request on unmount
-  useEffect(() => abortInFlight, [abortInFlight]);
 
   // On tip success: add optimistic entry + kick off fast polling
   useEffect(() => {
@@ -253,13 +249,20 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Recent Tips</CardTitle>
+          <CardTitle level={2}>Recent Tips</CardTitle>
           <span className="flex items-center gap-1.5 text-xs text-fg-faint">
-            <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow" />
+            <span
+              aria-hidden="true"
+              className="h-1.5 w-1.5 rounded-full bg-success animate-pulse-slow"
+            />
             Live
           </span>
         </div>
       </CardHeader>
+
+      <div aria-live="polite" role="status" className="sr-only">
+        {announcement}
+      </div>
 
       {loading && (
         <div className="space-y-3">
@@ -278,7 +281,9 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 
       {/* Non-blocking error notice — shown above the list so stale data remains visible */}
       {error && (
-        <p className="text-sm text-danger mb-3" role="alert">{error}</p>
+        <p className="text-sm text-danger mb-3" role="alert">
+          {error}
+        </p>
       )}
 
       {!loading && feed.length === 0 && (
@@ -307,6 +312,7 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 // ── Row sub-components ────────────────────────────────────────────────────────
 
 function IndexedTipRow({ tip }: { tip: IndexedTip }) {
+  const amount = parseAmount(tip.amount);
   return (
     <li className="flex items-start gap-3">
       <div className="h-8 w-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0">
@@ -314,23 +320,18 @@ function IndexedTipRow({ tip }: { tip: IndexedTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
           <span className="font-semibold text-accent">
-            ${formatUsdc(BigInt(tip.amount), 2)} USDC
+            {amount !== null ? `$${formatUsdc(amount, 2)} USDC` : "—"}
           </span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
-      <span className="text-xs text-fg-dim shrink-0 mt-0.5">
+      <TimeAgo iso={tip.ledgerAt} className="text-xs text-fg-dim shrink-0 mt-0.5">
         {timeAgo(tip.ledgerAt)}
-      </span>
+      </TimeAgo>
     </li>
   );
 }
@@ -344,18 +345,11 @@ function PendingTipRow({ tip }: { tip: PendingTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
-          <span className="font-semibold text-accent">
-            ${tip.displayAmount} USDC
-          </span>
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
+          <span className="font-semibold text-accent">${tip.displayAmount} USDC</span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
       {/* Confirming badge instead of a timestamp */}
@@ -383,18 +377,11 @@ function UnconfirmedTipRow({ tip }: { tip: UnconfirmedTip }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm text-fg">
-          <span className="font-mono text-fg-subtle">
-            {shortenAddress(tip.fromAddress)}
-          </span>
-          {" "}tipped{" "}
-          <span className="font-semibold text-accent">
-            ${tip.displayAmount} USDC
-          </span>
+          <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
+          <span className="font-semibold text-accent">${tip.displayAmount} USDC</span>
         </p>
         {tip.message && (
-          <p className="text-xs text-fg-faint mt-0.5 truncate">
-            &ldquo;{tip.message}&rdquo;
-          </p>
+          <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>
         )}
       </div>
       {/* Unconfirmed badge — no pulse, dimmer colour */}

@@ -25,8 +25,7 @@ const RESULT_MESSAGES: Record<string, string> = {
     "your wallet.",
   txBadAuthExtra: "the transaction carried a signature it did not need (txBAD_AUTH_EXTRA).",
   txBadSeq:
-    "the account's sequence number moved on before this was submitted (txBAD_SEQ). " +
-    "Try again.",
+    "the account's sequence number moved on before this was submitted (txBAD_SEQ). " + "Try again.",
   txInsufficientBalance:
     "the account does not hold enough XLM to cover the transaction (txINSUFFICIENT_BALANCE).",
   txInsufficientFee: "the fee offered was below the network minimum (txINSUFFICIENT_FEE).",
@@ -73,6 +72,33 @@ export function decodeResultCode(base64: string): string | null {
 }
 
 /**
+ * Decode a base64 TransactionResult and return the code name of its first
+ * failed operation (e.g. "paymentUnderfunded", "opBadAuth"), or null when the
+ * string is not a TransactionResult or carries no operation detail. Never
+ * throws, for the same reason decodeResultCode does not.
+ */
+export function decodeFailedOperationCode(base64: string): string | null {
+  try {
+    const result = xdr.TransactionResult.fromXDR(base64, "base64").result();
+    // Only the txSuccess / txFailed arms carry per-operation results.
+    if (result.switch().name !== "txFailed") return null;
+
+    for (const op of result.results()) {
+      const outer = op.switch().name;
+      // Anything other than opInner is itself the failure (opBadAuth, ...).
+      if (outer !== "opInner") return outer;
+
+      // Inner result unions name their success arm "<operation>Success".
+      const inner = (op.tr().value() as { switch(): { name: string } }).switch().name;
+      if (!inner.endsWith("Success")) return inner;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Await a chain call, rewriting an XDR-only submission failure into prose.
  * Anything else passes through untouched.
  */
@@ -88,7 +114,12 @@ export async function describeSubmissionError<T>(promise: Promise<T>): Promise<T
     const code = decodeResultCode(base64);
     if (!code) throw err;
 
-    const explanation = RESULT_MESSAGES[code] ?? `the network rejected it (${code}).`;
+    let explanation = RESULT_MESSAGES[code] ?? `the network rejected it (${code}).`;
+    if (code === "txFailed") {
+      const opCode = decodeFailedOperationCode(base64);
+      // Slot the operation's reason in before the closing full stop.
+      if (opCode) explanation = explanation.replace(/\.$/, `: ${opCode}.`);
+    }
     throw new Error(`Transaction rejected: ${explanation}`);
   }
 }
