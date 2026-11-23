@@ -19,7 +19,6 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
-  assertActiveAccount,
   getTipSplitterClient,
   makeSignTransaction,
   usdcToStroops,
@@ -27,7 +26,7 @@ import {
 import { getUsdcBalance } from "@/lib/balance";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
-import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
+import { isLargeTip } from "@/lib/tipAmount";
 import { DEFAULT_TIP_AMOUNT, getLastTipAmount, storeLastTipAmount } from "@/lib/lastTipAmount";
 import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";

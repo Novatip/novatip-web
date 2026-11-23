@@ -21,8 +21,8 @@
  *     can be dismissed to go back and edit instead
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SplitsManager } from "./SplitsManager";
 import { shortenAddress } from "@novatip/sdk";
@@ -68,7 +68,6 @@ describe("SplitsManager – initial render", () => {
 
 describe("SplitsManager – BPS total", () => {
   it("shows total as sum of all rows", async () => {
-    const user = userEvent.setup();
     setup([
       { to: VALID_ADDR_1, bps: 7_000 },
       { to: VALID_ADDR_2, bps: 3_000 },

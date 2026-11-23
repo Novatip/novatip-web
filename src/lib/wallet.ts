@@ -11,7 +11,7 @@
  * simply works.
  */
 
-import { getNetwork, TipSplitterClient, usdcToStroops, type NetworkConfig } from "@novatip/sdk";
+import { getNetwork, TipSplitterClient, usdcToStroops, shortenAddress, type NetworkConfig } from "@novatip/sdk";
 import {
   getAddress,
   isConnected,
@@ -20,7 +20,6 @@ import {
   signTransaction as freighterSignTransaction,
 } from "@stellar/freighter-api";
 import { config } from "./config";
-import { shortenAddress } from "@novatip/sdk";
 
 // ── Extension detection ───────────────────────────────────────────────────────
 

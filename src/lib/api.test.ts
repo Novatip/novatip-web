@@ -104,7 +104,7 @@ describe("request() error handling", () => {
     } as unknown as Response);
 
     // analyticsApi.totals would normally return data; here we confirm 204 path
-    const result = await (
+    await (
       analyticsApi as unknown as {
         _request: (path: string, jwt: string) => Promise<unknown>;
       }

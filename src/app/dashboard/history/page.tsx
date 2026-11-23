@@ -11,11 +11,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { analyticsApi, ApiError, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
-import { formatUsdc } from "@novatip/sdk";
-import { shortenAddress } from "@novatip/sdk";
+import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
