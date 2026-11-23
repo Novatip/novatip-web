@@ -11,7 +11,7 @@
  *   5. Error → inline error message with retry
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { AmountPicker } from "@/components/AmountPicker";
 import { TipSuccess } from "@/components/TipSuccess";
@@ -50,6 +50,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   const { publicKey, isConnected } = useWallet();
 
   const [amount, setAmount] = useState(DEFAULT_TIP_AMOUNT);
+  const messageId = useId();
   const [message, setMessage] = useState("");
   const [step, setStep] = useState<FormStep>("input");
   const [error, setError] = useState<string | null>(null);
@@ -204,10 +205,11 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Message input */}
         <div className="flex flex-col gap-1.5">
-          <label className="text-sm font-medium text-fg-muted">
+          <label htmlFor={messageId} className="text-sm font-medium text-fg-muted">
             Message <span className="text-fg-dim font-normal">(optional)</span>
           </label>
           <textarea
+            id={messageId}
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={step === "signing" || step === "confirm" || !hasRecipients}
@@ -217,7 +219,6 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                        text-sm text-fg placeholder:text-fg-dim resize-none
                        focus:outline-none focus:ring-2 focus:ring-brand-500/50
                        transition-all duration-200 disabled:opacity-50"
-            aria-label="Optional tip message"
             aria-describedby="tip-message-count"
             aria-invalid={messageTooLong}
           />
