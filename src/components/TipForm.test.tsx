@@ -1,9 +1,13 @@
 /**
  * src/components/TipForm.test.tsx
  *
- * Unit tests for TipForm's pre-submit guards.
+ * Render tests for TipForm with a mocked wallet, balance lookup and SDK.
  *
  * Covers:
+ *   - Default state: preset amount, empty message, Send enabled
+ *   - A valid custom amount is reflected in the Send button
+ *   - A disconnected wallet shows the connect prompt instead of Send
+ *   - A jar with no recipients is blocked and explained
  *   - An amount above the wallet balance disables Send and shows the warning
  *   - An empty wallet gets the missing-trustline explanation instead
  *   - An amount that rounds a collaborator's share to zero shows the
@@ -12,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { TipForm } from "./TipForm";
 import { LAST_TIP_AMOUNT_STORAGE_KEY } from "@/lib/lastTipAmount";
 
@@ -20,13 +24,14 @@ const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVW";
 
 const mocks = vi.hoisted(() => ({
   getUsdcBalance: vi.fn<(address: string) => Promise<bigint>>(),
+  wallet: { connected: true },
 }));
 
 vi.mock("@/contexts/WalletContext", () => ({
   useWallet: () => ({
-    publicKey:    PUBLIC_KEY,
-    jwt:          "jwt",
-    isConnected:  true,
+    publicKey:    mocks.wallet.connected ? PUBLIC_KEY : null,
+    jwt:          mocks.wallet.connected ? "jwt" : null,
+    isConnected:  mocks.wallet.connected,
     isConnecting: false,
     error:        null,
     connect:      vi.fn(),
@@ -73,10 +78,67 @@ function sendButton() {
 beforeEach(() => {
   window.localStorage.clear();
   mocks.getUsdcBalance.mockReset();
+  mocks.wallet.connected = true;
 });
 
 afterEach(() => {
   cleanup();
+});
+
+// ── Default state ─────────────────────────────────────────────────────────────
+
+describe("TipForm – default state", () => {
+  it("shows the default amount, an empty message and an enabled Send button", async () => {
+    mocks.getUsdcBalance.mockResolvedValue(100n * USDC);
+    render(<TipForm jarId="jar-1" slug="alice" splits={EVEN_SPLITS} />);
+
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /optional tip message/i })).toHaveValue("");
+    expect(screen.getByText("0/280 bytes")).toBeInTheDocument();
+    expect(sendButton()).toBeEnabled();
+    expect(screen.queryByText(/no recipients configured/i)).not.toBeInTheDocument();
+  });
+});
+
+// ── Valid amount ──────────────────────────────────────────────────────────────
+
+describe("TipForm – valid amount", () => {
+  it("puts a valid custom amount in the Send button and keeps it enabled", async () => {
+    renderForm({ amount: "2", balance: 100n * USDC });
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Enter custom tip amount"), {
+      target: { value: "7.5" },
+    });
+
+    expect(screen.getByRole("button", { name: "Send $7.5 USDC tip" })).toBeEnabled();
+  });
+});
+
+// ── Disconnected wallet ───────────────────────────────────────────────────────
+
+describe("TipForm – disconnected wallet", () => {
+  it("asks the supporter to connect and offers no Send button", () => {
+    mocks.wallet.connected = false;
+    render(<TipForm jarId="jar-1" slug="alice" splits={EVEN_SPLITS} />);
+
+    expect(screen.getByText(/connect your wallet to send a tip/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Send \$.+ USDC tip/i })).not.toBeInTheDocument();
+    expect(mocks.getUsdcBalance).not.toHaveBeenCalled();
+  });
+});
+
+// ── No recipients ─────────────────────────────────────────────────────────────
+
+describe("TipForm – jar with no recipients", () => {
+  it("explains the jar is unconfigured and blocks sending", async () => {
+    mocks.getUsdcBalance.mockResolvedValue(100n * USDC);
+    render(<TipForm jarId="jar-1" slug="alice" splits={[]} />);
+
+    expect(await screen.findByText(/no recipients configured/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Jar not configured" })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: /optional tip message/i })).toBeDisabled();
+  });
 });
 
 // ── Insufficient balance ──────────────────────────────────────────────────────

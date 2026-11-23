@@ -945,7 +945,7 @@ The stub exports the following to match the real SDK's public API:
 | Export | Type | Purpose |
 |--------|------|---------|
 | `usdcToStroops` | function | Converts a USDC string to stroops (`1 USDC = 10_000_000 stroops`) |
-| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` and `<= 1000 USDC`) |
+| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` only — the SDK has no upper bound; use `isWithinTipCeiling` from `lib/tipAmount.ts` for the app's 1000 USDC ceiling) |
 | `formatUsdc` | function | Formats stroops as a USDC decimal string |
 | `shortenAddress` | function | Abbreviates a Stellar address to `GABC…WXYZ` format |
 | `validateSplitsBps` | function | Validates that an array of basis points sums to exactly `10_000` |
