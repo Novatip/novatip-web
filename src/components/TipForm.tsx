@@ -27,6 +27,7 @@ import {
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
+import { NO_PLATFORM_FEES_COPY } from "@/lib/copy";
 
 // FRONTEND MESSAGE BYTE LIMIT
 // The contract counts UTF-8 bytes, not JavaScript UTF-16 code units.
@@ -255,8 +256,8 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Disclaimer */}
         <p className="text-center text-xs text-fg-faint">
-          Tips are final and sent directly on the Stellar network.
-          No platform fees.
+          Tips are final and sent directly on the Stellar network.{" "}
+          {NO_PLATFORM_FEES_COPY}.
         </p>
 
       </div>
