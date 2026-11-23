@@ -214,7 +214,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Unconfigured jar warning */}
         {!hasRecipients && (
-          <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div role="status" className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
             <p className="text-sm text-warning">
               This jar has no recipients configured and cannot receive tips.
             </p>
@@ -223,7 +223,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Splits-too-small warning */}
         {zeroPaidCount > 0 && (
-          <div className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
+          <div role="status" className="rounded-xl bg-warning/10 border border-warning/20 px-4 py-3">
             <p className="text-sm text-warning">
               At this amount,{" "}
               <span className="font-semibold">
@@ -236,7 +236,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Error banner */}
         {step === "error" && error && (
-          <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
+          <div role="alert" className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
             <p className="text-sm text-danger">{error}</p>
           </div>
         )}

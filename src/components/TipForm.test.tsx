@@ -19,6 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import { TipForm } from "./TipForm";
 import { LAST_TIP_AMOUNT_STORAGE_KEY } from "@/lib/lastTipAmount";
+import { getTipSplitterClient } from "@/lib/wallet";
 
 const PUBLIC_KEY = "GABCDEFGHIJKLMNOPQRSTUVWXYZ234567ABCDEFGHIJKLMNOPQRSTUVW";
 
@@ -69,6 +70,11 @@ function renderForm(opts: {
   window.localStorage.setItem(LAST_TIP_AMOUNT_STORAGE_KEY, opts.amount);
   mocks.getUsdcBalance.mockResolvedValue(opts.balance);
   render(<TipForm jarId="jar-1" slug="alice" splits={opts.splits ?? EVEN_SPLITS} />);
+}
+
+/** The status region (role="status") whose text matches, if any. */
+function statusWith(text: RegExp) {
+  return screen.queryAllByRole("status").find((el) => text.test(el.textContent ?? ""));
 }
 
 function sendButton() {
@@ -136,6 +142,7 @@ describe("TipForm – jar with no recipients", () => {
     render(<TipForm jarId="jar-1" slug="alice" splits={[]} />);
 
     expect(await screen.findByText(/no recipients configured/i)).toBeInTheDocument();
+    expect(statusWith(/no recipients configured/i)).toBeDefined();
     expect(screen.getByRole("button", { name: "Jar not configured" })).toBeDisabled();
     expect(screen.getByRole("textbox", { name: /optional tip message/i })).toBeDisabled();
   });
@@ -175,6 +182,7 @@ describe("TipForm – zero share warning", () => {
 
     expect(await screen.findByText(/would receive nothing/i)).toBeInTheDocument();
     expect(screen.getByText("1 of 2 collaborators")).toBeInTheDocument();
+    expect(statusWith(/would receive nothing/i)).toBeDefined();
     // The warning is advisory — it does not block the tip.
     expect(sendButton()).toBeEnabled();
   });
@@ -193,5 +201,21 @@ describe("TipForm – affordable amount with healthy shares", () => {
     expect(screen.queryByText(/no USDC on Stellar/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/would receive nothing/i)).not.toBeInTheDocument();
     expect(sendButton()).toBeEnabled();
+  });
+});
+
+// ── Failed transaction ────────────────────────────────────────────────────────
+
+describe("TipForm – failed transaction", () => {
+  it("announces the error through an alert", async () => {
+    vi.mocked(getTipSplitterClient).mockReturnValue({
+      tip: vi.fn().mockRejectedValue(new Error("Transaction rejected")),
+    } as unknown as ReturnType<typeof getTipSplitterClient>);
+    renderForm({ amount: "2", balance: 100n * USDC });
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+
+    fireEvent.click(sendButton());
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Transaction rejected");
   });
 });
