@@ -15,6 +15,7 @@ import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { cn } from "@/lib/utils";
 import { getTipUrl } from "@/lib/tipUrl";
+import { NO_PLATFORM_FEES_COPY } from "@/lib/copy";
 
 interface TipSuccessProps {
   amount: string;
@@ -155,7 +156,7 @@ export function TipSuccess({ amount, slug, onReset }: TipSuccessProps) {
         <div className="w-full rounded-xl bg-success/10 border border-success/20 px-4 py-3">
           <p className="text-xs text-success flex items-center justify-center gap-1.5">
             <span className="h-1.5 w-1.5 rounded-full bg-success shrink-0" />
-            Settled on Stellar — no middlemen, no platform fees
+            Settled on Stellar — no middlemen, {NO_PLATFORM_FEES_COPY.toLowerCase()}
           </p>
         </div>
 

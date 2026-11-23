@@ -311,8 +311,16 @@ export function SplitsManager({
       )}
 
       {/* Error / success */}
-      {error && <p className="text-sm text-danger">{error}</p>}
-      {success && <p className="text-sm text-success">Splits saved successfully!</p>}
+      {error && (
+        <p role="alert" className="text-sm text-danger">
+          {error}
+        </p>
+      )}
+      {success && (
+        <p role="status" className="text-sm text-success">
+          Splits saved successfully!
+        </p>
+      )}
 
       {/* Missing-wallet warning — gates the save once rather than blocking it */}
       {confirmingMissingWallet ? (

@@ -30,6 +30,8 @@ import { isLargeTip } from "@/lib/tipAmount";
 import { DEFAULT_TIP_AMOUNT, getLastTipAmount, storeLastTipAmount } from "@/lib/lastTipAmount";
 import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";
+import { NO_PLATFORM_FEES_COPY } from "@/lib/copy";
+import { describeContractError } from "@/lib/contractErrors";
 
 export interface Split {
   to: string;
@@ -154,7 +156,10 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         slug,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transaction failed. Please try again.";
+      const msg =
+        err instanceof Error
+          ? describeContractError(err.message)
+          : "Transaction failed. Please try again.";
       setError(msg);
       setStep("error");
     }
@@ -334,7 +339,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
 
         {/* Disclaimer */}
         <p className="text-center text-xs text-fg-faint">
-          Tips are final and sent directly on the Stellar network. No platform fees.
+          Tips are final and sent directly on the Stellar network. {NO_PLATFORM_FEES_COPY}.
         </p>
       </div>
     </Card>

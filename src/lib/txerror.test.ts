@@ -10,6 +10,8 @@ import { describe, it, expect } from "vitest";
 import { decodeFailedOperationCode, decodeResultCode, describeSubmissionError } from "./txerror";
 
 const BAD_AUTH_XDR = "AAAAAAAA+QT////6AAAAAA==";
+// Same TransactionResult layout with result code -4 (txMISSING_OPERATION).
+const MISSING_OPERATION_XDR = "AAAAAAAAAAD////8AAAAAA==";
 
 // txFAILED wrapping a single payment operation that returned PAYMENT_UNDERFUNDED.
 const PAYMENT_UNDERFUNDED_XDR = "AAAAAAAAAGT/////AAAAAQAAAAAAAAAB/////gAAAAA=";
@@ -46,6 +48,14 @@ describe("describeSubmissionError", () => {
         Promise.reject(new Error(`Transaction submission failed: ${BAD_AUTH_XDR}`)),
       ),
     ).rejects.toThrow(/different account|Switch Freighter/);
+  });
+
+  it("explains a newly covered code and keeps its documented name", async () => {
+    await expect(
+      describeSubmissionError(
+        Promise.reject(new Error(`Transaction submission failed: ${MISSING_OPERATION_XDR}`)),
+      ),
+    ).rejects.toThrow(/no operations.*txMISSING_OPERATION/);
   });
 
   it("names the failed operation when a transaction returns txFAILED", async () => {
