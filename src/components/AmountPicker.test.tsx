@@ -10,10 +10,11 @@
  *   - Validation message appears for an invalid custom amount
  *   - Disabled prop prevents interaction
  *   - A custom presets prop replaces the default list
+ *   - The presets sit in a group labelled by the "Amount (USDC)" heading
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AmountPicker } from "./AmountPicker";
 import { MAX_CUSTOM_TIP_USDC } from "@/lib/tipAmount";
@@ -58,6 +59,17 @@ describe("AmountPicker – preset buttons", () => {
     render(<AmountPicker value="2" onChange={onChange} disabled />);
     await user.click(screen.getByRole("button", { name: /Tip \$5 USDC/i }));
     expect(onChange).not.toHaveBeenCalled();
+  });
+});
+
+describe("AmountPicker – preset group", () => {
+  it("wraps the presets in a group named by the Amount (USDC) heading", () => {
+    setup();
+    const group = screen.getByRole("group", { name: "Amount (USDC)" });
+    const buttons = within(group).getAllByRole("button");
+
+    expect(buttons).toHaveLength(5);
+    expect(within(group).getByRole("button", { name: /Tip \$5 USDC/i })).toBeInTheDocument();
   });
 });
 

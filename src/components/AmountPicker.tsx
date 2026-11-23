@@ -36,6 +36,7 @@ export function AmountPicker({
   balance = null,
 }: AmountPickerProps) {
   const errorId = useId();
+  const headingId = useId();
 
   const isPreset = presets.includes(value);
   const isCustom = value !== "" && !isPreset;
@@ -94,7 +95,9 @@ export function AmountPicker({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm font-medium text-fg-muted">Amount (USDC)</p>
+        <p id={headingId} className="text-sm font-medium text-fg-muted">
+          Amount (USDC)
+        </p>
         {balance !== null && (
           <p className={cn("text-xs", insufficientBalance ? "text-danger" : "text-fg-faint")}>
             Balance: ${formatUsdc(balance, 2)}
@@ -104,6 +107,8 @@ export function AmountPicker({
 
       {/* Preset buttons */}
       <div
+        role="group"
+        aria-labelledby={headingId}
         className="grid gap-2"
         style={{ gridTemplateColumns: `repeat(${presets.length}, minmax(0, 1fr))` }}
       >
