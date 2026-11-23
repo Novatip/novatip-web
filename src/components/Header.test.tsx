@@ -12,7 +12,7 @@
  *   - Network badge is hidden on mainnet
  */
 
-import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import type { ImgHTMLAttributes } from "react";
 import { Header } from "./Header";

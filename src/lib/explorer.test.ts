@@ -10,7 +10,7 @@
  *   - Local networks have no explorer page, so no URL is returned
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { getExplorerUrl } from "./explorer";
 
 const SAMPLE_ADDRESS = "GBOUUKWI3SUIIL75NEZMVYLYU77SIXNN2RNYMNJOJX6WXOICMMAKKKB4";

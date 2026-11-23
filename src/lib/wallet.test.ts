@@ -66,7 +66,7 @@ describe("assertActiveAccount", () => {
   it("does not block when the wallet declines to report an address", async () => {
     mockedGetAddress.mockResolvedValue({
       address: "",
-      error: { message: "User declined access" } as any,
+      error: { message: "User declined access" } as unknown as string,
     });
 
     await expect(assertActiveAccount(EXPECTED)).resolves.toBeUndefined();
@@ -108,7 +108,7 @@ describe("signNonce", () => {
     mockedSignMessage.mockResolvedValue({
       signedMessage: null,
       signerAddress: "",
-      error: { message: "User declined access" } as any,
+      error: { message: "User declined access" } as unknown as string,
     });
 
     await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow("User declined access");
@@ -118,7 +118,7 @@ describe("signNonce", () => {
     mockedSignMessage.mockResolvedValue({
       signedMessage: null,
       signerAddress: "",
-      error: {} as any,
+      error: {} as unknown as string,
     });
 
     await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow("Message signing failed.");
@@ -126,7 +126,6 @@ describe("signNonce", () => {
 
   it("throws when the wallet returns no signature", async () => {
     mockedSignMessage.mockResolvedValue({ signedMessage: null, signerAddress: ACTIVE });
-
     await expect(signNonce("nonce-1", ACTIVE)).rejects.toThrow(
       "Wallet did not return a signature.",
     );
