@@ -900,7 +900,8 @@ Notice:
     npm run start     - production server
     npm run typecheck - tsc --noEmit
     npm run lint      - eslint
-    npm run format    - prettier
+    npm run format    - prettier --write
+    npm run format:check - prettier --check (also runs in CI)
     npm test               - run tests once (Vitest)
     npm run test:watch     - run tests in watch mode
     npm run test:coverage  - run tests with v8 coverage report
