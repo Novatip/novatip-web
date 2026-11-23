@@ -11,9 +11,9 @@ import { useCallback, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
 import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { cn } from "@/lib/utils";
 
 /** Parse a raw amount string safely — returns null when unparseable. */
@@ -112,8 +112,6 @@ export function Leaderboard({ jwt, limit = 10, slug }: LeaderboardProps) {
 // ── Row ───────────────────────────────────────────────────────────────────────
 
 function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number }) {
-  const { copied, failed, copy } = useCopyToClipboard();
-
   return (
     <li
       className={cn(
@@ -135,24 +133,7 @@ function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number 
         <span className="font-mono text-sm text-fg-muted truncate">
           {shortenAddress(supporter.fromAddress)}
         </span>
-        <button
-          type="button"
-          onClick={() => void copy(supporter.fromAddress)}
-          className={cn(
-            "shrink-0 rounded-md p-1 text-xs transition-colors",
-            "hover:bg-hairline focus:outline-none focus:ring-2 focus:ring-brand-500/50",
-            failed ? "text-danger" : copied ? "text-success" : "text-fg-faint hover:text-fg",
-          )}
-          aria-label={
-            copied
-              ? "Full address copied"
-              : failed
-                ? "Couldn't copy address — try again"
-                : `Copy full address ${supporter.fromAddress}`
-          }
-        >
-          {copied ? "✓" : failed ? "✕" : "📋"}
-        </button>
+        <CopyAddressButton address={supporter.fromAddress} />
       </span>
 
       {/* Tip count */}

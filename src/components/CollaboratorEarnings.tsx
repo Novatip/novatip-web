@@ -10,9 +10,9 @@
 import { useCallback, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { formatUsdc, shortenAddress } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { cn } from "@/lib/utils";
 
 interface Collaborator {
@@ -81,8 +81,6 @@ export function CollaboratorEarnings({ jwt }: CollaboratorEarningsProps) {
 // ── Row ───────────────────────────────────────────────────────────────────────
 
 function CollaboratorRow({ collaborator }: { collaborator: Collaborator }) {
-  const { copied, failed, copy } = useCopyToClipboard();
-
   return (
     <li
       className={cn(
@@ -95,24 +93,7 @@ function CollaboratorRow({ collaborator }: { collaborator: Collaborator }) {
         <span className="font-mono text-sm text-fg-muted truncate">
           {shortenAddress(collaborator.address)}
         </span>
-        <button
-          type="button"
-          onClick={() => void copy(collaborator.address)}
-          className={cn(
-            "shrink-0 rounded-md p-1 text-xs transition-colors",
-            "hover:bg-hairline focus:outline-none focus:ring-2 focus:ring-brand-500/50",
-            failed ? "text-danger" : copied ? "text-success" : "text-fg-faint hover:text-fg",
-          )}
-          aria-label={
-            copied
-              ? "Full address copied"
-              : failed
-                ? "Couldn't copy address — try again"
-                : `Copy full address ${collaborator.address}`
-          }
-        >
-          {copied ? "✓" : failed ? "✕" : "📋"}
-        </button>
+        <CopyAddressButton address={collaborator.address} />
       </span>
 
       {/* Amount */}
