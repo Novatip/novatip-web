@@ -4,6 +4,10 @@
  * Covers the availability check's failure handling:
  *   - A failed check shows a message and a retry action; retrying re-runs it
  *   - An aborted check shows nothing
+ *
+ * And the reserved-slug handling:
+ *   - A reserved slug shows Reserved and makes no request
+ *   - A normal slug is still checked and shows Available
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
@@ -98,5 +102,30 @@ describe("SlugStep – availability check failure", () => {
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /try again/i })).not.toBeInTheDocument();
+  });
+});
+
+describe("SlugStep – reserved slugs", () => {
+  it("shows Reserved and makes no request for a reserved slug", async () => {
+    render(<SlugStep jwt="jwt" onNext={vi.fn()} />);
+
+    await typeSlug("dashboard");
+
+    expect(screen.getByText("Reserved")).toBeInTheDocument();
+    expect(screen.queryByText(/taken/i)).not.toBeInTheDocument();
+    expect(mocks.checkSlug).not.toHaveBeenCalled();
+    expect(mocks.readJar).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: /claim @dashboard/i })).toBeDisabled();
+  });
+
+  it("still checks a normal slug and shows Available", async () => {
+    mocks.checkSlug.mockResolvedValue({ available: true });
+    render(<SlugStep jwt="jwt" onNext={vi.fn()} />);
+
+    await typeSlug("ada");
+
+    expect(mocks.checkSlug).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Reserved")).not.toBeInTheDocument();
+    expect(screen.getByText(/available/i)).toBeInTheDocument();
   });
 });
