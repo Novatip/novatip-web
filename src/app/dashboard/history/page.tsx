@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/Button";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
+import { getExplorerUrl } from "@/lib/explorer";
 
 /** Parse a raw amount string safely — returns null when unparseable. */
 function parseAmount(raw: string): bigint | null {
@@ -59,6 +60,32 @@ function MessageCell({ message }: { message: string }) {
       >
         {message}
       </button>
+    </span>
+  );
+}
+
+/**
+ * One sender cell. The shortened address links to the account on the block
+ * explorer; on a network the explorer doesn't serve (getExplorerUrl returns
+ * null) it stays plain text.
+ */
+function SenderCell({ address }: { address: string }) {
+  const explorerUrl = getExplorerUrl(address);
+
+  return (
+    <span role="cell" className="col-span-4 font-mono text-sm text-fg-muted truncate">
+      {explorerUrl ? (
+        <a
+          href={explorerUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-accent transition-colors underline decoration-dotted underline-offset-2"
+        >
+          {shortenAddress(address)}
+        </a>
+      ) : (
+        shortenAddress(address)
+      )}
     </span>
   );
 }
@@ -254,9 +281,7 @@ export default function HistoryPage() {
                   className="grid grid-cols-12 gap-4 py-3 hover:bg-surface-strong transition-colors rounded-lg"
                 >
                   {/* Sender */}
-                  <span role="cell" className="col-span-4 font-mono text-sm text-fg-muted truncate">
-                    {shortenAddress(tip.fromAddress)}
-                  </span>
+                  <SenderCell address={tip.fromAddress} />
 
                   {/* Amount */}
                   <span
