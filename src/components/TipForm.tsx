@@ -28,6 +28,7 @@ import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
 import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 import { NO_PLATFORM_FEES_COPY } from "@/lib/copy";
+import { describeContractError } from "@/lib/contractErrors";
 
 // FRONTEND MESSAGE BYTE LIMIT
 // The contract counts UTF-8 bytes, not JavaScript UTF-16 code units.
@@ -113,7 +114,9 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         slug,
       });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Transaction failed. Please try again.";
+      const msg = err instanceof Error
+        ? describeContractError(err.message)
+        : "Transaction failed. Please try again.";
       setError(msg);
       setStep("error");
     }
