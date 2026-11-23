@@ -7,10 +7,13 @@
  *   - A disconnected visitor sees the connect prompt
  *   - Every nav item renders as a link
  *   - Exactly one nav item has aria-current="page"
+ *   - The header copy button's accessible name contains its visible text in
+ *     the idle, copied and failed states
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ImgHTMLAttributes } from "react";
 import DashboardLayout from "./layout";
 import { NAV_ITEMS } from "./nav";
@@ -41,10 +44,17 @@ vi.mock("@/contexts/WalletContext", () => ({
   useWallet: () => mockWallet,
 }));
 
+const mockMe = vi.hoisted(() => vi.fn());
+const mockCopyText = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/clipboard", () => ({
+  copyText: mockCopyText,
+}));
+
 // Mock the API so the layout doesn't attempt a real /auth/me call
 vi.mock("@/lib/api", () => ({
   authApi: {
-    me: vi.fn().mockRejectedValue(new Error("Network error")),
+    me: mockMe,
   },
   ApiError: class ApiError extends Error {
     code: string;
@@ -54,6 +64,12 @@ vi.mock("@/lib/api", () => ({
     }
   },
 }));
+
+beforeEach(() => {
+  mockMe.mockReset();
+  mockMe.mockRejectedValue(new Error("Network error"));
+  mockCopyText.mockReset();
+});
 
 afterEach(() => {
   cleanup();
@@ -203,5 +219,55 @@ describe("DashboardLayout – navigation aria-current behavior", () => {
     currentLinks.forEach((link) => {
       expect(link).toHaveAttribute("href", "/dashboard/webhooks");
     });
+  });
+});
+
+describe("DashboardLayout – tip link copy button", () => {
+  beforeEach(() => {
+    mockWallet.isConnected = true;
+    mockWallet.publicKey = "GABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890ABCDEFGHIJKLMNOPQR";
+    mockWallet.jwt = "mock.jwt.token";
+    mockMe.mockResolvedValue({ user: { sub: "1", wallet: "GABC", slug: "ada" } });
+  });
+
+  function renderLayout() {
+    return render(
+      <DashboardLayout>
+        <div>Test content</div>
+      </DashboardLayout>,
+    );
+  }
+
+  it("is named by its visible text when idle", async () => {
+    renderLayout();
+
+    const button = await screen.findByRole("button", { name: /copy link/i });
+    expect(button).toHaveAccessibleName("Copy link");
+    expect(button).not.toHaveAttribute("aria-label");
+  });
+
+  it("is named by its visible text once copied", async () => {
+    mockCopyText.mockResolvedValue(true);
+    renderLayout();
+
+    await userEvent.click(await screen.findByRole("button", { name: /copy link/i }));
+
+    const button = await screen.findByRole("button", { name: /copied!/i });
+    expect(button).toHaveTextContent("Copied!");
+    expect(button).toHaveAccessibleName("Copied!");
+  });
+
+  it("is named by its visible text on failure, and no longer reads as the default", async () => {
+    mockCopyText.mockResolvedValue(false);
+    renderLayout();
+
+    await userEvent.click(await screen.findByRole("button", { name: /copy link/i }));
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /failed/i })).toBeInTheDocument());
+    const button = screen.getByRole("button", { name: /failed/i });
+    expect(button).toHaveTextContent("Failed");
+    expect(button.getAttribute("aria-label")).toBeNull();
+    expect(button).toHaveAccessibleName("Failed to copy link");
+    expect(button).not.toHaveAccessibleName("Copy link");
   });
 });
