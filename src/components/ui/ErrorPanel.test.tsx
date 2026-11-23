@@ -5,6 +5,7 @@
  *
  * Covers:
  *   - Renders the error message
+ *   - The container has role="alert" so the message is announced
  *   - Clicking Retry calls onRetry
  *   - The retry control is disabled while a retry is in flight
  *   - The retry control is enabled and clickable when not retrying
@@ -21,6 +22,11 @@ describe("ErrorPanel", () => {
   it("renders the error message", () => {
     render(<ErrorPanel message="Failed to load totals" onRetry={vi.fn()} />);
     expect(screen.getByText("Failed to load totals")).toBeInTheDocument();
+  });
+
+  it("announces the message as an alert", () => {
+    render(<ErrorPanel message="Failed to load totals" onRetry={vi.fn()} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Failed to load totals");
   });
 
   it("calls onRetry when the retry control is clicked", async () => {

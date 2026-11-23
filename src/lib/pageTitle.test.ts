@@ -21,7 +21,6 @@
 
 import { describe, it, expect } from "vitest";
 import { pageTitle } from "./pageTitle";
-import type { Metadata } from "next";
 
 describe("pageTitle", () => {
   it("returns a Metadata object", () => {

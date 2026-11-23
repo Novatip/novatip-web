@@ -42,14 +42,6 @@ function requirePublic(key: string, val: string | undefined): string {
   return val;
 }
 
-/**
- * Return the value of an optional NEXT_PUBLIC_ variable, falling back to
- * `fallback` when absent or empty.
- */
-function optionalPublic(val: string | undefined, fallback: string): string {
-  return val || fallback;
-}
-
 const STELLAR_NETWORKS = ["testnet", "mainnet", "local"] as const;
 type StellarNetwork = (typeof STELLAR_NETWORKS)[number];
 

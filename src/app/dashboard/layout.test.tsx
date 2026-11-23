@@ -7,6 +7,7 @@
  *   - A disconnected visitor sees the connect prompt
  *   - Every nav item renders as a link
  *   - Exactly one nav item has aria-current="page"
+ *   - Both the mobile bar and the sidebar are nav landmarks with the same label
  *   - The header copy button's accessible name contains its visible text in
  *     the idle, copied and failed states
  */
@@ -163,6 +164,16 @@ describe("DashboardLayout – connected state", () => {
     currentLinks.forEach((link) => {
       expect(link).toHaveAttribute("href", "/dashboard");
     });
+  });
+
+  it("exposes both layouts as nav landmarks with the same label", () => {
+    render(
+      <DashboardLayout>
+        <div>Test content</div>
+      </DashboardLayout>,
+    );
+
+    expect(screen.getAllByRole("navigation", { name: "Dashboard navigation" })).toHaveLength(2);
   });
 
   it("renders children when connected", () => {

@@ -8,7 +8,6 @@
 
 import { cache } from "react";
 import { notFound } from "next/navigation";
-import Image from "next/image";
 import type { Metadata } from "next";
 import { ApiError, resolverApi, type ResolvedPage } from "@/lib/api";
 import { normalizeSlug } from "@/lib/slug";
