@@ -4,8 +4,8 @@
  * SplitsManager.tsx
  *
  * UI for managing collaborator splits on a tip jar.
- * Validates that all bps values sum to exactly 10,000 before
- * allowing the creator to save changes on-chain + backend.
+ * Validates that every share is above 0 bps and all shares sum to
+ * exactly 10,000 before allowing a creator to save changes.
  */
 
 import { useState } from "react";
@@ -93,7 +93,7 @@ export function SplitsManager({
 
   const parsedBps = rows.map((r) => parseBpsInput(r.bps));
   const totalBps = parsedBps.reduce<number>((s, v) => s + (v ?? 0), 0);
-  const bpsValid = parsedBps.every((v) => v !== null) && validateSplitsBps(parsedBps as number[]);
+  const bpsValid = parsedBps.every((v) => v !== null && v > 0) && validateSplitsBps(parsedBps as number[]);
   const addressesOk = rows.every((r) => isValidAddress(r.to));
   // The contract rejects a jar that lists the same recipient twice
   // (DuplicateRecipient), so duplicates block saving rather than just warn.
@@ -207,10 +207,10 @@ export function SplitsManager({
                   disabled={saving || disabled}
                   placeholder="bps"
                   aria-label={`Recipient ${i + 1} basis points`}
-                  aria-invalid={row.bps !== "" && parsedBps[i] === null}
+                  aria-invalid={row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0)}
                   className={cn(
                     "w-full rounded-xl bg-surface-strong border",
-                    row.bps !== "" && parsedBps[i] === null ? "border-danger" : "border-hairline",
+                    row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0) ? "border-danger" : "border-hairline",
                     "px-3 pr-10 py-2.5 text-sm text-fg text-right",
                     "focus:outline-none focus:ring-2 focus:ring-brand-500/50",
                     "disabled:opacity-50 transition-all duration-200",
@@ -223,10 +223,12 @@ export function SplitsManager({
               <p
                 className={cn(
                   "text-right text-xs mt-1",
-                  row.bps !== "" && parsedBps[i] === null ? "text-danger" : "text-fg-dim",
+                  row.bps !== "" && (parsedBps[i] === null || parsedBps[i] === 0) ? "text-danger" : "text-fg-dim",
                 )}
               >
-                {row.bps !== "" && parsedBps[i] === null
+                {parsedBps[i] === 0
+                  ? "Share must be above 0%"
+                  : row.bps !== "" && parsedBps[i] === null
                   ? "Whole number only"
                   : parsedBps[i] !== null
                     ? `${formatBps(parsedBps[i]!)}`
@@ -290,7 +292,7 @@ export function SplitsManager({
       </div>
 
       {/* Validation hint */}
-      {!bpsValid && (
+      {!bpsValid && totalBps !== 10000 && (
         <p className="text-xs text-warning">
           Splits must sum to exactly 10,000 bps (100%).
           {totalBps < 10000
