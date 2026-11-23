@@ -13,13 +13,24 @@ interface StepIndicatorProps {
   labels: string[];
 }
 
+const STATE_TEXT = {
+  done: "Completed",
+  active: "Current",
+  upcoming: "Not started",
+} as const;
+
 export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicatorProps) {
   return (
     <div className="flex items-center gap-2 w-full" role="list" aria-label="Onboarding steps">
       {Array.from({ length: totalSteps }).map((_, i) => {
         const state = i < currentStep ? "done" : i === currentStep ? "active" : "upcoming";
         return (
-          <div key={i} className="flex items-center gap-2 flex-1" role="listitem">
+          <div
+            key={i}
+            className="flex items-center gap-2 flex-1"
+            role="listitem"
+            aria-current={state === "active" ? "step" : undefined}
+          >
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div
                 className={cn(
@@ -30,7 +41,6 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
                       ? "border-brand-500 text-accent bg-brand-500/10"
                       : "border-hairline-strong text-fg-dim bg-surface-strong",
                 )}
-                aria-current={state === "active" ? "step" : undefined}
               >
                 {state === "done" ? "✓" : i + 1}
               </div>
@@ -42,6 +52,7 @@ export function StepIndicator({ currentStep, totalSteps, labels }: StepIndicator
               >
                 {labels[i]}
               </span>
+              <span className="sr-only">{STATE_TEXT[state]}</span>
             </div>
             {i < totalSteps - 1 && (
               <div
