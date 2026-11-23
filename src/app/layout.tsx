@@ -34,6 +34,17 @@ export const metadata: Metadata = {
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
     type:        "website",
   },
+  /*
+    No `images` on openGraph or twitter on purpose: app/opengraph-image.tsx and
+    app/twitter-image.tsx are Next file conventions that inject the absolute
+    image URLs here, resolved against metadataBase above.  The card type is
+    stated so the injected image renders as a large preview.
+  */
+  twitter: {
+    card:        "summary_large_image",
+    title:       "Novatip",
+    description: "Tap-to-tip any creator in 2 seconds, cross-border.",
+  },
   icons: {
     /*
       icon.svg   — picked up automatically by Next.js as the app icon

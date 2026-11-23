@@ -112,8 +112,10 @@ After updating, CI will run again and must pass before the PR can merge.
 
 ## Editing the Open Graph image
 
-`src/app/[slug]/opengraph-image.tsx` runs on the edge runtime and is rendered
-by [Satori](https://github.com/vercel/satori), which enforces two rules that
+`src/app/[slug]/opengraph-image.tsx` (the creator card) and
+`src/lib/homeOgCard.tsx` (the home page card, served by
+`src/app/opengraph-image.tsx` and `src/app/twitter-image.tsx`) run on the edge
+runtime and are rendered by [Satori](https://github.com/vercel/satori), which enforces two rules that
 regular JSX/CSS does not:
 
 1. **Any `div` with more than one child must set `display: "flex"`** in its
