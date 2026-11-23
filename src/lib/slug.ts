@@ -15,9 +15,37 @@
 // there too, or the client and server will disagree about what is valid.
 export const SLUG_REGEX = /^[a-z0-9_-]{3,32}$/;
 
+// Mirrors RESERVED_SLUGS in novatip-backend src/modules/creator/creator.service.ts.
+// The backend reports these as unavailable. Any change to the list must be
+// applied there too, or the client will call a reserved slug "Taken" (or
+// worse, offer one the backend will refuse).
+export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
+  "api",
+  "admin",
+  "dashboard",
+  "onboarding",
+  "settings",
+  "login",
+  "logout",
+  "auth",
+  "support",
+  "help",
+  "about",
+  "terms",
+  "privacy",
+  "static",
+  "_next",
+  "novatip",
+]);
+
 /** Returns true when slug matches the format the backend accepts. */
 export function isValidSlug(slug: string): boolean {
   return SLUG_REGEX.test(slug);
+}
+
+/** Returns true when slug is reserved, so the backend will never let it be claimed. */
+export function isReservedSlug(slug: string): boolean {
+  return RESERVED_SLUGS.has(slug);
 }
 
 /**

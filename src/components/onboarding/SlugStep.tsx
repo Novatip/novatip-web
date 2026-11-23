@@ -12,7 +12,7 @@ import { ApiError, creatorApi } from "@/lib/api";
 import { jarIdForSlug, readJar } from "@/lib/jar";
 import { useWallet } from "@/contexts/WalletContext";
 import { getTipUrl } from "@/lib/tipUrl";
-import { isValidSlug } from "@/lib/slug";
+import { isReservedSlug, isValidSlug } from "@/lib/slug";
 
 interface SlugStepProps {
   jwt: string;
@@ -51,12 +51,16 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   const [error, setError] = useState<string | null>(null);
 
   const slugValid = isValidSlug(slug);
+  // A reserved slug is never available, so there is nothing to ask the backend.
+  const slugReserved = slugValid && isReservedSlug(slug);
+  const slugCheckable = slugValid && !slugReserved;
 
   // Debounced availability check
   useEffect(() => {
     setCheckFailed(false);
-    if (!slugValid) {
+    if (!slugCheckable) {
       setAvailable(null);
+      setChecking(false);
       return;
     }
     setAvailable(null);
@@ -84,10 +88,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [slug, slugValid, publicKey, retryNonce]);
+  }, [slug, slugCheckable, publicKey, retryNonce]);
 
   async function handleClaim() {
-    if (!slugValid || checking || !available) return;
+    if (!slugCheckable || checking || !available) return;
     setSaving(true);
     setError(null);
     try {
@@ -154,7 +158,10 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
           {/* Always mounted: a live region only announces changes to a region
               that already exists, so it cannot appear along with its content. */}
           <div role="status" aria-live="polite">
-            {slugValid &&
+            {slugReserved ? (
+              <Badge variant="error">Reserved</Badge>
+            ) : (
+              slugValid &&
               (checking ? (
                 <Badge variant="default">Checking…</Badge>
               ) : available === true ? (
@@ -163,11 +170,12 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
                 <Badge variant="error">{onChain ? "Taken on-chain" : "Taken"}</Badge>
               ) : checkFailed ? (
                 <Badge variant="warning">Couldn’t check</Badge>
-              ) : null)}
+              ) : null)
+            )}
           </div>
         </div>
 
-        {slugValid && !checking && checkFailed && (
+        {slugCheckable && !checking && checkFailed && (
           <p role="alert" className="flex items-center gap-2 text-sm text-danger">
             We couldn’t check whether this slug is available.
             <button
@@ -187,7 +195,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
         type="submit"
         size="lg"
         className="w-full"
-        disabled={!slugValid || checking || !available || saving}
+        disabled={!slugCheckable || checking || !available || saving}
         loading={saving}
       >
         Claim @{slug || "…"}

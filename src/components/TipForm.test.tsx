@@ -17,6 +17,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { TipForm } from "./TipForm";
 import { LAST_TIP_AMOUNT_STORAGE_KEY } from "@/lib/lastTipAmount";
 import { getTipSplitterClient } from "@/lib/wallet";
@@ -101,7 +102,7 @@ describe("TipForm – default state", () => {
     render(<TipForm jarId="jar-1" slug="alice" splits={EVEN_SPLITS} />);
 
     expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: /optional tip message/i })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: /message \(optional\)/i })).toHaveValue("");
     expect(screen.getByText("0/280 bytes")).toBeInTheDocument();
     expect(sendButton()).toBeEnabled();
     expect(screen.queryByText(/no recipients configured/i)).not.toBeInTheDocument();
@@ -168,7 +169,7 @@ describe("TipForm – jar with no recipients", () => {
     expect(await screen.findByText(/no recipients configured/i)).toBeInTheDocument();
     expect(statusWith(/no recipients configured/i)).toBeDefined();
     expect(screen.getByRole("button", { name: "Jar not configured" })).toBeDisabled();
-    expect(screen.getByRole("textbox", { name: /optional tip message/i })).toBeDisabled();
+    expect(screen.getByRole("textbox", { name: /message \(optional\)/i })).toBeDisabled();
   });
 });
 
@@ -244,6 +245,25 @@ describe("TipForm – failed transaction", () => {
   });
 });
 
+// ── Message label ─────────────────────────────────────────────────────────────
+
+describe("TipForm – message label", () => {
+  it("finds the field by its visible label and focuses it when the label is clicked", async () => {
+    mocks.getUsdcBalance.mockResolvedValue(100n * USDC);
+    render(<TipForm jarId="jar-1" slug="alice" splits={EVEN_SPLITS} />);
+    expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
+
+    const textarea = screen.getByLabelText(/message \(optional\)/i);
+    expect(textarea.tagName).toBe("TEXTAREA");
+    expect(textarea).not.toHaveAttribute("aria-label");
+    expect(screen.getByRole("textbox", { name: "Message (optional)" })).toBe(textarea);
+
+    await userEvent.click(screen.getByText("Message", { selector: "label" }));
+
+    expect(textarea).toHaveFocus();
+  });
+});
+
 // ── Message byte counter ──────────────────────────────────────────────────────
 
 describe("TipForm – message byte counter", () => {
@@ -251,7 +271,7 @@ describe("TipForm – message byte counter", () => {
     renderForm({ amount: "2", balance: 100n * USDC });
     expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
 
-    const textarea = screen.getByRole("textbox", { name: /optional tip message/i });
+    const textarea = screen.getByRole("textbox", { name: /message \(optional\)/i });
     expect(textarea).toHaveAccessibleDescription("0/280 bytes");
     expect(textarea).toHaveAttribute("aria-invalid", "false");
     expect(statusWith(/byte limit/i)).toBeUndefined();
@@ -261,7 +281,7 @@ describe("TipForm – message byte counter", () => {
     renderForm({ amount: "2", balance: 100n * USDC });
     expect(await screen.findByText(/Balance: \$100\.00/)).toBeInTheDocument();
 
-    const textarea = screen.getByRole("textbox", { name: /optional tip message/i });
+    const textarea = screen.getByRole("textbox", { name: /message \(optional\)/i });
     fireEvent.change(textarea, { target: { value: "a".repeat(281) } });
 
     expect(textarea).toHaveAttribute("aria-invalid", "true");

@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { SLUG_REGEX, isValidSlug, normalizeSlug } from "./slug";
+import { RESERVED_SLUGS, SLUG_REGEX, isReservedSlug, isValidSlug, normalizeSlug } from "./slug";
 
 describe("isValidSlug – valid slugs", () => {
   it("accepts a minimal 3-character slug", () => {
@@ -118,5 +118,22 @@ describe("normalizeSlug – case folding", () => {
 
   it("produces a slug that isValidSlug accepts for a mixed-case link", () => {
     expect(isValidSlug(normalizeSlug("@Alice"))).toBe(true);
+  });
+});
+
+describe("isReservedSlug", () => {
+  it("flags reserved slugs", () => {
+    expect(isReservedSlug("dashboard")).toBe(true);
+    expect(isReservedSlug("_next")).toBe(true);
+  });
+
+  it("does not flag a normal slug", () => {
+    expect(isReservedSlug("alice")).toBe(false);
+  });
+
+  it("only lists slugs that pass the format check, so each one is worth listing", () => {
+    for (const slug of RESERVED_SLUGS) {
+      expect(isValidSlug(slug)).toBe(true);
+    }
   });
 });
