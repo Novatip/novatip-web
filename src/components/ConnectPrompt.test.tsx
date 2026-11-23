@@ -6,6 +6,7 @@
  * Covers:
  *   - A valid relative redirect is followed once connected
  *   - A protocol-relative redirect (//evil.example) is refused
+ *   - A backslash redirect (/\\evil.example) is refused
  *   - An absolute URL redirect is refused
  *   - No redirect call is made when the redirect param is absent
  *   - Nothing renders once the wallet is already connected
@@ -65,6 +66,16 @@ describe("ConnectPrompt – valid redirect", () => {
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/dashboard/splits"));
   });
 
+  it("passes the pathname, search and hash of a normal path to router.replace", async () => {
+    setParams(`connect=true&redirect=${encodeURIComponent("/dashboard?tab=splits#top")}`);
+    const { rerender } = render(<ConnectPrompt />);
+
+    mocks.wallet.isConnected = true;
+    rerender(<ConnectPrompt />);
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith("/dashboard?tab=splits#top"));
+  });
+
   it("does not redirect while still disconnected", () => {
     setParams("connect=true&redirect=/dashboard");
     render(<ConnectPrompt />);
@@ -88,6 +99,16 @@ describe("ConnectPrompt – valid redirect", () => {
 describe("ConnectPrompt – open-redirect guard", () => {
   it("refuses a protocol-relative redirect (//evil.example)", () => {
     setParams("connect=true&redirect=//evil.example");
+    const { rerender } = render(<ConnectPrompt />);
+
+    mocks.wallet.isConnected = true;
+    rerender(<ConnectPrompt />);
+
+    expect(mocks.replace).not.toHaveBeenCalled();
+  });
+
+  it("refuses a backslash redirect (/\\evil.example)", () => {
+    setParams(`connect=true&redirect=${encodeURIComponent("/\\evil.example")}`);
     const { rerender } = render(<ConnectPrompt />);
 
     mocks.wallet.isConnected = true;

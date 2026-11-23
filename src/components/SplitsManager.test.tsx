@@ -150,6 +150,18 @@ describe("SplitsManager – save", () => {
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
   });
 
+  it("rejects a zero share even when another row makes the total 10 000", () => {
+    const { saveSpy } = setup([
+      { to: VALID_ADDR_1, bps: 10_000 },
+      { to: VALID_ADDR_2, bps: 0 },
+    ]);
+
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Share must be above 0%")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
   it("disables Save when an address is invalid", () => {
     setup([{ to: "INVALID_ADDRESS", bps: 10_000 }]);
     expect(screen.getByRole("button", { name: /save collaborator splits/i })).toBeDisabled();
@@ -310,5 +322,24 @@ describe("SplitsManager – field editing", () => {
     fireEvent.change(bpsInput, { target: { value: "5000" } });
     // 5,000 bps renders as 50% twice — once on the row, once as the total.
     expect(screen.getAllByText("50%")).toHaveLength(2);
+  });
+});
+
+// ── Split equally ─────────────────────────────────────────────────────────────
+
+describe("SplitsManager – split equally", () => {
+  it("fills every row so the total is exactly 10,000", async () => {
+    const user = userEvent.setup();
+    setup([
+      { to: VALID_ADDR_1, bps: 5_000 },
+      { to: VALID_ADDR_2, bps: 0 },
+    ]);
+    await user.click(screen.getByRole("button", { name: /add collaborator/i }));
+    await user.click(screen.getByRole("button", { name: /split equally/i }));
+
+    expect(screen.getByRole("textbox", { name: /recipient 1 basis points/i })).toHaveValue("3334");
+    expect(screen.getByRole("textbox", { name: /recipient 2 basis points/i })).toHaveValue("3333");
+    expect(screen.getByRole("textbox", { name: /recipient 3 basis points/i })).toHaveValue("3333");
+    expect(screen.getByText(/10,000 \/ 10,000 bps/)).toBeInTheDocument();
   });
 });

@@ -12,7 +12,9 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { ApiError, resolverApi, type ResolvedPage } from "@/lib/api";
 import { normalizeSlug } from "@/lib/slug";
+import { getTipUrl } from "@/lib/tipUrl";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { TipForm } from "@/components/TipForm";
 import { Badge } from "@/components/ui/Badge";
 import { QRDownload } from "@/components/QRDownload";
@@ -50,6 +52,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return {
       title,
       description,
+      // /alice and /@alice both resolve to this page; naming the bare form as
+      // canonical stops search engines indexing them as two separate pages.
+      // Built from the normalised slug, so both URL shapes agree. Left out of
+      // openGraph.url on purpose, which stays the backend's tipUrl.
+      alternates: { canonical: getTipUrl(slug) },
       // No `images` here on purpose. opengraph-image.tsx in this directory is a
       // Next file convention: it generates the preview image for this route and
       // injects the absolute URL into both openGraph and twitter automatically.
@@ -153,6 +160,7 @@ export default async function TipPage({ params }: Props) {
 
         </div>
       </main>
+      <Footer />
     </>
   );
 }

@@ -19,8 +19,10 @@ vi.mock("next/image", () => ({
   default: (props: ImgHTMLAttributes<HTMLImageElement>) => <img {...props} alt={props.alt ?? ""} />,
 }));
 
+const mockNavigation = vi.hoisted(() => ({ pathname: "/dashboard" }));
+
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => mockNavigation.pathname,
 }));
 
 const mockWallet = vi.hoisted(() => ({
@@ -55,6 +57,7 @@ vi.mock("@/lib/api", () => ({
 
 afterEach(() => {
   cleanup();
+  mockNavigation.pathname = "/dashboard";
   mockWallet.publicKey = null;
   mockWallet.jwt = null;
   mockWallet.isConnected = false;
@@ -183,5 +186,20 @@ describe("DashboardLayout – navigation aria-current behavior", () => {
         expect(link).not.toHaveAttribute("aria-current");
       });
     }
+  });
+
+  it("marks Webhooks active in both navigation menus on its route", () => {
+    mockNavigation.pathname = "/dashboard/webhooks";
+    render(
+      <DashboardLayout>
+        <div>Test content</div>
+      </DashboardLayout>
+    );
+
+    const currentLinks = screen.getAllByRole("link", { current: "page" });
+    expect(currentLinks).toHaveLength(2);
+    currentLinks.forEach((link) => {
+      expect(link).toHaveAttribute("href", "/dashboard/webhooks");
+    });
   });
 });

@@ -65,6 +65,14 @@ describe("timeAgo", () => {
     expect(timeAgo(threeDaysAgo)).toBe("Jan 12, 2024");
   });
 
+  it("returns an empty string for an empty value, not 'Invalid Date'", () => {
+    expect(timeAgo("")).toBe("");
+  });
+
+  it("returns an empty string for a malformed ISO value, not 'Invalid Date'", () => {
+    expect(timeAgo("not-a-date")).toBe("");
+  });
+
   it("stays on hours right up to the 24h boundary", () => {
     const now = new Date("2024-01-15T12:00:00.000Z").getTime();
     freeze(now);
@@ -85,5 +93,13 @@ describe("formatAbsoluteTime", () => {
   it("renders a formatted local-time string rather than echoing the raw ISO timestamp", () => {
     const iso = "2026-01-05T15:45:12.000Z";
     expect(formatAbsoluteTime(iso)).not.toBe(iso);
+  });
+
+  it("returns an empty string for an empty value, not 'Invalid Date'", () => {
+    expect(formatAbsoluteTime("")).toBe("");
+  });
+
+  it("returns an empty string for a malformed ISO value, not 'Invalid Date'", () => {
+    expect(formatAbsoluteTime("not-a-date")).toBe("");
   });
 });

@@ -8,6 +8,8 @@
  *     restored independently from storage
  *   - teardown on a 401 broadcast, which must clear the key, the JWT and
  *     storage together and explain why
+ *   - following a connect or disconnect made in another tab, which arrives as
+ *     a `storage` event and must only react to the two session keys
  *
  * Both paths are load-bearing: a bug in rehydration silently logs a returning
  * visitor out, and a bug in teardown leaves the dashboard rendering against a
@@ -210,5 +212,130 @@ describe("WalletProvider – session teardown on 401", () => {
     // behind would tell someone who just disconnected that their session
     // expired, which is both wrong and confusing.
     expect(screen.getByTestId("error")).toHaveTextContent("none");
+  });
+});
+
+// ── Cross-tab sync ────────────────────────────────────────────────────────────
+
+/**
+ * What the browser dispatches in *other* tabs when a tab writes localStorage.
+ * jsdom does not fire it for same-document writes, so these tests dispatch it
+ * by hand, the way ThemeToggle's tests do.
+ */
+function storageEvent(key: string | null, newValue: string | null) {
+  act(() => {
+    window.dispatchEvent(new StorageEvent("storage", { key, newValue }));
+  });
+}
+
+describe("WalletProvider – cross-tab sync", () => {
+  it("connects when another tab stores a public key", () => {
+    renderWallet();
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("false");
+
+    storageEvent(PK_KEY, PUBLIC_KEY);
+
+    expect(screen.getByTestId("public-key")).toHaveTextContent(PUBLIC_KEY);
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("true");
+  });
+
+  it("adopts a session when another tab stores a JWT", () => {
+    renderWallet();
+
+    storageEvent(JWT_KEY, VALID_JWT);
+
+    expect(screen.getByTestId("jwt")).toHaveTextContent(VALID_JWT);
+  });
+
+  it("does not adopt a JWT that has already expired", () => {
+    renderWallet();
+
+    storageEvent(JWT_KEY, EXPIRED_JWT);
+
+    expect(screen.getByTestId("jwt")).toHaveTextContent("none");
+  });
+
+  it("disconnects when another tab removes the public key", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    renderWallet();
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("true");
+
+    storageEvent(PK_KEY, null);
+
+    expect(screen.getByTestId("public-key")).toHaveTextContent("none");
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("false");
+  });
+
+  it("drops the session when another tab removes the JWT, keeping the wallet", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    localStorage.setItem(JWT_KEY, VALID_JWT);
+    renderWallet();
+
+    storageEvent(JWT_KEY, null);
+
+    expect(screen.getByTestId("jwt")).toHaveTextContent("none");
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("true");
+  });
+
+  it("disconnects fully when another tab clears all of localStorage", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    localStorage.setItem(JWT_KEY, VALID_JWT);
+    renderWallet();
+
+    storageEvent(null, null);
+
+    expect(screen.getByTestId("public-key")).toHaveTextContent("none");
+    expect(screen.getByTestId("jwt")).toHaveTextContent("none");
+  });
+
+  it("clears a stale error when another tab changes who is connected", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    localStorage.setItem(JWT_KEY, VALID_JWT);
+    renderWallet();
+    act(() => {
+      emitUnauthorized();
+    });
+    expect(screen.getByTestId("error")).toHaveTextContent(EXPIRY_MESSAGE);
+
+    storageEvent(PK_KEY, PUBLIC_KEY);
+
+    expect(screen.getByTestId("error")).toHaveTextContent("none");
+  });
+
+  it("ignores storage events for unrelated keys", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    localStorage.setItem(JWT_KEY, VALID_JWT);
+    renderWallet();
+    act(() => {
+      emitUnauthorized();
+    });
+
+    storageEvent("novatip_theme", "dark");
+    storageEvent("something_else", null);
+
+    // Untouched: still disconnected by the 401, error message still showing.
+    expect(screen.getByTestId("is-connected")).toHaveTextContent("false");
+    expect(screen.getByTestId("error")).toHaveTextContent(EXPIRY_MESSAGE);
+  });
+
+  it("leaves a live session alone for unrelated keys", () => {
+    localStorage.setItem(PK_KEY, PUBLIC_KEY);
+    localStorage.setItem(JWT_KEY, VALID_JWT);
+    renderWallet();
+
+    storageEvent("novatip_theme", "dark");
+    storageEvent("something_else", null);
+
+    expect(screen.getByTestId("public-key")).toHaveTextContent(PUBLIC_KEY);
+    expect(screen.getByTestId("jwt")).toHaveTextContent(VALID_JWT);
+  });
+
+  it("stops listening once the provider unmounts", () => {
+    const remove = vi.spyOn(window, "removeEventListener");
+    const { unmount } = renderWallet();
+
+    unmount();
+
+    expect(remove).toHaveBeenCalledWith("storage", expect.any(Function));
   });
 });

@@ -15,6 +15,5 @@ export function getTipUrl(slug: string): string {
 }
 
 export function getQrPngUrl(slug: string): string {
-  const baseUrl = config.apiUrl.replace(/\/+$/, "");
-  return `${baseUrl}/qr/${encodeURIComponent(slug)}/png`;
+  return `${config.apiUrl}/qr/${encodeURIComponent(slug)}/png`;
 }

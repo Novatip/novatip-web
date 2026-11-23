@@ -24,6 +24,15 @@ import { RecentTips } from "@/components/RecentTips";
 import { TipChart } from "@/components/TipChart";
 import { CollaboratorEarnings } from "@/components/CollaboratorEarnings";
 
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
 interface Totals {
   totalTips:        number;
   totalAmountRaw:   string;
@@ -76,9 +85,8 @@ export default function DashboardPage() {
     );
   }, [jwt, runCreator]);
 
-  const totalUsdc = totals
-    ? formatUsdc(BigInt(totals.totalAmountRaw), 2)
-    : "—";
+  const totalAmount = totals ? parseAmount(totals.totalAmountRaw) : null;
+  const totalUsdc = totalAmount !== null ? formatUsdc(totalAmount, 2) : "—";
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in">

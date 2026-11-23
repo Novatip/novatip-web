@@ -20,6 +20,51 @@ import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
 
+/** Parse a raw amount string safely — returns null when unparseable. */
+function parseAmount(raw: string): bigint | null {
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * One message cell. A message is truncated to a single line by default; the
+ * full text is available as a tooltip (title) and the cell toggles open on
+ * click, Enter or Space — a native button, so touch and keyboard users can
+ * read it too.
+ */
+function MessageCell({ message }: { message: string }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (!message) {
+    return (
+      <span role="cell" className="col-span-4 text-sm text-fg-dim italic">
+        No message
+      </span>
+    );
+  }
+
+  return (
+    <span role="cell" className="col-span-4 min-w-0 text-sm">
+      <button
+        type="button"
+        title={message}
+        aria-expanded={expanded}
+        onClick={() => setExpanded((v) => !v)}
+        className={cn(
+          "block w-full text-left text-fg-muted rounded",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/50",
+          expanded ? "whitespace-pre-wrap break-words" : "truncate",
+        )}
+      >
+        {message}
+      </button>
+    </span>
+  );
+}
+
 interface Tip {
   id:          string;
   fromAddress: string;
@@ -104,11 +149,10 @@ export default function HistoryPage() {
         else setPageError("Couldn't load more tips. Try again.");
       })
       .finally(() => {
-        setLoading(false);
-        setLoadingMore(false);
         if (abortControllerRef.current === controller) {
           abortControllerRef.current = null;
           setLoading(false);
+          setLoadingMore(false);
         }
       });
   }, [jwt]);
@@ -211,16 +255,14 @@ export default function HistoryPage() {
 
                   {/* Amount */}
                   <span role="cell" className="col-span-2 text-right text-sm font-semibold text-accent">
-                    ${formatUsdc(BigInt(tip.amount), 2)}
+                    {(() => {
+                      const amount = parseAmount(tip.amount);
+                      return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
+                    })()}
                   </span>
 
                   {/* Message */}
-                  <span role="cell" className={cn(
-                    "col-span-4 text-sm truncate",
-                    tip.message ? "text-fg-muted" : "text-fg-dim italic",
-                  )}>
-                    {tip.message || "No message"}
-                  </span>
+                  <MessageCell message={tip.message} />
 
                   {/* Time */}
                   <TimeAgo
@@ -251,9 +293,7 @@ export default function HistoryPage() {
 
         {!hasMore && tips.length > 0 && (
           <p className="pt-4 text-center text-xs text-fg-faint">
-            {tips.length >= RECENT_TIPS_MAX_LIMIT
-              ? `Showing all tips (${RECENT_TIPS_MAX_LIMIT} max)`
-              : "That\u2019s all your tips."}
+            That&rsquo;s all your tips.
           </p>
         )}
       </Card>

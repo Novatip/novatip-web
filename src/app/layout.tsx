@@ -4,6 +4,7 @@ import "./globals.css";
 import { WalletProvider } from "@/contexts/WalletContext";
 import { ConnectionProvider } from "@/contexts/ConnectionContext";
 import { ConnectionBanner } from "@/components/ConnectionBanner";
+import { AccountChangeBanner } from "@/components/AccountChangeBanner";
 import { SkipLink } from "@/components/SkipLink";
 import { config } from "@/lib/config";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
@@ -33,6 +34,17 @@ export const metadata: Metadata = {
     description: "Tap-to-tip any creator in 2 seconds, cross-border.",
     type:        "website",
   },
+  /*
+    No `images` on openGraph or twitter on purpose: app/opengraph-image.tsx and
+    app/twitter-image.tsx are Next file conventions that inject the absolute
+    image URLs here, resolved against metadataBase above.  The card type is
+    stated so the injected image renders as a large preview.
+  */
+  twitter: {
+    card:        "summary_large_image",
+    title:       "Novatip",
+    description: "Tap-to-tip any creator in 2 seconds, cross-border.",
+  },
   icons: {
     /*
       icon.svg   — picked up automatically by Next.js as the app icon
@@ -40,13 +52,14 @@ export const metadata: Metadata = {
                                SVG favicons (Firefox, Chrome 80+) use the
                                media-query-aware version that adapts to dark
                                browser chrome.
-      apple-icon.svg — served by Next.js at /apple-icon.svg for iOS home screen.
+      apple-touch-icon.png in public/ — 180×180 PNG for the iOS home screen,
+                               which does not use SVG icons.
     */
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/apple-icon.svg", type: "image/svg+xml" },
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };
@@ -83,6 +96,7 @@ export default function RootLayout({
         <ConnectionProvider>
           <ConnectionBanner />
           <WalletProvider>
+            <AccountChangeBanner />
             {children}
           </WalletProvider>
         </ConnectionProvider>

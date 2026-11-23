@@ -9,6 +9,7 @@
 
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
   // Clamp to 0 so a client clock slightly behind the ledger reads "just now"
   // rather than producing a negative value like "-4s ago".
   const diff = Math.max(0, Math.floor((Date.now() - then) / 1000));
@@ -33,7 +34,9 @@ export function timeAgo(iso: string): string {
  * relative label alone can never give. See components/ui/TimeAgo.tsx.
  */
 export function formatAbsoluteTime(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return "";
+  return then.toLocaleString("en-US", {
     dateStyle: "medium",
     timeStyle: "medium",
   });

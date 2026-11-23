@@ -34,6 +34,22 @@ describe("manifest", () => {
     }
   });
 
+  it("lists 192 and 512 pixel PNG icons", () => {
+    const icons = manifest().icons ?? [];
+    for (const sizes of ["192x192", "512x512"]) {
+      expect(icons).toContainEqual(
+        expect.objectContaining({ sizes, type: "image/png", src: expect.stringMatching(/\.png$/) }),
+      );
+    }
+  });
+
+  it("includes a maskable PNG icon", () => {
+    const icons = manifest().icons ?? [];
+    expect(icons).toContainEqual(
+      expect.objectContaining({ type: "image/png", purpose: "maskable" }),
+    );
+  });
+
   it("starts at the home page", () => {
     expect(manifest().start_url).toBe("/");
   });

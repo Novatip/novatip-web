@@ -178,7 +178,7 @@ describe("normalizeSlug", () => {
   });
 
   it("handles incomplete percent sequences like %E0%A4%A without throwing", () => {
-    expect(normalizeSlug("%E0%A4%A")).toBe("%E0%A4%A");
+    expect(normalizeSlug("%E0%A4%A")).toBe("%e0%a4%a");
   });
 
   it("handles malformed sequences with leading @ by stripping the @ and returning the malformed part", () => {

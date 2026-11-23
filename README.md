@@ -164,6 +164,7 @@ happens before any request is served, not mid-funnel when a supporter presses Ti
 | `NEXT_PUBLIC_SITE_URL` | no | `http://localhost:3000` | Public origin for Open Graph `metadataBase`. Must be an absolute `http(s)` URL. A malformed value fails the build. |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | no | `testnet` | `testnet` or `mainnet`. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | no | `CBIELTK6…QDAMA` | USDC SAC address. Override only for custom local networks. |
+| `NEXT_PUBLIC_DEMO_SLUG` | no | unset | Slug of a claimed creator page that the home page's "See a demo page" button links to. When unset the button is hidden. |
 
 ### NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID
 
@@ -229,7 +230,24 @@ the deployment.
 | `NEXT_PUBLIC_SITE_URL` | **Always.** | Defaults to `http://localhost:3000`, which is wrong for any deployed environment. Set it to the real domain for Production, and to the deployment's own preview URL for Preview deployments — Open Graph images resolve against this. |
 | `NEXT_PUBLIC_API_URL` | **Always.** | Defaults to `http://localhost:3001/api/v1`. Set it to the deployed novatip-backend's URL, or every dashboard panel and the public tip page will fail to load data. |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Only to deploy against Mainnet. | Defaults to `testnet`, which is correct for a staging/preview deployment. Production against real funds needs `mainnet`. |
+| `NEXT_PUBLIC_DEMO_SLUG` | Optional. | Unset hides the home page's "See a demo page" button. Set it to the slug of a creator page that exists on that deployment — the app has no `/demo` route of its own. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | Rarely. | The default is the well-known SAC address for both Testnet and Mainnet. Only override for a custom network (e.g. a private Futurenet node). |
+
+### Security headers
+
+`next.config.mjs` defines a `headers()` function that sends these headers on
+every route:
+
+| Header | Value | Why |
+|---|---|---|
+| `X-Content-Type-Options` | `nosniff` | Stops browsers guessing a response's content type. |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Sends only the origin on cross-origin requests, never full tip-page paths. |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()` | Disables browser features the app does not use. |
+| `X-Frame-Options` | `DENY` | The tip page handles a wallet connection and keeps a session token in `localStorage`, so no other site may frame it. |
+
+A full `Content-Security-Policy` is not set yet and is left for a later
+change. The list is exported as `securityHeaders` from `next.config.mjs` and
+asserted in `src/lib/securityHeaders.test.ts`; update both when changing it.
 
 ### Why `vercel.json` pins the install command
 
@@ -927,7 +945,7 @@ The stub exports the following to match the real SDK's public API:
 | Export | Type | Purpose |
 |--------|------|---------|
 | `usdcToStroops` | function | Converts a USDC string to stroops (`1 USDC = 10_000_000 stroops`) |
-| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` and `<= 1000 USDC`) |
+| `isValidTipAmount` | function | Validates a tip amount in stroops (`> 0` only — the SDK has no upper bound; use `isWithinTipCeiling` from `lib/tipAmount.ts` for the app's 1000 USDC ceiling) |
 | `formatUsdc` | function | Formats stroops as a USDC decimal string |
 | `shortenAddress` | function | Abbreviates a Stellar address to `GABC…WXYZ` format |
 | `validateSplitsBps` | function | Validates that an array of basis points sums to exactly `10_000` |

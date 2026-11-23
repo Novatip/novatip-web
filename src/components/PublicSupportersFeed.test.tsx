@@ -3,11 +3,12 @@
  *
  * Behavioural tests for the public tip page's social-proof section.
  *
- * Three rules matter here, and all three are easy to break silently because
+ * Four rules matter here, and all four are easy to break silently because
  * nothing errors when they regress:
  *
- *   - an empty list renders no card at all, rather than an empty
- *     "Recent Supporters" heading that reads as a broken page
+ *   - an empty list, or a list where no row is usable, renders a short
+ *     "Be the first to tip" card, rather than nothing (a page that just ends)
+ *     or an empty "Recent Supporters" heading that reads as a broken page
  *   - a populated row shows the amount, a shortened address and the message
  *   - a tip with no message omits the quote instead of rendering empty marks
  *
@@ -37,13 +38,47 @@ function makeTip(overrides: Partial<PublicTip> = {}): PublicTip {
 afterEach(cleanup);
 
 describe("PublicSupportersFeed – empty list", () => {
-  it("renders nothing at all when there are no tips", () => {
+  it("renders the empty card when there are no tips", () => {
     const { container } = render(<PublicSupportersFeed tips={[]} />);
 
-    // Not a card with an empty state: an empty "Recent Supporters" section
-    // is evidence of a bug to a visitor, not evidence of no support.
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByText("Be the first to tip")).toBeInTheDocument();
+    expect(container).not.toBeEmptyDOMElement();
+
+    // The empty card is an invitation, not an empty "Recent Supporters"
+    // section: no heading, no list.
     expect(screen.queryByText("Recent Supporters")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+  });
+
+  it("renders the empty card when every row is unusable", () => {
+    render(
+      <PublicSupportersFeed
+        tips={[
+          makeTip({ id: "bad-1", amount: "not-a-number" }),
+          makeTip({ id: "bad-2", amount: "1.5" }),
+          makeTip({ id: "bad-3", amount: "5 USDC" }),
+        ]}
+      />,
+    );
+
+    expect(screen.getByText("Be the first to tip")).toBeInTheDocument();
+    expect(screen.queryByText("Recent Supporters")).not.toBeInTheDocument();
+    expect(screen.queryByRole("list")).not.toBeInTheDocument();
+    expect(screen.queryAllByRole("listitem")).toHaveLength(0);
+  });
+
+  it("does not render the empty card when at least one row is usable", () => {
+    render(
+      <PublicSupportersFeed
+        tips={[
+          makeTip({ id: "bad", amount: "not-a-number" }),
+          makeTip({ id: "good" }),
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText("Be the first to tip")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")).toHaveLength(1);
   });
 });
 

@@ -191,6 +191,23 @@ describe("SplitBreakdown", () => {
     mockConfig.stellar.network = "testnet";
   });
 
+  it("renders addresses as plain text on a local network (no explorer page)", () => {
+    mockConfig.stellar.network = "local";
+
+    render(
+      <SplitBreakdown
+        splits={[
+          { to: CREATOR, bps: 10000 },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
+
+    // Reset for other tests
+    mockConfig.stellar.network = "testnet";
+  });
+
   it("has a copy control for each address", () => {
     render(
       <SplitBreakdown

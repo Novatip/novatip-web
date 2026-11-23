@@ -28,16 +28,21 @@ export function isValidSlug(slug: string): boolean {
  * when the visitor typed the "@", so it is decoded before the prefix is
  * stripped. An "@" anywhere other than the start is left alone.
  *
+ * Slugs are lowercase only (see SLUG_REGEX), so the result is lowercased too:
+ * a link typed or autocorrected as `/Alice` resolves as `alice` instead of
+ * sending `Alice` to the backend.
+ *
  * Malformed percent sequences (e.g., %zz, %E0%A4%A) throw URIError from
  * decodeURIComponent. We catch those and treat the slug as-is, which lets
- * a visitor's mistyped link land on the 404 page instead of an error.
+ * a visitor's mistyped link land on the 404 page instead of an error. The
+ * fallback is lowercased as well, so the two paths agree on case.
  */
 export function normalizeSlug(slug: string): string {
   try {
-    return decodeURIComponent(slug).replace(/^@/, "");
+    return decodeURIComponent(slug).replace(/^@/, "").toLowerCase();
   } catch (err) {
     if (err instanceof URIError) {
-      return slug.replace(/^(?:@|%40)/, "");
+      return slug.replace(/^(?:@|%40)/, "").toLowerCase();
     }
     throw err;
   }

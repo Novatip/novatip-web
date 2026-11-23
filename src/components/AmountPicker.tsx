@@ -10,9 +10,7 @@
  * <AmountPicker value={amount} onChange={setAmount} />
  */
 
-import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { Input } from "@/components/ui/Input";
 import { formatUsdc, isValidTipAmount, usdcToStroops } from "@novatip/sdk";
 import { MAX_CUSTOM_TIP_USDC, isWithinTipCeiling } from "@/lib/tipAmount";
 
@@ -36,12 +34,10 @@ export function AmountPicker({
   presets = DEFAULT_AMOUNT_PRESETS,
   balance = null,
 }: AmountPickerProps) {
-  const [isCustom, setIsCustom] = useState(false);
-
   const isPreset = presets.includes(value);
+  const isCustom = value !== "" && !isPreset;
 
   function handlePreset(preset: string) {
-    setIsCustom(false);
     onChange(preset);
   }
 
@@ -50,8 +46,7 @@ export function AmountPicker({
     // If they tab through the custom field (or re-focus it while it is
     // already active) the existing value should be preserved so the tip
     // button stays enabled and the amount summary does not disappear.
-    if (!isCustom) {
-      setIsCustom(true);
+    if (isPreset) {
       onChange("");
     }
   }
@@ -120,11 +115,11 @@ export function AmountPicker({
               "rounded-xl py-3 text-sm font-semibold transition-all duration-150",
               "border focus:outline-none focus:ring-2 focus:ring-brand-500/50",
               "disabled:opacity-50 disabled:cursor-not-allowed",
-              !isCustom && value === preset
+              value === preset
                 ? "bg-brand-500 border-brand-500 text-white shadow-lg shadow-brand-500/30"
                 : "bg-surface-strong border-hairline text-fg-muted hover:bg-hairline hover:text-fg",
             )}
-            aria-pressed={!isCustom && value === preset}
+            aria-pressed={value === preset}
             aria-label={`Tip $${preset} USDC`}
           >
             ${preset}

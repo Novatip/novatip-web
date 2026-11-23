@@ -1,6 +1,29 @@
+/**
+ * Security headers sent on every route.
+ *
+ * The tip page handles a wallet connection and keeps a session token in
+ * localStorage, so other sites must not be able to frame it. A full
+ * Content-Security-Policy is intentionally left for a later change.
+ */
+export const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value:
+      "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()",
+  },
+  { key: "X-Frame-Options", value: "DENY" },
+];
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // Don't advertise the framework to scanners via X-Powered-By; it has no benefit.
+  poweredByHeader: false,
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
   images: {
     // Every <Image> in the app passes `unoptimized`, so /_next/image is never
     // called by the pages themselves. remotePatterns still gates direct requests

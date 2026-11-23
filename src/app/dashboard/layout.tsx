@@ -189,8 +189,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <ThemeToggle />
         </div>
         {isSigningIn ? (
-          <div className="flex flex-col items-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent" />
+          <div role="status" className="flex flex-col items-center gap-3">
+            <div aria-hidden="true" className="h-8 w-8 animate-spin rounded-full border-2 border-hairline border-t-accent" />
             <p className="text-fg-subtle text-sm">Signing you in…</p>
           </div>
         ) : (

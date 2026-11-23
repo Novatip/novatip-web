@@ -1,9 +1,15 @@
 import { Suspense } from "react";
 import { Header } from "@/components/Header";
+import { Footer } from "@/components/Footer";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { ConnectPrompt } from "@/components/ConnectPrompt";
 
 export default function HomePage() {
+  // Literal member access so Next inlines it at build time. Unset hides the
+  // demo button: there is no /demo route, so the link only works when a
+  // creator owns that slug.
+  const demoSlug = process.env.NEXT_PUBLIC_DEMO_SLUG?.trim();
+
   return (
     <>
       <Header />
@@ -21,9 +27,14 @@ export default function HomePage() {
         </p>
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <LinkButton href="/onboarding" size="lg">Create your tip jar</LinkButton>
-          <LinkButton href="/demo" size="lg" variant="secondary">See a demo page</LinkButton>
+          {demoSlug && (
+            <LinkButton href={`/${encodeURIComponent(demoSlug)}`} size="lg" variant="secondary">
+              See a demo page
+            </LinkButton>
+          )}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

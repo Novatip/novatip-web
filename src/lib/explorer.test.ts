@@ -7,6 +7,7 @@
  *   - Testnet addresses link to the testnet explorer
  *   - Mainnet addresses link to the public (mainnet) explorer
  *   - The URL structure matches stellar.expert's expected format
+ *   - Local networks have no explorer page, so no URL is returned
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -42,9 +43,8 @@ describe("getExplorerUrl", () => {
     expect(url).toBe(`https://stellar.expert/explorer/public/account/${SAMPLE_ADDRESS}`);
   });
 
-  it("builds a local URL when network is local", () => {
+  it("returns null when network is local (no explorer page exists)", () => {
     mockConfig.stellar.network = "local";
-    const url = getExplorerUrl(SAMPLE_ADDRESS);
-    expect(url).toBe(`https://stellar.expert/explorer/local/account/${SAMPLE_ADDRESS}`);
+    expect(getExplorerUrl(SAMPLE_ADDRESS)).toBeNull();
   });
 });
