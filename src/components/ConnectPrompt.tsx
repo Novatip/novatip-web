@@ -30,10 +30,18 @@ export function ConnectPrompt() {
 
   useEffect(() => {
     if (!shouldConnect || !wallet.isConnected) return;
-    // Only ever follow a same-site path, never an absolute/external URL.
-    if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
-      router.replace(redirectTo);
+    if (!redirectTo || !redirectTo.startsWith("/")) return;
+    // Only ever follow a same-site path. Resolve it the way the browser will
+    // (which reads "\" as "/") and require the origin to be unchanged, so
+    // "//host", "/\host" and absolute URLs are all refused.
+    let target: URL;
+    try {
+      target = new URL(redirectTo, window.location.origin);
+    } catch {
+      return;
     }
+    if (target.origin !== window.location.origin) return;
+    router.replace(`${target.pathname}${target.search}${target.hash}`);
   }, [shouldConnect, wallet.isConnected, redirectTo, router]);
 
   if (!shouldConnect || wallet.isConnected) return null;
