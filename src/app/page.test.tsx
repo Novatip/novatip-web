@@ -14,7 +14,8 @@
  *   - The Header is rendered
  *   - The ConnectPrompt is rendered inside Suspense
  *   - "Create your tip jar" link points to /onboarding
- *   - "See a demo page" link points to /demo
+ *   - "See a demo page" link points to NEXT_PUBLIC_DEMO_SLUG, and is hidden
+ *     when the variable is unset
  *   - Both CTA links render as single interactive elements (LinkButton)
  *   - The page has accessible main content region
  *   - The heading "Tip any creator in 2 seconds" is displayed
@@ -22,7 +23,7 @@
  *   - The project-links footer is rendered after the main content
  */
 
-import { describe, it, expect, afterEach, vi } from "vitest";
+import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import HomePage from "./page";
 
@@ -43,7 +44,14 @@ vi.mock("next/image", () => ({
   ),
 }));
 
-afterEach(cleanup);
+beforeEach(() => {
+  vi.stubEnv("NEXT_PUBLIC_DEMO_SLUG", "demo");
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllEnvs();
+});
 
 describe("HomePage (/)", () => {
   it("renders without error", () => {
@@ -127,11 +135,30 @@ describe("HomePage (/)", () => {
     expect(createLink).toHaveAttribute("href", "/onboarding");
   });
 
-  it("renders 'See a demo page' as a link to /demo", () => {
+  it("links 'See a demo page' to NEXT_PUBLIC_DEMO_SLUG", () => {
+    vi.stubEnv("NEXT_PUBLIC_DEMO_SLUG", "ada-lovelace");
     render(<HomePage />);
 
     const demoLink = screen.getByRole("link", { name: /see a demo page/i });
-    expect(demoLink).toHaveAttribute("href", "/demo");
+    expect(demoLink).toHaveAttribute("href", "/ada-lovelace");
+  });
+
+  it.each(["", "   "])(
+    "hides 'See a demo page' when NEXT_PUBLIC_DEMO_SLUG is %j",
+    (value) => {
+      vi.stubEnv("NEXT_PUBLIC_DEMO_SLUG", value);
+      render(<HomePage />);
+
+      expect(screen.queryByRole("link", { name: /see a demo page/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /create your tip jar/i })).toBeInTheDocument();
+    },
+  );
+
+  it("hides 'See a demo page' when NEXT_PUBLIC_DEMO_SLUG is not defined", () => {
+    delete process.env.NEXT_PUBLIC_DEMO_SLUG;
+    render(<HomePage />);
+
+    expect(screen.queryByRole("link", { name: /see a demo page/i })).not.toBeInTheDocument();
   });
 
   it("renders CTA links as single anchor elements (not button inside link)", () => {

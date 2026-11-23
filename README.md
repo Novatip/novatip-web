@@ -164,6 +164,7 @@ happens before any request is served, not mid-funnel when a supporter presses Ti
 | `NEXT_PUBLIC_SITE_URL` | no | `http://localhost:3000` | Public origin for Open Graph `metadataBase`. Must be an absolute `http(s)` URL. A malformed value fails the build. |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | no | `testnet` | `testnet` or `mainnet`. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | no | `CBIELTK6…QDAMA` | USDC SAC address. Override only for custom local networks. |
+| `NEXT_PUBLIC_DEMO_SLUG` | no | unset | Slug of a claimed creator page that the home page's "See a demo page" button links to. When unset the button is hidden. |
 
 ### NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID
 
@@ -229,6 +230,7 @@ the deployment.
 | `NEXT_PUBLIC_SITE_URL` | **Always.** | Defaults to `http://localhost:3000`, which is wrong for any deployed environment. Set it to the real domain for Production, and to the deployment's own preview URL for Preview deployments — Open Graph images resolve against this. |
 | `NEXT_PUBLIC_API_URL` | **Always.** | Defaults to `http://localhost:3001/api/v1`. Set it to the deployed novatip-backend's URL, or every dashboard panel and the public tip page will fail to load data. |
 | `NEXT_PUBLIC_STELLAR_NETWORK` | Only to deploy against Mainnet. | Defaults to `testnet`, which is correct for a staging/preview deployment. Production against real funds needs `mainnet`. |
+| `NEXT_PUBLIC_DEMO_SLUG` | Optional. | Unset hides the home page's "See a demo page" button. Set it to the slug of a creator page that exists on that deployment — the app has no `/demo` route of its own. |
 | `NEXT_PUBLIC_USDC_CONTRACT_ID` | Rarely. | The default is the well-known SAC address for both Testnet and Mainnet. Only override for a custom network (e.g. a private Futurenet node). |
 
 ### Security headers

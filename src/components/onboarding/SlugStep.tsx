@@ -46,6 +46,8 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
   const [available, setAvailable] = useState<boolean | null>(null);
   const [onChain,   setOnChain]   = useState(false);
   const [checking,  setChecking]  = useState(false);
+  const [checkFailed, setCheckFailed] = useState(false);
+  const [retryNonce,  setRetryNonce]  = useState(0);
   const [saving,    setSaving]    = useState(false);
   const [error,     setError]     = useState<string | null>(null);
 
@@ -53,6 +55,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
 
   // Debounced availability check
   useEffect(() => {
+    setCheckFailed(false);
     if (!slugValid) { setAvailable(null); return; }
     setAvailable(null);
     setChecking(true);
@@ -67,6 +70,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
         .catch((e: unknown) => {
           if ((e instanceof ApiError && e.code === "ABORTED") || controller.signal.aborted) return;
           setAvailable(null);
+          setCheckFailed(true);
         })
         .finally(() => {
           if (!controller.signal.aborted) {
@@ -78,7 +82,7 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [slug, slugValid, publicKey]);
+  }, [slug, slugValid, publicKey, retryNonce]);
 
   async function handleClaim() {
     if (!slugValid || checking || !available) return;
@@ -150,10 +154,25 @@ export function SlugStep({ jwt, onNext }: SlugStepProps) {
                 ? <Badge variant="success">Available ✓</Badge>
                 : available === false
                 ? <Badge variant="error">{onChain ? "Taken on-chain" : "Taken"}</Badge>
+                : checkFailed
+                ? <Badge variant="warning">Couldn’t check</Badge>
                 : null
             )}
           </div>
         </div>
+
+        {slugValid && !checking && checkFailed && (
+          <p role="alert" className="flex items-center gap-2 text-sm text-danger">
+            We couldn’t check whether this slug is available.
+            <button
+              type="button"
+              onClick={() => setRetryNonce((n) => n + 1)}
+              className="underline underline-offset-2 hover:no-underline"
+            >
+              Try again
+            </button>
+          </p>
+        )}
       </div>
 
       {error && <p className="text-sm text-danger">{error}</p>}

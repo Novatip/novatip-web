@@ -360,6 +360,20 @@ export const resolverApi = {
 /** The largest `limit` the backend accepts on /analytics/recent. */
 export const RECENT_TIPS_MAX_LIMIT = 100;
 
+/** Bounds the backend accepts on /analytics/timeseries `days`. */
+export const TIMESERIES_MIN_DAYS = 1;
+export const TIMESERIES_MAX_DAYS = 365;
+
+/** Bounds the backend accepts on /analytics/top-supporters `limit`. */
+export const TOP_SUPPORTERS_MIN_LIMIT = 1;
+export const TOP_SUPPORTERS_MAX_LIMIT = 100;
+
+/** Clamp to [min, max]; a non-finite value falls back to `min`. */
+function clampInt(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(Math.trunc(value), min), max);
+}
+
 export const analyticsApi = {
   totals: (jwt: string, options?: RequestOptions) =>
     request<{
@@ -370,14 +384,14 @@ export const analyticsApi = {
 
   timeSeries: (jwt: string, days = 30, options?: RequestOptions) =>
     request<{ series: Array<{ date: string; tipCount: number; amountRaw: string }> }>(
-      `/analytics/timeseries?days=${days}`,
+      `/analytics/timeseries?days=${clampInt(days, TIMESERIES_MIN_DAYS, TIMESERIES_MAX_DAYS)}`,
       options,
       jwt,
     ),
 
   topSupporters: (jwt: string, limit = 10, options?: RequestOptions) =>
     request<{ supporters: Array<{ fromAddress: string; tipCount: number; totalAmountRaw: string }> }>(
-      `/analytics/top-supporters?limit=${limit}`,
+      `/analytics/top-supporters?limit=${clampInt(limit, TOP_SUPPORTERS_MIN_LIMIT, TOP_SUPPORTERS_MAX_LIMIT)}`,
       options,
       jwt,
     ),
