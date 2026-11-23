@@ -16,6 +16,8 @@
  *   - A share that genuinely fails falls through to the clipboard
  *   - Without either API the button reports the failure and offers the message
  *   - A working clipboard confirms the copy
+ *   - The copy button's accessible name is its visible text in every state,
+ *     and the result is announced through the status region
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
@@ -69,7 +71,9 @@ function expectedMessage() {
 /** Only rendered once the share sheet has been detected after mount. */
 const findShareButton = () => screen.findByRole("button", { name: `Share @${SLUG}'s tip page` });
 
-const copyButton = () => screen.getByRole("button", { name: "Copy link to clipboard" });
+/** Named by its visible text, which changes with the copy state. */
+const copyButton = () =>
+  screen.getByRole("button", { name: /copy link|link copied|couldn't copy/i });
 
 function renderSuccess() {
   return render(<TipSuccess amount={AMOUNT} slug={SLUG} onReset={vi.fn()} />);
@@ -184,5 +188,61 @@ describe("TipSuccess – clipboard fallback", () => {
 
     await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
     expect(copyButton()).toHaveTextContent("✓ Link copied");
+  });
+});
+
+// ── Accessible names ──────────────────────────────────────────────────────────
+
+describe("TipSuccess – copy button accessible name", () => {
+  it("is the visible text before, after and when a copy fails", async () => {
+    const writeText = grantClipboard();
+    renderSuccess();
+
+    expect(copyButton()).toHaveAccessibleName("Copy link 🔗");
+    expect(copyButton()).not.toHaveAttribute("aria-label");
+
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("✓ Link copied"));
+    expect(writeText).toHaveBeenCalled();
+
+    cleanup();
+    blockEverything();
+    renderSuccess();
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("Couldn't copy"));
+  });
+
+  it("matches the visible text in the layout that also offers sharing", async () => {
+    defineOnNavigator("share", vi.fn(async () => {}));
+    grantClipboard();
+    renderSuccess();
+    await findShareButton();
+
+    expect(copyButton()).toHaveAccessibleName("Copy link");
+
+    await userEvent.click(copyButton());
+    await waitFor(() => expect(copyButton()).toHaveAccessibleName("✓ Link copied"));
+  });
+
+  it("announces the result through the polite status region", async () => {
+    grantClipboard();
+    renderSuccess();
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).not.toHaveTextContent(/copied to the clipboard/i);
+
+    await userEvent.click(copyButton());
+
+    await waitFor(() => expect(status).toHaveTextContent(/link copied to the clipboard/i));
+  });
+
+  it("announces a failed copy through the status region", async () => {
+    renderSuccess();
+
+    await userEvent.click(copyButton());
+
+    await waitFor(() =>
+      expect(screen.getByRole("status")).toHaveTextContent(/couldn't copy the link/i),
+    );
   });
 });

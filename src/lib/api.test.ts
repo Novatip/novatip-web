@@ -13,13 +13,15 @@
  *   - analyticsApi.timeSeries / topSupporters clamp their query values
  *   - request() retries a body-less GET once after a network failure or a
  *     502/503/504, and never retries anything else
+ *   - request() times out with ApiError(408, "TIMEOUT") and reports a connection
+ *     failure, honours a custom timeout, and stays silent on a caller abort
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ApiError, analyticsApi, authApi, creatorApi } from "./api";
 import { onUnauthorized } from "./authEvents";
-import { onConnectionFailure } from "./connectionEvents";
-import { RETRY_DELAY_MS } from "./config";
+import { onConnectionFailure, onConnectionSuccess } from "./connectionEvents";
+import { DEFAULT_REQUEST_TIMEOUT_MS, RETRY_DELAY_MS } from "./config";
 
 // ── ApiError ──────────────────────────────────────────────────────────────────
 
@@ -464,6 +466,121 @@ describe("request() retry", () => {
 
     expect(await pending).toMatchObject({ code: "ABORTED" });
     expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Request timeout ───────────────────────────────────────────────────────────
+
+/**
+ * A request that outlives its timeout is the backend being unreachable, so it
+ * throws TIMEOUT and tells the connection banner. A caller who aborts has said
+ * nothing about the backend, so that path stays silent.
+ *
+ * fetch is mocked to never settle on its own — it only rejects once the signal
+ * it was handed aborts, as the real one does. AbortSignal.timeout is routed
+ * through setTimeout so the fake clock drives it.
+ */
+describe("request() timeout", () => {
+  let timeoutSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+
+    timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockImplementation((ms: number) => {
+      const controller = new AbortController();
+      setTimeout(() => {
+        controller.abort(new DOMException("The operation timed out", "TimeoutError"));
+      }, ms);
+      return controller.signal;
+    });
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init.signal?.addEventListener("abort", () => {
+              reject(Object.assign(new Error("The operation was aborted"), { name: "AbortError" }));
+            });
+          }),
+      ),
+    );
+  });
+
+  afterEach(() => {
+    timeoutSpy.mockRestore();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it("throws ApiError(408, TIMEOUT) and reports a connection failure", async () => {
+    const down = vi.fn();
+    const off = onConnectionFailure(down);
+
+    const pending = creatorApi.getBySlug("alice").catch((error: unknown) => error);
+
+    await vi.advanceTimersByTimeAsync(DEFAULT_REQUEST_TIMEOUT_MS - 1);
+    expect(down).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(1);
+    const err = await pending;
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 408, code: "TIMEOUT" });
+    expect(down).toHaveBeenCalledTimes(1);
+    expect(timeoutSpy).toHaveBeenCalledWith(DEFAULT_REQUEST_TIMEOUT_MS);
+    // A timeout is not retried.
+    expect(fetch).toHaveBeenCalledTimes(1);
+    off();
+  });
+
+  it("throws ABORTED and emits nothing when the caller aborts", async () => {
+    const down = vi.fn();
+    const up = vi.fn();
+    const offDown = onConnectionFailure(down);
+    const offUp = onConnectionSuccess(up);
+    const controller = new AbortController();
+
+    const pending = creatorApi
+      .getBySlug("alice", { signal: controller.signal })
+      .catch((error: unknown) => error);
+
+    await vi.advanceTimersByTimeAsync(1000);
+    controller.abort();
+    const err = await pending;
+
+    expect(err).toBeInstanceOf(ApiError);
+    expect(err).toMatchObject({ status: 0, code: "ABORTED" });
+    expect(down).not.toHaveBeenCalled();
+    expect(up).not.toHaveBeenCalled();
+    offDown();
+    offUp();
+  });
+
+  it("honours a custom timeout", async () => {
+    const down = vi.fn();
+    const off = onConnectionFailure(down);
+    const customTimeout = 2_000;
+    expect(customTimeout).toBeLessThan(DEFAULT_REQUEST_TIMEOUT_MS);
+
+    let settled = false;
+    const pending = creatorApi
+      .getBySlug("alice", { timeout: customTimeout })
+      .catch((error: unknown) => error)
+      .finally(() => {
+        settled = true;
+      });
+
+    await vi.advanceTimersByTimeAsync(customTimeout - 1);
+    expect(settled).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    const err = await pending;
+
+    expect(timeoutSpy).toHaveBeenCalledWith(customTimeout);
+    expect(err).toMatchObject({ status: 408, code: "TIMEOUT" });
+    expect(down).toHaveBeenCalledTimes(1);
+    off();
   });
 });
 

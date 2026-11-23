@@ -60,7 +60,6 @@ function TipLinkCopy({ slug }: { slug: string }) {
         <button
           type="button"
           onClick={() => copy(tipUrl)}
-          aria-label={copied ? "Link copied" : "Copy your tip link"}
           className={cn(
             "shrink-0 text-xs font-medium transition-colors",
             failed
@@ -89,9 +88,12 @@ function TipLinkCopy({ slug }: { slug: string }) {
               </>
             )}
           </svg>
+          {/* The visible text is the accessible name. Only the failed state
+              needs extra context, since "Failed" alone says nothing. */}
           <span className="sr-only sm:not-sr-only">
             {failed ? "Failed" : copied ? "Copied!" : "Copy link"}
           </span>
+          {failed && <span className="sr-only"> to copy link</span>}
         </button>
       </div>
 
