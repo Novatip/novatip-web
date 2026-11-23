@@ -33,6 +33,23 @@ const RESULT_MESSAGES: Record<string, string> = {
   txNoAccount: "the source account does not exist on this network (txNO_ACCOUNT).",
   txTooLate: "the transaction's time bounds had already passed (txTOO_LATE).",
   txFailed: "one of the operations failed (txFAILED).",
+  txTooEarly:
+    "the transaction's time bounds have not started yet (txTOO_EARLY). Wait a moment " +
+    "and try again, and check that your device clock is correct.",
+  txMalformed:
+    "the transaction was built incorrectly and the network could not read it " +
+    "(txMALFORMED). Reload the page and try again.",
+  txMissingOperation:
+    "the transaction contained no operations (txMISSING_OPERATION). Reload the page " +
+    "and try again.",
+  txNotSupported:
+    "the network does not support this kind of transaction (txNOT_SUPPORTED).",
+  txInternalError:
+    "the network hit an internal error while processing the transaction " +
+    "(txINTERNAL_ERROR). Try again shortly.",
+  txSorobanInvalid:
+    "the smart contract call was not valid for the network (txSOROBAN_INVALID). " +
+    "Reload the page and try again.",
 };
 
 /** Pull a base64 TransactionResult out of an error message, if there is one. */

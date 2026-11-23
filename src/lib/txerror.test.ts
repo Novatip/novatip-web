@@ -10,6 +10,8 @@ import { describe, it, expect } from "vitest";
 import { decodeResultCode, describeSubmissionError } from "./txerror";
 
 const BAD_AUTH_XDR = "AAAAAAAA+QT////6AAAAAA==";
+// Same TransactionResult layout with result code -4 (txMISSING_OPERATION).
+const MISSING_OPERATION_XDR = "AAAAAAAAAAD////8AAAAAA==";
 
 describe("decodeResultCode", () => {
   it("decodes the reported failure as txBAD_AUTH", () => {
@@ -28,6 +30,14 @@ describe("describeSubmissionError", () => {
         Promise.reject(new Error(`Transaction submission failed: ${BAD_AUTH_XDR}`)),
       ),
     ).rejects.toThrow(/different account|Switch Freighter/);
+  });
+
+  it("explains a newly covered code and keeps its documented name", async () => {
+    await expect(
+      describeSubmissionError(
+        Promise.reject(new Error(`Transaction submission failed: ${MISSING_OPERATION_XDR}`)),
+      ),
+    ).rejects.toThrow(/no operations.*txMISSING_OPERATION/);
   });
 
   it("leaves unrelated errors alone", async () => {
