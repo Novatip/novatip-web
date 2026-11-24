@@ -489,6 +489,13 @@ export const webhookApi = {
       jwt,
     ),
 
+  ping: (jwt: string, id: string, options?: RequestOptions) =>
+    request<{ delivery: { success: boolean; statusCode: number | null; response: string | null } }>(
+      `/webhooks/${encodeURIComponent(id)}/ping`,
+      { ...options, method: "POST" },
+      jwt,
+    ),
+
   rotateSecret: (jwt: string, id: string, options?: RequestOptions) =>
     request<{ secret: string }>(
       `/webhooks/${encodeURIComponent(id)}/secret`,
