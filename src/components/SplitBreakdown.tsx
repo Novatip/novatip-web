@@ -31,7 +31,7 @@ export function SplitBreakdown({ splits }: SplitBreakdownProps) {
       </CardHeader>
       <ul className="space-y-3" aria-label="Split breakdown">
         {splits.map((split, i) => {
-          const isYou = publicKey && split.to === publicKey;
+          const isYou = publicKey !== null && split.to === publicKey;
           return (
             <SplitRow key={`${split.to}-${i}`} address={split.to} bps={split.bps} isYou={isYou} />
           );
