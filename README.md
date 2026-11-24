@@ -420,7 +420,7 @@ Endpoints marked **[NOT IMPLEMENTED]** do not yet exist on the backend.
 | `/dashboard/qr` | `GET /auth/me` | Fetches slug to generate QR code client-side |
 | `/dashboard/settings` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me`<br>`PATCH /creators/me/slug`<br>`GET /creators/check/:slug` | Profile editing and slug rename |
 | `/dashboard/splits` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me/splits` | Collaborator split configuration |
-| `/dashboard/webhooks` | `GET /webhooks` **[NOT IMPLEMENTED]**<br>`POST /webhooks` **[NOT IMPLEMENTED]**<br>`DELETE /webhooks/:id` **[NOT IMPLEMENTED]**<br>`POST /webhooks/:id/ping` **[NOT IMPLEMENTED]** | Webhook management UI is built but backend routes do not exist yet |
+| `/dashboard/webhooks` | `GET /webhooks`<br>`POST /webhooks`<br>`DELETE /webhooks/:id`<br>`POST /webhooks/:id/ping` | Webhook management and test pings use the backend routes. |
 
 ### Authentication flow
 

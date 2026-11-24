@@ -19,6 +19,7 @@ import { WalletConnectButton } from "@/components/WalletConnectButton";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import {
+  assertActiveAccount,
   getTipSplitterClient,
   makeSignTransaction,
   usdcToStroops,
@@ -26,7 +27,7 @@ import {
 import { getUsdcBalance } from "@/lib/balance";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
-import { isLargeTip } from "@/lib/tipAmount";
+import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 import { DEFAULT_TIP_AMOUNT, getLastTipAmount, storeLastTipAmount } from "@/lib/lastTipAmount";
 import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";
@@ -96,7 +97,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
       return BigInt(0);
     }
   })();
-  const amountValid = isValidTipAmount(stroops);
+  const amountValid = isValidTipAmount(stroops) && isWithinTipCeiling(amount);
   const insufficientBalance = balance !== null && amountValid && stroops > balance;
   const trimmedMessage = message.trim();
 
@@ -133,6 +134,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     setError(null);
 
     try {
+      await assertActiveAccount(publicKey);
       const client = getTipSplitterClient();
       await describeSubmissionError(
         client.tip(

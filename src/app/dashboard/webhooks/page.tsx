@@ -308,10 +308,10 @@ export default function WebhooksPage() {
       setPingResults((prev) => ({
         ...prev,
         [id]: {
-          success: r.success,
-          message: r.success
-            ? `Success (${r.statusCode ?? 200})`
-            : r.error || "Failed to deliver test ping",
+          success: r.delivery.success,
+          message: r.delivery.success
+            ? `Success (${r.delivery.statusCode ?? 200})`
+            : r.delivery.response || "Failed to deliver test ping",
         },
       }));
     } catch (e: unknown) {
