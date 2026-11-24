@@ -310,7 +310,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
             <Button
               size="lg"
               className="w-full"
-              disabled={!canSubmit}
+              disabled={step !== "error" && !canSubmit}
               loading={step === "signing"}
               onClick={step === "error" ? handleRetry : handleCtaClick}
               aria-label={
@@ -318,6 +318,8 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                   ? "Jar not configured"
                   : step === "signing"
                     ? "Sending tip…"
+                    : step === "error"
+                      ? "Retry"
                     : `Send $${amount} USDC tip`
               }
             >
