@@ -27,7 +27,7 @@ import {
 import { getUsdcBalance } from "@/lib/balance";
 import { isValidTipAmount } from "@novatip/sdk";
 import { tipEvents } from "@/lib/tipEvents";
-import { isLargeTip } from "@/lib/tipAmount";
+import { isLargeTip, isWithinTipCeiling } from "@/lib/tipAmount";
 import { DEFAULT_TIP_AMOUNT, getLastTipAmount, storeLastTipAmount } from "@/lib/lastTipAmount";
 import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";
@@ -95,7 +95,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
       return BigInt(0);
     }
   })();
-  const amountValid = isValidTipAmount(stroops);
+  const amountValid = isValidTipAmount(stroops) && isWithinTipCeiling(amount);
   const insufficientBalance = balance !== null && amountValid && stroops > balance;
   const trimmedMessage = message.trim();
 
