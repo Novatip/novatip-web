@@ -57,7 +57,9 @@ export default function QRPage() {
         </div>
       )}
 
-      {!loading && !error && slug && <QRDownload slug={slug} pngUrl={pngUrl} />}
+      {!loading && !error && slug && (
+        <QRDownload slug={slug} pngUrl={pngUrl} className="printable-qr-card" />
+      )}
 
       {!loading && !error && !slug && (
         <p className="text-sm text-fg-faint">Complete onboarding to generate your QR code.</p>
