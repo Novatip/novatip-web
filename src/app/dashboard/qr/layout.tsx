@@ -7,6 +7,7 @@
 
 import type { Metadata } from "next";
 import { pageTitle } from "@/lib/pageTitle";
+import "@/styles/print.css";
 
 export const metadata: Metadata = pageTitle("QR Code");
 

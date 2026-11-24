@@ -88,7 +88,7 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
           type="button"
           onClick={handleCopy}
           className={cn(
-            "text-xs transition-colors shrink-0 font-medium",
+            "no-print text-xs transition-colors shrink-0 font-medium",
             failed ? "text-danger hover:text-danger" : "text-accent hover:text-accent-strong",
           )}
           aria-label="Copy tip URL"
@@ -99,11 +99,11 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
 
       {/* Manual escape hatch when the browser refuses the clipboard */}
       {failed && (
-        <CopyFallback text={tipUrl} onDismiss={reset} noun="tip link" className="max-w-xs" />
+        <CopyFallback text={tipUrl} onDismiss={reset} noun="tip link" className="no-print max-w-xs" />
       )}
 
       {/* Action buttons */}
-      <div className="w-full max-w-xs">
+      <div className="no-print w-full max-w-xs">
         <Button
           variant="secondary"
           size="sm"
@@ -116,7 +116,7 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
         </Button>
       </div>
 
-      {downloadError && <p className="text-xs text-danger text-center">{downloadError}</p>}
+      {downloadError && <p className="no-print text-xs text-danger text-center">{downloadError}</p>}
 
       <p className="text-xs text-fg-faint text-center">
         Print or share your QR code so anyone can tap to tip you
