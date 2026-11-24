@@ -59,7 +59,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
   const [txAmount, setTxAmount] = useState("");
   const [balance, setBalance] = useState<bigint | null>(null);
 
-  // Read the supporter's USDC balance once connected, so an unaffordable
+  // Read the supporter's USDC balance on the input step, so an unaffordable
   // amount can be caught here instead of surfacing as an opaque wallet/chain
   // rejection after they've already signed.
   useEffect(() => {
@@ -67,6 +67,8 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
       setBalance(null);
       return;
     }
+    if (step !== "input") return;
+    setBalance(null);
     let cancelled = false;
     getUsdcBalance(publicKey)
       .then((b) => {
@@ -78,7 +80,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     return () => {
       cancelled = true;
     };
-  }, [publicKey]);
+  }, [publicKey, step]);
 
   // Restore the supporter's last tip amount after mount — not in the initial
   // useState, so the server-rendered markup (which has no access to
@@ -116,17 +118,17 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     ? splits.filter((s) => (stroops * BigInt(s.bps)) / 10_000n === 0n).length
     : 0;
 
-  const canSubmit =
+  const formValid =
     isConnected &&
     amountValid &&
     hasRecipients &&
     !insufficientBalance &&
-    !messageTooLong &&
-    step === "input";
+    !messageTooLong;
+  const canSubmit = formValid && step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleTip() {
-    if (!publicKey || !amountValid || !hasRecipients) return;
+    if (!publicKey || !formValid) return;
 
     setStep("signing");
     setError(null);
@@ -189,6 +191,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         amount={txAmount}
         slug={slug}
         onReset={() => {
+          setBalance(null);
           setStep("input");
           setAmount(getLastTipAmount());
           setMessage("");
@@ -205,7 +208,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         <AmountPicker
           value={amount}
           onChange={setAmount}
-          disabled={step === "signing"}
+          disabled={step === "signing" || step === "confirm"}
           balance={balance}
         />
 
@@ -301,6 +304,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                 <Button
                   size="md"
                   className="flex-1"
+                  disabled={!formValid}
                   onClick={() => void handleTip()}
                   aria-label={`Confirm sending $${amount} USDC tip`}
                 >
@@ -312,7 +316,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
             <Button
               size="lg"
               className="w-full"
-              disabled={!canSubmit}
+              disabled={step !== "error" && !canSubmit}
               loading={step === "signing"}
               onClick={step === "error" ? handleRetry : handleCtaClick}
               aria-label={
@@ -320,6 +324,8 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                   ? "Jar not configured"
                   : step === "signing"
                     ? "Sending tip…"
+                    : step === "error"
+                      ? "Retry"
                     : `Send $${amount} USDC tip`
               }
             >

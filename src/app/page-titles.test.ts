@@ -11,6 +11,8 @@
  */
 
 import { describe, it, expect } from "vitest";
+import { existsSync, readdirSync } from "node:fs";
+import { join } from "node:path";
 import { metadata as overviewMetadata } from "./dashboard/(overview)/layout";
 import { metadata as historyMetadata } from "./dashboard/history/layout";
 import { metadata as splitsMetadata } from "./dashboard/splits/layout";
@@ -37,5 +39,18 @@ describe("page titles", () => {
   it("gives every route a distinct title", () => {
     const titles = ROUTES.map(([, metadata]) => metadata.title);
     expect(new Set(titles).size).toBe(titles.length);
+  });
+
+  it("requires a layout beside every dashboard page", () => {
+    function inspect(directory: string) {
+      if (existsSync(join(directory, "page.tsx"))) {
+        expect(existsSync(join(directory, "layout.tsx")), directory).toBe(true);
+      }
+      for (const entry of readdirSync(directory, { withFileTypes: true })) {
+        if (entry.isDirectory()) inspect(join(directory, entry.name));
+      }
+    }
+
+    inspect(join(process.cwd(), "src", "app", "dashboard"));
   });
 });

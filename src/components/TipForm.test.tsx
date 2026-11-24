@@ -125,6 +125,23 @@ describe("TipForm – valid amount", () => {
 });
 
 describe("TipForm – submission errors", () => {
+  it("returns to the form with the amount and message after Retry", async () => {
+    mocks.tip.mockRejectedValueOnce(new Error("RPC unreachable"));
+    renderForm({ amount: "2", balance: 100n * USDC });
+    const message = screen.getByRole("textbox", { name: /message \(optional\)/i });
+    fireEvent.change(message, { target: { value: "Thank you" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send $2 USDC tip" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("RPC unreachable");
+
+    const retry = screen.getByRole("button", { name: "Retry" });
+    expect(retry).toBeEnabled();
+    fireEvent.click(retry);
+
+    expect(screen.getByRole("button", { name: "Send $2 USDC tip" })).toBeEnabled();
+    expect(message).toHaveValue("Thank you");
+  });
+
   it("shows a readable message for a rejected transaction result", async () => {
     const resultXdr = "AAAAAAAA+QT////6AAAAAA==";
     mocks.tip.mockRejectedValueOnce(new Error(`Transaction submission failed: ${resultXdr}`));
