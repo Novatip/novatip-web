@@ -14,8 +14,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { formatBps } from "@/lib/splits";
 import { useWallet } from "@/contexts/WalletContext";
 import { getExplorerUrl } from "@/lib/explorer";
-import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
-import { cn } from "@/lib/utils";
+import { CopyAddressButton } from "@/components/CopyAddressButton";
 
 interface SplitBreakdownProps {
   splits: Array<{ to: string; bps: number }>;
@@ -50,7 +49,6 @@ interface SplitRowProps {
 }
 
 function SplitRow({ address, bps, isYou }: SplitRowProps) {
-  const { copied, failed, copy } = useCopyToClipboard();
   const explorerUrl = getExplorerUrl(address);
 
   return (
@@ -74,24 +72,7 @@ function SplitRow({ address, bps, isYou }: SplitRowProps) {
           </span>
         )}
         {isYou && <span className="text-xs font-semibold text-brand-500 shrink-0">You</span>}
-        <button
-          type="button"
-          onClick={() => void copy(address)}
-          className={cn(
-            "shrink-0 rounded-md p-1 text-xs transition-colors",
-            "hover:bg-hairline focus:outline-none focus:ring-2 focus:ring-brand-500/50",
-            failed ? "text-danger" : copied ? "text-success" : "text-fg-faint hover:text-fg",
-          )}
-          aria-label={
-            copied
-              ? "Full address copied"
-              : failed
-                ? "Couldn't copy address — try again"
-                : `Copy full address ${address}`
-          }
-        >
-          {copied ? "✓" : failed ? "✕" : "📋"}
-        </button>
+        <CopyAddressButton address={address} />
       </span>
       <span className="text-sm font-semibold text-fg shrink-0">{formatBps(bps)}</span>
     </li>

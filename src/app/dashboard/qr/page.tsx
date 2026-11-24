@@ -6,25 +6,13 @@
  * Dashboard page showing the creator's QR code + share link.
  */
 
-import { useEffect, useCallback } from "react";
-import { useWallet } from "@/contexts/WalletContext";
-import { authApi } from "@/lib/api";
-import { useAbortableRequest } from "@/hooks/useAbortableRequest";
+import { useCreator } from "@/contexts/CreatorContext";
 import { QRDownload } from "@/components/QRDownload";
 import { getQrPngUrl } from "@/lib/tipUrl";
 
 export default function QRPage() {
-  const { jwt } = useWallet();
-  const { data: slug, loading, error, run } = useAbortableRequest<string | null>(null);
-
-  const fetchSlug = useCallback(() => {
-    if (!jwt) return;
-    run((signal) => authApi.me(jwt, { signal }).then((r) => r.user.slug));
-  }, [jwt, run]);
-
-  useEffect(() => {
-    fetchSlug();
-  }, [fetchSlug]);
+  const { creator, loading, error, refresh: fetchSlug } = useCreator();
+  const slug = creator?.slug ?? null;
 
   const pngUrl = slug ? getQrPngUrl(slug) : "";
 
