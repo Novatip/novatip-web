@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/Badge";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { isValidHttpsUrl } from "@/lib/webhooks";
 
 interface Webhook {
   id: string;
@@ -32,17 +33,6 @@ interface Webhook {
 interface RevealedSecret {
   webhookId: string;
   secret: string;
-}
-
-function isValidHttpsUrl(value: string): boolean {
-  try {
-    const trimmed = value.trim();
-    if (!trimmed) return false;
-    const u = new URL(trimmed);
-    return u.protocol === "https:";
-  } catch {
-    return false;
-  }
 }
 
 export default function WebhooksPage() {
@@ -318,10 +308,10 @@ export default function WebhooksPage() {
       setPingResults((prev) => ({
         ...prev,
         [id]: {
-          success: r.success,
-          message: r.success
-            ? `Success (${r.statusCode ?? 200})`
-            : r.error || "Failed to deliver test ping",
+          success: r.delivery.success,
+          message: r.delivery.success
+            ? `Success (${r.delivery.statusCode ?? 200})`
+            : r.delivery.response || "Failed to deliver test ping",
         },
       }));
     } catch (e: unknown) {
