@@ -115,17 +115,17 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
     ? splits.filter((s) => (stroops * BigInt(s.bps)) / 10_000n === 0n).length
     : 0;
 
-  const canSubmit =
+  const formValid =
     isConnected &&
     amountValid &&
     hasRecipients &&
     !insufficientBalance &&
-    !messageTooLong &&
-    step === "input";
+    !messageTooLong;
+  const canSubmit = formValid && step === "input";
 
   // ── Submit ─────────────────────────────────────────────────────────────────
   async function handleTip() {
-    if (!publicKey || !amountValid || !hasRecipients) return;
+    if (!publicKey || !formValid) return;
 
     setStep("signing");
     setError(null);
@@ -203,7 +203,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
         <AmountPicker
           value={amount}
           onChange={setAmount}
-          disabled={step === "signing"}
+          disabled={step === "signing" || step === "confirm"}
           balance={balance}
         />
 
@@ -299,6 +299,7 @@ export function TipForm({ jarId, slug, splits = [] }: TipFormProps) {
                 <Button
                   size="md"
                   className="flex-1"
+                  disabled={!formValid}
                   onClick={() => void handleTip()}
                   aria-label={`Confirm sending $${amount} USDC tip`}
                 >
