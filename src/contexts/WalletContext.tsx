@@ -45,6 +45,30 @@ const WalletContext = createContext<WalletState | null>(null);
 const JWT_STORAGE_KEY = "novatip_jwt";
 const PK_STORAGE_KEY = "novatip_pk";
 
+function storageGet(key: string): string | null {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storageSet(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // The in-memory wallet state still works when storage is unavailable.
+  }
+}
+
+function storageRemove(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    // The in-memory wallet state is cleared below.
+  }
+}
+
 // ── Provider ──────────────────────────────────────────────────────────────────
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
@@ -59,15 +83,15 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // a connected wallet with no creator session is the normal state for someone
   // who only came to tip, and requiring both would log them straight back out.
   useEffect(() => {
-    const storedPk = localStorage.getItem(PK_STORAGE_KEY);
+    const storedPk = storageGet(PK_STORAGE_KEY);
     if (storedPk) setPublicKey(storedPk);
 
-    const storedJwt = localStorage.getItem(JWT_STORAGE_KEY);
+    const storedJwt = storageGet(JWT_STORAGE_KEY);
     if (storedJwt) {
       // Skip the guaranteed-failing round trip for a token that's already
       // expired. The server still gets the final say on every other case.
       if (isJwtExpired(storedJwt)) {
-        localStorage.removeItem(JWT_STORAGE_KEY);
+        storageRemove(JWT_STORAGE_KEY);
       } else {
         setJwt(storedJwt);
       }
@@ -80,8 +104,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // widget to fail on its own with an inline error.
   useEffect(() => {
     return onUnauthorized(() => {
-      localStorage.removeItem(JWT_STORAGE_KEY);
-      localStorage.removeItem(PK_STORAGE_KEY);
+      storageRemove(JWT_STORAGE_KEY);
+      storageRemove(PK_STORAGE_KEY);
       setPublicKey(null);
       setJwt(null);
       setError("Your session has expired. Please reconnect your wallet.");
@@ -135,7 +159,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const signatureHex = await signNonce(nonce, pk);
       const { jwt: token } = await authApi.verify(pk, signatureHex);
 
-      localStorage.setItem(JWT_STORAGE_KEY, token);
+      storageSet(JWT_STORAGE_KEY, token);
       setJwt(token);
       setError(null);
       return token;
@@ -170,7 +194,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       // everything the tip flow requires, so it is committed immediately and
       // nothing after this point can un-connect the wallet.
       const pk = await connectFreighter();
-      localStorage.setItem(PK_STORAGE_KEY, pk);
+      storageSet(PK_STORAGE_KEY, pk);
       setPublicKey(pk);
 
       // Best-effort creator session for the dashboard. Never blocks a tip.
@@ -184,8 +208,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [signIn]);
 
   const disconnect = useCallback(() => {
-    localStorage.removeItem(JWT_STORAGE_KEY);
-    localStorage.removeItem(PK_STORAGE_KEY);
+    storageRemove(JWT_STORAGE_KEY);
+    storageRemove(PK_STORAGE_KEY);
     setPublicKey(null);
     setJwt(null);
     setError(null);
