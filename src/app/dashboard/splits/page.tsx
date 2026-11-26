@@ -13,9 +13,10 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useCreator } from "@/contexts/CreatorContext";
 import { creatorApi } from "@/lib/api";
 import { syncJarToChain } from "@/lib/jar";
-import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
+import { SplitsManager } from "@/components/SplitsManager";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
+import type { Split } from "@/lib/types";
 
 export default function SplitsPage() {
   const { jwt, publicKey } = useWallet();
@@ -32,7 +33,7 @@ export default function SplitsPage() {
    * this page work for creators who claimed a slug before on-chain
    * registration existed. Their first save here creates the jar.
    */
-  async function handleSave(splits: SplitRow[]) {
+  async function handleSave(splits: Split[]) {
     if (!jwt || !creator || !publicKey) return;
     await syncJarToChain({
       owner: publicKey,
@@ -72,7 +73,7 @@ export default function SplitsPage() {
           </div>
         ) : (
           <SplitsManager
-            initial={(creator?.splits as SplitRow[]) ?? []}
+            initial={creator?.splits ?? []}
             onSave={handleSave}
             connectedAddress={publicKey ?? undefined}
           />
