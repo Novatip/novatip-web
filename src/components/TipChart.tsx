@@ -28,6 +28,7 @@ import {
   type ChartWindow,
   type ChartMode,
 } from "@/lib/tipChartPrefs";
+import { formatNumber } from "@/lib/format";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -376,7 +377,7 @@ export function TipChart({ jwt }: TipChartProps) {
           <div className="flex gap-6 text-sm">
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Tips</span>
-              <p className="font-semibold text-fg">{totalCount.toLocaleString()}</p>
+              <p className="font-semibold text-fg">{formatNumber(totalCount)}</p>
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Earned</span>
@@ -427,7 +428,7 @@ export function TipChart({ jwt }: TipChartProps) {
                   </th>
                   <td>
                     {mode === "count"
-                      ? point.tipCount.toLocaleString()
+                      ? formatNumber(point.tipCount)
                       : `$${formatRawUsdc(point.amountRaw, 2)} USDC`}
                   </td>
                 </tr>
