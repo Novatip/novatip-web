@@ -2,6 +2,31 @@
 
 Next.js 14 frontend for Novatip.
 
+## Table of Contents
+
+- [Stack](#stack)
+- [Local Development](#local-development)
+- [Full-stack local setup](#full-stack-local-setup)
+- [Environment Variables](#environment-variables)
+- [Deployment](#deployment)
+- [Troubleshooting](#troubleshooting)
+- [Key Pages](#key-pages)
+- [Screen-to-endpoint mapping](#screen-to-endpoint-mapping)
+- [Tip page URL shapes](#tip-page-url-shapes)
+- [Tip Flow](#tip-flow)
+- [Onboarding Flow](#onboarding-flow)
+- [Browser and wallet support](#browser-and-wallet-support)
+- [Browser storage keys](#browser-storage-keys)
+- [Wallet account requirements](#wallet-account-requirements)
+- [Wallet Auth (SIWS)](#wallet-auth-siws)
+- [Theming](#theming)
+- [Adding a UI component](#adding-a-ui-component)
+- [Scripts](#scripts)
+- [Testing](#testing)
+- [Client-side architecture](#client-side-architecture)
+- [Accessibility](#accessibility)
+- [License](#license)
+
 ## Stack
 Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
