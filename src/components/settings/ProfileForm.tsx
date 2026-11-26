@@ -133,10 +133,13 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
     setProfileSaved(false);
 
     try {
+      // Send null for cleared fields so they are explicitly removed on the backend.
+      // Empty string for displayName/bio means "clear this field".
+      // Email is different: null means "turn notifications off".
       const r = await creatorApi.updateProfile(jwt, {
-        displayName: displayName.trim() || undefined,
-        bio: bio.trim() || undefined,
-        avatarUrl: avatarUrl.trim() || undefined,
+        displayName: displayName.trim() || null,
+        bio: bio.trim() || null,
+        avatarUrl: avatarUrl.trim() || null,
         email: email.trim() || null,
       });
       onUpdate(r.creator);
