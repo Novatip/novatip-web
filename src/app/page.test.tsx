@@ -244,4 +244,47 @@ describe("HomePage (/)", () => {
     const valueText = screen.getByText(/cross-border micro-tipping for creators/i);
     expect(valueText).toHaveClass("text-xl");
   });
+
+  // ── How it Works Section ──────────────────────────────────────────────────
+
+  it("renders the how it works section", () => {
+    render(<HomePage />);
+
+    expect(screen.getByRole("heading", { name: /how it works/i })).toBeInTheDocument();
+  });
+
+  it("displays three steps in the how it works section", () => {
+    render(<HomePage />);
+
+    expect(screen.getByRole("heading", { name: /claim your link/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /share your qr code/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /get paid and split/i })).toBeInTheDocument();
+  });
+
+  it("explains that a wallet is needed in step 1", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/connect your stellar wallet/i)).toBeInTheDocument();
+  });
+
+  it("explains the QR code sharing in step 2", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/download your qr code and share it anywhere/i)).toBeInTheDocument();
+  });
+
+  it("explains USDC payments and splits in step 3", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText(/receive tips in usdc instantly/i)).toBeInTheDocument();
+    expect(screen.getByText(/add collaborators to automatically split earnings/i)).toBeInTheDocument();
+  });
+
+  it("renders steps in a grid layout on larger screens", () => {
+    render(<HomePage />);
+
+    const section = screen.getByRole("heading", { name: /how it works/i }).closest("section");
+    const grid = section?.querySelector(".grid");
+    expect(grid).toHaveClass("md:grid-cols-3");
+  });
 });
