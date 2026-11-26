@@ -18,12 +18,18 @@ import WebhooksPage from "./page";
 const listMock = vi.hoisted(() => vi.fn());
 const createMock = vi.hoisted(() => vi.fn());
 const removeMock = vi.hoisted(() => vi.fn());
+const rotateSecretMock = vi.hoisted(() => vi.fn());
+const updateMock = vi.hoisted(() => vi.fn());
+const deliveriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api", () => ({
   webhookApi: {
     list: listMock,
     create: createMock,
     remove: removeMock,
+    rotateSecret: rotateSecretMock,
+    update: updateMock,
+    deliveries: deliveriesMock,
   },
   ApiError: class ApiError extends Error {
     code?: string;
@@ -71,6 +77,11 @@ beforeEach(() => {
     },
   });
   removeMock.mockResolvedValue({ ok: true });
+  rotateSecretMock.mockResolvedValue({ secret: "whsec_newrotatedsecret" });
+  updateMock.mockResolvedValue({
+    webhook: { id: "hook-1", url: "https://example.com/webhook1", enabled: false },
+  });
+  deliveriesMock.mockResolvedValue({ deliveries: [] });
   copyMock.mockImplementation(async () => !mockCopyFailed);
 });
 
@@ -270,3 +281,239 @@ describe("WebhooksPage – Issue #207: Copying secret and CopyFallback", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("WebhooksPage – Rotate secret flow", () => {
+  it("shows confirmation dialog when rotate is clicked", async () => {
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const rotateBtn = screen.getByRole("button", {
+      name: "Rotate secret for https://example.com/webhook1",
+    });
+    await user.click(rotateBtn);
+
+    expect(screen.getByText("Rotate signing secret?")).toBeInTheDocument();
+    expect(screen.getByText(/This will generate a new secret/i)).toBeInTheDocument();
+    expect(screen.getByText("https://example.com/webhook1")).toBeInTheDocument();
+  });
+
+  it("cancels rotation when cancel button is clicked", async () => {
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const rotateBtn = screen.getByRole("button", {
+      name: "Rotate secret for https://example.com/webhook1",
+    });
+    await user.click(rotateBtn);
+
+    const cancelBtn = screen.getByRole("button", { name: "Cancel" });
+    await user.click(cancelBtn);
+
+    expect(screen.queryByText("Rotate signing secret?")).not.toBeInTheDocument();
+    expect(rotateSecretMock).not.toHaveBeenCalled();
+  });
+
+  it("rotates secret successfully and shows new secret banner", async () => {
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const rotateBtn = screen.getByRole("button", {
+      name: "Rotate secret for https://example.com/webhook1",
+    });
+    await user.click(rotateBtn);
+
+    const confirmBtn = screen.getByRole("button", { name: "Rotate secret" });
+    await user.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(rotateSecretMock).toHaveBeenCalledWith("mock-jwt", "hook-1");
+    });
+
+    expect(screen.getByText("whsec_newrotatedsecret")).toBeInTheDocument();
+    expect(screen.getByText("New signing secret generated — save it now")).toBeInTheDocument();
+    expect(screen.getByText(/The old secret is no longer valid/i)).toBeInTheDocument();
+  });
+
+  it("displays error message when rotation fails", async () => {
+    rotateSecretMock.mockRejectedValueOnce(new Error("Failed to rotate secret"));
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const rotateBtn = screen.getByRole("button", {
+      name: "Rotate secret for https://example.com/webhook1",
+    });
+    await user.click(rotateBtn);
+
+    const confirmBtn = screen.getByRole("button", { name: "Rotate secret" });
+    await user.click(confirmBtn);
+
+    await screen.findByText("Failed to rotate secret");
+    expect(screen.queryByText("whsec_newrotatedsecret")).not.toBeInTheDocument();
+  });
+});
+
+describe("WebhooksPage – Toggle enabled/disabled flow", () => {
+  it("toggles webhook from enabled to disabled successfully", async () => {
+    updateMock.mockResolvedValueOnce({
+      webhook: { id: "hook-1", url: "https://example.com/webhook1", enabled: false },
+    });
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const activeBadge = screen.getAllByText("active")[0];
+    await user.click(activeBadge);
+
+    await waitFor(() => {
+      expect(updateMock).toHaveBeenCalledWith("mock-jwt", "hook-1", { enabled: false });
+    });
+
+    expect(screen.getByText("disabled")).toBeInTheDocument();
+  });
+
+  it("toggles webhook from disabled to enabled successfully", async () => {
+    listMock.mockResolvedValueOnce({
+      webhooks: [{ id: "hook-1", url: "https://example.com/webhook1", enabled: false }],
+    });
+    updateMock.mockResolvedValueOnce({
+      webhook: { id: "hook-1", url: "https://example.com/webhook1", enabled: true },
+    });
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const disabledBadge = screen.getByText("disabled");
+    await user.click(disabledBadge);
+
+    await waitFor(() => {
+      expect(updateMock).toHaveBeenCalledWith("mock-jwt", "hook-1", { enabled: true });
+    });
+
+    expect(screen.getByText("active")).toBeInTheDocument();
+  });
+
+  it("displays error message when toggle fails", async () => {
+    updateMock.mockRejectedValueOnce(new Error("Server error updating webhook"));
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const activeBadge = screen.getAllByText("active")[0];
+    await user.click(activeBadge);
+
+    await screen.findByText("Server error updating webhook");
+    // Should still show "active" since toggle failed
+    expect(screen.getAllByText("active").length).toBeGreaterThan(0);
+  });
+});
+
+describe("WebhooksPage – Deliveries list flow", () => {
+  it("expands deliveries section and loads delivery list", async () => {
+    deliveriesMock.mockResolvedValueOnce({
+      deliveries: [
+        {
+          id: "delivery-1",
+          status: 200,
+          createdAt: new Date().toISOString(),
+          attempt: 1,
+        },
+        {
+          id: "delivery-2",
+          status: 500,
+          createdAt: new Date(Date.now() - 3600000).toISOString(),
+          attempt: 2,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const expandBtn = screen.getAllByRole("button", { name: "Show deliveries" })[0];
+    await user.click(expandBtn);
+
+    await waitFor(() => {
+      expect(deliveriesMock).toHaveBeenCalledWith("mock-jwt", "hook-1");
+    });
+
+    expect(screen.getByText("Recent deliveries")).toBeInTheDocument();
+    expect(screen.getByText("200")).toBeInTheDocument();
+    expect(screen.getByText("500")).toBeInTheDocument();
+    expect(screen.getByText("(attempt 2)")).toBeInTheDocument();
+  });
+
+  it("shows empty state when no deliveries exist", async () => {
+    deliveriesMock.mockResolvedValueOnce({ deliveries: [] });
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const expandBtn = screen.getAllByRole("button", { name: "Show deliveries" })[0];
+    await user.click(expandBtn);
+
+    await waitFor(() => {
+      expect(deliveriesMock).toHaveBeenCalledWith("mock-jwt", "hook-1");
+    });
+
+    expect(
+      screen.getByText(/No deliveries yet. This endpoint will receive a POST when a tip lands./i),
+    ).toBeInTheDocument();
+  });
+
+  it("displays error when deliveries fetch fails", async () => {
+    deliveriesMock.mockRejectedValueOnce(new Error("Failed to load delivery history"));
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const expandBtn = screen.getAllByRole("button", { name: "Show deliveries" })[0];
+    await user.click(expandBtn);
+
+    await screen.findByText("Failed to load delivery history");
+    expect(screen.queryByText("Recent deliveries")).toBeInTheDocument();
+  });
+
+  it("collapses deliveries section when expanded button is clicked again", async () => {
+    deliveriesMock.mockResolvedValueOnce({
+      deliveries: [
+        {
+          id: "delivery-1",
+          status: 200,
+          createdAt: new Date().toISOString(),
+          attempt: 1,
+        },
+      ],
+    });
+    const user = userEvent.setup();
+    render(<WebhooksPage />);
+
+    await screen.findByText("https://example.com/webhook1");
+
+    const expandBtn = screen.getAllByRole("button", { name: "Show deliveries" })[0];
+    await user.click(expandBtn);
+
+    await screen.findByText("Recent deliveries");
+
+    const collapseBtn = screen.getAllByRole("button", { name: "Hide deliveries" })[0];
+    await user.click(collapseBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText("Recent deliveries")).not.toBeInTheDocument();
+    });
+  });
+});
+
