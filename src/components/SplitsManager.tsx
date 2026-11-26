@@ -17,11 +17,7 @@ import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
 import { formatBps, splitEqually } from "@/lib/splits";
 import { formatNumber } from "@/lib/format";
-
-export interface SplitRow {
-  to: string;
-  bps: number;
-}
+import type { Split } from "@/lib/types";
 
 // Rows carry a client-only id so React can key on stable identity instead of
 // array index. It never leaves the component — see handleSave, which strips
@@ -51,7 +47,7 @@ function normalizeAddress(address: string): string {
 // (contracts/tip_splitter — the contract rejects a jar with more than this many recipients).
 const MAX_RECIPIENTS = 20;
 
-function withId(row: SplitRow): SplitRowState {
+function withId(row: Split): SplitRowState {
   return { id: crypto.randomUUID(), to: row.to, bps: String(row.bps) };
 }
 
@@ -64,8 +60,8 @@ function parseBpsInput(raw: string): number | null {
 }
 
 interface SplitsManagerProps {
-  initial: SplitRow[];
-  onSave: (splits: SplitRow[]) => Promise<void>;
+  initial: Split[];
+  onSave: (splits: Split[]) => Promise<void>;
   disabled?: boolean;
   /**
    * The creator's own connected wallet, if known. Used only to warn when it
@@ -114,7 +110,7 @@ export function SplitsManager({
     !!connectedAddress &&
     !rows.some((r) => normalizeAddress(r.to) === normalizeAddress(connectedAddress));
 
-  function updateRow(index: number, field: keyof SplitRow, value: string) {
+  function updateRow(index: number, field: keyof Split, value: string) {
     setSuccess(false);
     setConfirmingMissingWallet(false);
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));

@@ -15,9 +15,10 @@ import { formatBps } from "@/lib/splits";
 import { useWallet } from "@/contexts/WalletContext";
 import { getExplorerUrl } from "@/lib/explorer";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
+import type { Split } from "@/lib/types";
 
 interface SplitBreakdownProps {
-  splits: Array<{ to: string; bps: number }>;
+  splits: Split[];
 }
 
 export function SplitBreakdown({ splits }: SplitBreakdownProps) {

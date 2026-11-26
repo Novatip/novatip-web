@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, cleanup, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import WebhooksPage from "./page";
 
@@ -296,7 +296,9 @@ describe("WebhooksPage – Rotate secret flow", () => {
 
     expect(screen.getByText("Rotate signing secret?")).toBeInTheDocument();
     expect(screen.getByText(/This will generate a new secret/i)).toBeInTheDocument();
-    expect(screen.getByText("https://example.com/webhook1")).toBeInTheDocument();
+    // The URL is also shown in the list behind the dialog, so look inside it.
+    const dialog = screen.getByRole("dialog", { name: /Rotate signing secret/i });
+    expect(within(dialog).getByText("https://example.com/webhook1")).toBeInTheDocument();
   });
 
   it("cancels rotation when cancel button is clicked", async () => {

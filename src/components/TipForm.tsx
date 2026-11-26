@@ -33,11 +33,7 @@ import { MAX_MESSAGE_BYTES, utf8ByteLength } from "@/lib/tipMessage";
 import { describeSubmissionError } from "@/lib/txerror";
 import { NO_PLATFORM_FEES_COPY } from "@/lib/copy";
 import { describeContractError } from "@/lib/contractErrors";
-
-export interface Split {
-  to: string;
-  bps: number;
-}
+import type { Split } from "@/lib/types";
 
 interface TipFormProps {
   jarId: string;
