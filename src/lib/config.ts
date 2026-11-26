@@ -7,9 +7,10 @@
  * runs during `next build` (server bundle evaluation) as well as at server
  * boot — failing fast before any request is served.
  *
- * Variables are split into two groups:
- *   requirePublic — must be present and non-empty; throws at build/boot if not
- *   optionalPublic — safe to omit; falls back to a documented default
+ * Required variables (like NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID) must be
+ * present and non-empty; throws at build/boot if not. Optional variables
+ * (NEXT_PUBLIC_SITE_URL, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_USDC_CONTRACT_ID)
+ * have their own resolver functions that handle validation and defaults.
  *
  * IMPORTANT — NEXT_PUBLIC_ variables must be read as literal member accesses:
  *   process.env.NEXT_PUBLIC_FOO          ✓ inlined at build time
