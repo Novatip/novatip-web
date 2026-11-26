@@ -10,7 +10,8 @@
 import { useCallback, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { formatUsdc, shortenAddress } from "@novatip/sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { formatRawUsdc } from "@/lib/rawAmount";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { cn } from "@/lib/utils";
@@ -98,14 +99,7 @@ function CollaboratorRow({ collaborator }: { collaborator: Collaborator }) {
 
       {/* Amount */}
       <span className="text-sm font-semibold text-accent shrink-0">
-        {(() => {
-          try {
-            const amount = BigInt(collaborator.totalAmountRaw);
-            return `$${formatUsdc(amount, 2)}`;
-          } catch {
-            return "—";
-          }
-        })()}
+        ${formatRawUsdc(collaborator.totalAmountRaw, 2)}
       </span>
     </li>
   );

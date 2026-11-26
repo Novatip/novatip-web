@@ -25,19 +25,11 @@ import { analyticsApi } from "@/lib/api";
 import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
 import { usePolling } from "@/hooks/usePolling";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { formatUsdc, shortenAddress } from "@novatip/sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { parseRawAmount, formatRawUsdc } from "@/lib/rawAmount";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { timeAgo } from "@/lib/time";
-
-/** Parse a raw amount string safely — returns null when unparseable. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -312,7 +304,6 @@ export function RecentTips({ jwt, limit = 20 }: RecentTipsProps) {
 // ── Row sub-components ────────────────────────────────────────────────────────
 
 function IndexedTipRow({ tip }: { tip: IndexedTip }) {
-  const amount = parseAmount(tip.amount);
   return (
     <li className="flex items-start gap-3">
       <div className="h-8 w-8 rounded-full bg-brand-500/20 flex items-center justify-center shrink-0">
@@ -322,7 +313,7 @@ function IndexedTipRow({ tip }: { tip: IndexedTip }) {
         <p className="text-sm text-fg">
           <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span> tipped{" "}
           <span className="font-semibold text-accent">
-            {amount !== null ? `$${formatUsdc(amount, 2)} USDC` : "—"}
+            ${formatRawUsdc(tip.amount, 2)} USDC
           </span>
         </p>
         {tip.message && (

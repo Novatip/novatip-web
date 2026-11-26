@@ -8,19 +8,11 @@
  */
 
 import type { PublicTip } from "@/lib/api";
-import { formatUsdc, shortenAddress } from "@novatip/sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { parseRawAmount, formatRawUsdc } from "@/lib/rawAmount";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { timeAgo } from "@/lib/time";
-
-/** Parse amount safely — returns null when the string is not a valid integer. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 interface PublicSupportersFeedProps {
   tips: PublicTip[];
@@ -31,7 +23,7 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
   // show" means the same thing whether the list came back empty or every row
   // in it was unusable.
   const rows = tips.flatMap((tip) => {
-    const amount = parseAmount(tip.amount);
+    const amount = parseRawAmount(tip.amount);
     return amount === null ? [] : [{ tip, amount }];
   });
 
@@ -63,7 +55,7 @@ export function PublicSupportersFeed({ tips }: PublicSupportersFeedProps) {
               <p className="text-sm text-fg">
                 <span className="font-mono text-fg-subtle">{shortenAddress(tip.fromAddress)}</span>{" "}
                 tipped{" "}
-                <span className="font-semibold text-accent">${formatUsdc(amount, 2)} USDC</span>
+                <span className="font-semibold text-accent">${formatRawUsdc(tip.amount, 2)} USDC</span>
               </p>
               {tip.message && (
                 <p className="text-xs text-fg-faint mt-0.5 truncate">&ldquo;{tip.message}&rdquo;</p>

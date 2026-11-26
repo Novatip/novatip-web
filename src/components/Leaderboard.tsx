@@ -11,19 +11,11 @@ import { useCallback, useEffect } from "react";
 import { analyticsApi } from "@/lib/api";
 import { tipEvents, type TipSuccessPayload } from "@/lib/tipEvents";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { formatUsdc, shortenAddress } from "@novatip/sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { formatRawUsdc } from "@/lib/rawAmount";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { CopyAddressButton } from "@/components/CopyAddressButton";
 import { cn } from "@/lib/utils";
-
-/** Parse a raw amount string safely — returns null when unparseable. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 interface Supporter {
   fromAddress: string;
@@ -143,10 +135,7 @@ function SupporterRow({ supporter, rank }: { supporter: Supporter; rank: number 
 
       {/* Amount */}
       <span className="text-sm font-semibold text-accent shrink-0">
-        {(() => {
-          const amount = parseAmount(supporter.totalAmountRaw);
-          return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
-        })()}
+        ${formatRawUsdc(supporter.totalAmountRaw, 2)}
       </span>
     </li>
   );
