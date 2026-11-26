@@ -7,6 +7,8 @@
  * keeping its own divergent copy.
  */
 
+import { formatShortDate, formatMediumDateTime } from "./format";
+
 export function timeAgo(iso: string): string {
   const then = new Date(iso).getTime();
   if (Number.isNaN(then)) return "";
@@ -19,11 +21,7 @@ export function timeAgo(iso: string): string {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   // Beyond a day, an ever-growing "47d ago" is less useful than the actual
   // date — switch to a calendar date the same way the history page always has.
-  return new Date(then).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
+  return formatShortDate(new Date(then));
 }
 
 /**
@@ -36,8 +34,5 @@ export function timeAgo(iso: string): string {
 export function formatAbsoluteTime(iso: string): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return "";
-  return then.toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "medium",
-  });
+  return formatMediumDateTime(then);
 }

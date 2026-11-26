@@ -16,6 +16,7 @@ import { shortenAddress, validateSplitsBps } from "@novatip/sdk";
 import { StrKey } from "@stellar/stellar-sdk";
 import { cn } from "@/lib/utils";
 import { formatBps, splitEqually } from "@/lib/splits";
+import { formatNumber } from "@/lib/format";
 import type { Split } from "@/lib/types";
 
 // Rows carry a client-only id so React can key on stable identity instead of
@@ -281,7 +282,7 @@ export function SplitsManager({
               bpsValid ? "text-success" : totalBps > 10000 ? "text-danger" : "text-warning",
             )}
           >
-            {totalBps.toLocaleString()} / 10,000 bps
+            {formatNumber(totalBps)} / 10,000 bps
           </span>
           <Badge variant={bpsValid ? "success" : "error"}>
             {bpsValid ? "100%" : formatBps(totalBps)}
@@ -294,8 +295,8 @@ export function SplitsManager({
         <p className="text-xs text-warning">
           Splits must sum to exactly 10,000 bps (100%).
           {totalBps < 10000
-            ? ` Add ${(10000 - totalBps).toLocaleString()} more bps.`
-            : ` Remove ${(totalBps - 10000).toLocaleString()} bps.`}
+            ? ` Add ${formatNumber(10000 - totalBps)} more bps.`
+            : ` Remove ${formatNumber(totalBps - 10000)} bps.`}
         </p>
       )}
 

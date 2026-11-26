@@ -7,6 +7,21 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { timeAgo, formatAbsoluteTime } from "./time";
 
+// Mock the format module to return stable en-US output for tests
+vi.mock("./format", () => ({
+  formatShortDate: (date: Date) =>
+    date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+  formatMediumDateTime: (date: Date) =>
+    date.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "medium",
+    }),
+}));
+
 describe("timeAgo", () => {
   afterEach(() => {
     vi.restoreAllMocks();

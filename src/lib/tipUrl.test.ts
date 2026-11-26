@@ -46,16 +46,44 @@ async function tipUrlWithSiteUrl(siteUrl: string) {
 // ── Client-side branch ────────────────────────────────────────────────────────
 
 describe("getTipUrl – client side (window defined)", () => {
-  it("uses window.location.origin when window is available", () => {
-    expect(getTipUrl("alice")).toBe(`${window.location.origin}/alice`);
+  it("uses the configured site URL when explicitly set", async () => {
+    vi.resetModules();
+    vi.doMock("./config", () => ({
+      config: { siteUrl: "https://novatip.xyz" },
+      DEFAULT_SITE_URL: "http://localhost:3000",
+    }));
+    const { getTipUrl: getUrl } = await import("./tipUrl");
+    expect(getUrl("alice")).toBe("https://novatip.xyz/alice");
   });
 
-  it("appends the slug correctly", () => {
-    expect(getTipUrl("bob")).toBe(`${window.location.origin}/bob`);
+  it("falls back to window.location.origin when site URL is the default", async () => {
+    vi.resetModules();
+    vi.doMock("./config", () => ({
+      config: { siteUrl: "http://localhost:3000" },
+      DEFAULT_SITE_URL: "http://localhost:3000",
+    }));
+    const { getTipUrl: getUrl } = await import("./tipUrl");
+    expect(getUrl("bob")).toBe(`${window.location.origin}/bob`);
   });
 
-  it("percent-encodes a slug containing characters that need encoding", () => {
-    expect(getTipUrl("john doe")).toBe(`${window.location.origin}/john%20doe`);
+  it("strips trailing slash from configured site URL", async () => {
+    vi.resetModules();
+    vi.doMock("./config", () => ({
+      config: { siteUrl: "https://novatip.xyz/" },
+      DEFAULT_SITE_URL: "http://localhost:3000",
+    }));
+    const { getTipUrl: getUrl } = await import("./tipUrl");
+    expect(getUrl("charlie")).toBe("https://novatip.xyz/charlie");
+  });
+
+  it("percent-encodes a slug containing characters that need encoding", async () => {
+    vi.resetModules();
+    vi.doMock("./config", () => ({
+      config: { siteUrl: "https://novatip.xyz" },
+      DEFAULT_SITE_URL: "http://localhost:3000",
+    }));
+    const { getTipUrl: getUrl } = await import("./tipUrl");
+    expect(getUrl("john doe")).toBe("https://novatip.xyz/john%20doe");
   });
 });
 
