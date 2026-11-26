@@ -295,7 +295,12 @@ export const creatorApi = {
 
   updateProfile: (
     jwt: string,
-    data: { displayName?: string; bio?: string; avatarUrl?: string; email?: string | null },
+    data: { 
+      displayName?: string | null; 
+      bio?: string | null; 
+      avatarUrl?: string | null; 
+      email?: string | null 
+    },
     options?: RequestOptions,
   ) =>
     request<{ creator: CreatorProfile }>(

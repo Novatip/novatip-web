@@ -152,15 +152,11 @@ export default function WebhooksPage() {
       return next;
     });
     setConfirmRemove(null);
-    // Dismiss any revealed secret when the corresponding webhook is removed
-    if (newSecret && webhooks.find((w) => w.id === id)) {
-      setNewSecret(null);
-    }
 
     try {
       await webhookApi.remove(jwt, id);
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
-      // Dismiss any revealed secret only if the removed webhook matches and only after successful removal
+      // Dismiss any revealed secret only if the removed webhook matches
       setNewSecret((current) => (current?.webhookId === id ? null : current));
     } catch (e: unknown) {
       setRemoveErrors((prev) => ({
