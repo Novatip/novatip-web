@@ -8,6 +8,7 @@
 import { config, DEFAULT_REQUEST_TIMEOUT_MS, RETRY_DELAY_MS } from "./config";
 import { emitUnauthorized } from "./authEvents";
 import { emitConnectionFailure, emitConnectionSuccess } from "./connectionEvents";
+import type { Split } from "./types";
 
 export interface RequestOptions extends Omit<RequestInit, "signal"> {
   timeout?: number;
@@ -264,7 +265,7 @@ export interface CreatorProfile {
   /** Address tip-received emails are sent to. Null means notifications are off. */
   email: string | null;
   jarId: string;
-  splits: Array<{ to: string; bps: number }>;
+  splits: Split[];
   createdAt: string;
 }
 
@@ -315,7 +316,7 @@ export const creatorApi = {
 
   updateSplits: (
     jwt: string,
-    splits: Array<{ to: string; bps: number }>,
+    splits: Split[],
     options?: RequestOptions,
   ) =>
     request<{ creator: CreatorProfile }>(

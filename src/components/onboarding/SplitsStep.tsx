@@ -8,9 +8,10 @@
 import { useState } from "react";
 import { creatorApi } from "@/lib/api";
 import { jarIdForSlug, syncJarToChain } from "@/lib/jar";
-import { SplitsManager, type SplitRow } from "@/components/SplitsManager";
+import { SplitsManager } from "@/components/SplitsManager";
 import { Button } from "@/components/ui/Button";
 import { useWallet } from "@/contexts/WalletContext";
+import type { Split } from "@/lib/types";
 
 interface SplitsStepProps {
   slug: string;
@@ -29,7 +30,7 @@ export function SplitsStep({ slug, onNext }: SplitsStepProps) {
    * exactly what made every tip to a UI-created jar fail with JarNotFound.
    * If the creator rejects the signature, nothing is persisted anywhere.
    */
-  async function save(splits: SplitRow[]) {
+  async function save(splits: Split[]) {
     if (!jwt || !publicKey) return;
     await syncJarToChain({
       owner: publicKey,
