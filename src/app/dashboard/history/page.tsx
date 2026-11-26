@@ -11,22 +11,14 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useWallet } from "@/contexts/WalletContext";
 import { analyticsApi, ApiError, RECENT_TIPS_MAX_LIMIT } from "@/lib/api";
-import { formatUsdc, shortenAddress } from "@novatip/sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { formatRawUsdc } from "@/lib/rawAmount";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { TimeAgo } from "@/components/ui/TimeAgo";
 import { cn } from "@/lib/utils";
 import { timeAgo } from "@/lib/time";
 import { getExplorerUrl } from "@/lib/explorer";
-
-/** Parse a raw amount string safely — returns null when unparseable. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 /**
  * One message cell. A message is truncated to a single line by default; the
@@ -288,10 +280,7 @@ export default function HistoryPage() {
                     role="cell"
                     className="col-span-2 text-right text-sm font-semibold text-accent"
                   >
-                    {(() => {
-                      const amount = parseAmount(tip.amount);
-                      return amount !== null ? `$${formatUsdc(amount, 2)}` : "—";
-                    })()}
+                    ${formatRawUsdc(tip.amount, 2)}
                   </span>
 
                   {/* Message */}

@@ -15,9 +15,9 @@
 
 import { useEffect, useState, useRef, useCallback, useId } from "react";
 import { ApiError, getErrorMessage, analyticsApi } from "@/lib/api";
-import { formatUsdc } from "@novatip/sdk";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
+import { parseRawAmount, formatRawUsdc } from "@/lib/rawAmount";
 import {
   getChartWindow,
   getChartMode,
@@ -39,17 +39,6 @@ interface DataPoint {
 
 type Window = 7 | 14 | 30;
 type Mode = "count" | "amount";
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-/** Parse a raw amount string safely — returns null when unparseable. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 /** Format "YYYY-MM-DD" → short month + day, e.g. "Jun 3" */
 function fmtDate(iso: string): string {
@@ -121,7 +110,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
   const values =
     mode === "count"
       ? series.map((p) => p.tipCount)
-      : series.map((p) => Number(parseAmount(p.amountRaw) ?? 0n));
+      : series.map((p) => Number(parseRawAmount(p.amountRaw) ?? 0n));
 
   const ys = toYCoords(values, height);
   const step = width / Math.max(n - 1, 1);
@@ -143,7 +132,7 @@ function ChartSvg({ series, mode, width, height, gradId }: ChartSvgProps) {
       y: ys[i],
       value: values[i],
       label:
-        mode === "count" ? String(p.tipCount) : `$${formatUsdc(parseAmount(p.amountRaw) ?? 0n, 2)}`,
+        mode === "count" ? String(p.tipCount) : `$${formatRawUsdc(p.amountRaw, 2)}`,
       date: p.date,
     }))
     .filter((d) => d.value > 0);
@@ -293,7 +282,7 @@ export function TipChart({ jwt }: TipChartProps) {
   // ── Derived summary ────────────────────────────────────────────────────────
   const totalCount = series?.reduce((s, p) => s + p.tipCount, 0) ?? 0;
   const totalAmount =
-    series?.reduce((s, p) => s + (parseAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
+    series?.reduce((s, p) => s + (parseRawAmount(p.amountRaw) ?? BigInt(0)), BigInt(0)) ?? BigInt(0);
   const activeDays = series?.filter((p) => p.tipCount > 0).length ?? 0;
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -391,7 +380,7 @@ export function TipChart({ jwt }: TipChartProps) {
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Earned</span>
-              <p className="font-semibold text-fg">${formatUsdc(totalAmount, 2)}</p>
+              <p className="font-semibold text-fg">${totalAmount !== 0n ? (Number(totalAmount) / 10_000_000).toFixed(2) : "0.00"}</p>
             </div>
             <div>
               <span className="text-fg-faint text-xs uppercase tracking-wider">Active days</span>
@@ -439,7 +428,7 @@ export function TipChart({ jwt }: TipChartProps) {
                   <td>
                     {mode === "count"
                       ? point.tipCount.toLocaleString()
-                      : `$${formatUsdc(parseAmount(point.amountRaw) ?? 0n, 2)} USDC`}
+                      : `$${formatRawUsdc(point.amountRaw, 2)} USDC`}
                   </td>
                 </tr>
               ))}

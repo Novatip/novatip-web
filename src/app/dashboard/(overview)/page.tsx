@@ -14,7 +14,7 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useCreator } from "@/contexts/CreatorContext";
 import { analyticsApi } from "@/lib/api";
 import { useAbortableRequest } from "@/hooks/useAbortableRequest";
-import { formatUsdc } from "@novatip/sdk";
+import { formatRawUsdc } from "@/lib/rawAmount";
 import { getTipUrl } from "@/lib/tipUrl";
 import { Card } from "@/components/ui/Card";
 import { LinkButton } from "@/components/ui/LinkButton";
@@ -24,15 +24,6 @@ import { Leaderboard } from "@/components/Leaderboard";
 import { RecentTips } from "@/components/RecentTips";
 import { TipChart } from "@/components/TipChart";
 import { CollaboratorEarnings } from "@/components/CollaboratorEarnings";
-
-/** Parse a raw amount string safely — returns null when unparseable. */
-function parseAmount(raw: string): bigint | null {
-  try {
-    return BigInt(raw);
-  } catch {
-    return null;
-  }
-}
 
 interface Totals {
   totalTips: number;
@@ -68,8 +59,7 @@ export default function DashboardPage() {
     fetchTotals();
   }, [fetchTotals]);
 
-  const totalAmount = totals ? parseAmount(totals.totalAmountRaw) : null;
-  const totalUsdc = totalAmount !== null ? formatUsdc(totalAmount, 2) : "—";
+  const totalUsdc = totals ? formatRawUsdc(totals.totalAmountRaw, 2) : "—";
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in">

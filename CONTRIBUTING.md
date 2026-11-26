@@ -37,6 +37,12 @@ order must follow visual order, focus rings must be visible, colours must meet
 WCAG AA contrast, and dynamic changes (loading, errors, confirmations) must be
 announced to screen readers.
 
+## Documentation
+
+When adding a new top-level section to the README, add it to the table of
+contents at the top of the file. The table of contents uses standard Markdown
+anchor links that GitHub generates automatically from headings.
+
 ## Before you push
 
 CI runs exactly these, so run them locally first:
