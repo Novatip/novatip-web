@@ -15,6 +15,7 @@ import { renderHook, act } from "@testing-library/react";
 import { usePolling } from "./usePolling";
 
 let visibility: DocumentVisibilityState = "visible";
+let online = true;
 
 function setVisibility(state: DocumentVisibilityState) {
   visibility = state;
@@ -23,10 +24,19 @@ function setVisibility(state: DocumentVisibilityState) {
   });
 }
 
+function setOnline(state: boolean) {
+  online = state;
+  act(() => {
+    window.dispatchEvent(new Event(state ? "online" : "offline"));
+  });
+}
+
 beforeEach(() => {
   vi.useFakeTimers();
   visibility = "visible";
+  online = true;
   vi.spyOn(document, "visibilityState", "get").mockImplementation(() => visibility);
+  vi.spyOn(navigator, "onLine", "get").mockImplementation(() => online);
 });
 
 afterEach(() => {
@@ -89,5 +99,62 @@ describe("usePolling", () => {
     setVisibility("visible");
     expect(cb).not.toHaveBeenCalled();
     expect(vi.getTimerCount()).toBe(0);
+  });
+});
+
+  it("stops polling when the browser goes offline", () => {
+    const cb = vi.fn();
+    renderHook(() => usePolling(cb, 1000));
+    cb.mockClear();
+
+    setOnline(false);
+
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it("refreshes immediately when the browser comes back online and resumes polling", () => {
+    const cb = vi.fn();
+    renderHook(() => usePolling(cb, 1000));
+    setOnline(false);
+    cb.mockClear();
+
+    setOnline(true);
+    expect(cb).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(cb).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not refresh when coming online if the tab is hidden", () => {
+    const cb = vi.fn();
+    renderHook(() => usePolling(cb, 1000));
+    setVisibility("hidden");
+    setOnline(false);
+    cb.mockClear();
+
+    setOnline(true);
+    expect(cb).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(cb).not.toHaveBeenCalled();
+  });
+
+  it("does not start polling on mount if offline", () => {
+    online = false;
+    const cb = vi.fn();
+    renderHook(() => usePolling(cb, 1000));
+    expect(cb).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(cb).not.toHaveBeenCalled();
   });
 });
