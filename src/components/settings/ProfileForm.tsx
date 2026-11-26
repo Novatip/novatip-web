@@ -109,6 +109,20 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
     setTouched((prev) => ({ ...prev, [field]: true }));
   }
 
+  // ── Warn before leaving with unsaved changes ───────────────────────────────
+  useEffect(() => {
+    if (!profileDirty) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      // Modern browsers ignore the custom message and show their own generic one
+      return (e.returnValue = "");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [profileDirty]);
+
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ displayName: true, bio: true, avatarUrl: true, email: true });
