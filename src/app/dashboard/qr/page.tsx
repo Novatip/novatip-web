@@ -8,6 +8,7 @@
 
 import { useCreator } from "@/contexts/CreatorContext";
 import { QRDownload } from "@/components/QRDownload";
+import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { getQrPngUrl } from "@/lib/tipUrl";
 
 export default function QRPage() {
@@ -34,15 +35,7 @@ export default function QRPage() {
 
       {/* A failed lookup is shown as an error, distinct from simply having no slug yet. */}
       {!loading && error && (
-        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex flex-col gap-3">
-          <p className="text-sm text-danger">Failed to load your QR code: {error}</p>
-          <button
-            onClick={fetchSlug}
-            className="self-start text-sm font-medium text-brand-400 hover:text-brand-300 transition-colors"
-          >
-            Try again
-          </button>
-        </div>
+        <ErrorPanel message={`Failed to load your QR code: ${error}`} onRetry={fetchSlug} />
       )}
 
       {!loading && !error && slug && (
