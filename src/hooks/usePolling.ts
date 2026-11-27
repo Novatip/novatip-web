@@ -46,8 +46,15 @@ export function usePolling(
 ): void {
   const callbackRef = useRef(callback);
   const onHiddenRef = useRef(onHidden);
-  callbackRef.current = callback;
-  onHiddenRef.current = onHidden;
+
+  // Update refs in an effect to avoid writing during render.
+  useEffect(() => {
+    callbackRef.current = callback;
+  });
+
+  useEffect(() => {
+    onHiddenRef.current = onHidden;
+  });
 
   // Immediate run on mount and when the callback itself changes.
   useEffect(() => {

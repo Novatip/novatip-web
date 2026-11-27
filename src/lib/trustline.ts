@@ -16,27 +16,16 @@
  * condition that breaks the tip, rather than a proxy for it.
  */
 
-import { Contract, nativeToScVal, rpc } from "@stellar/stellar-sdk";
-import { buildTransactionBuilder, createRpcServer, shortenAddress } from "@novatip/sdk";
-import { config } from "./config";
-import { getNetworkConfig } from "./wallet";
+import { rpc } from "@stellar/stellar-sdk";
+import { shortenAddress } from "@novatip/sdk";
+import { simulateUsdcBalance } from "./balance";
 
 /**
- * A source account is needed to build the envelope, but a read-only
- * simulation is never signed or submitted, so any valid address does — the
- * account being probed is itself the obvious choice.
+ * Check whether an account can receive USDC by simulating a balance call.
+ * Returns true if the simulation succeeds, false if it reports an error.
  */
 export async function canReceiveUsdc(address: string): Promise<boolean> {
-  const network = getNetworkConfig();
-  const server = createRpcServer(network);
-  const token = new Contract(config.stellar.usdcContractId);
-
-  const builder = await buildTransactionBuilder(address, network, server);
-  const tx = builder
-    .addOperation(token.call("balance", nativeToScVal(address, { type: "address" })))
-    .build();
-
-  const sim = await server.simulateTransaction(tx);
+  const sim = await simulateUsdcBalance(address);
   return !rpc.Api.isSimulationError(sim);
 }
 
