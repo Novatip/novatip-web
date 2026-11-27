@@ -9,13 +9,15 @@
  * Used on both the public tip page and the dashboard QR page.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { Button } from "@/components/ui/Button";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { getTipUrl } from "@/lib/tipUrl";
 import { cn } from "@/lib/utils";
+
+const QR_DOWNLOAD_TIMEOUT_MS = 15000;
 
 interface QRDownloadProps {
   slug: string;
@@ -27,8 +29,18 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const { copied, failed, copy, reset } = useCopyToClipboard();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const tipUrl = getTipUrl(slug);
+
+  // ── Cleanup on unmount ─────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // ── Copy link ──────────────────────────────────────────────────────────────
   // A failure surfaces as the CopyFallback below rather than doing nothing —
@@ -40,10 +52,22 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
 
   // ── Download PNG ───────────────────────────────────────────────────────────
   async function handleDownload() {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     setDownloading(true);
     setDownloadError(null);
+
+    const timeoutId = setTimeout(() => abortController.abort(), QR_DOWNLOAD_TIMEOUT_MS);
+
     try {
-      const res = await fetch(pngUrl);
+      const res = await fetch(pngUrl, { signal: abortController.signal });
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
         setDownloadError("Couldn\u2019t fetch the QR code. Please try again.");
         return;
@@ -59,10 +83,17 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
       setTimeout(() => {
         URL.revokeObjectURL(url);
       }, 100);
-    } catch {
+    } catch (e: unknown) {
+      clearTimeout(timeoutId);
+      if (abortController.signal.aborted) {
+        return;
+      }
       setDownloadError("Couldn\u2019t fetch the QR code. Please try again.");
     } finally {
-      setDownloading(false);
+      if (!abortController.signal.aborted) {
+        setDownloading(false);
+      }
+      abortControllerRef.current = null;
     }
   }
 
