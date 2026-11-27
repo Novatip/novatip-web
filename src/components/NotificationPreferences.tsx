@@ -215,7 +215,7 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
               id="notif-email"
               label="Email"
               description="Receive an email for every tip received."
-              badge="delivering"
+              badge={prefs.emailEnabled ? "delivering" : undefined}
               checked={prefs.emailEnabled}
               disabled={saving}
               onChange={(v) => handleChange("emailEnabled", v)}
@@ -225,7 +225,7 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
               id="notif-webhook"
               label="Webhook"
               description="POST a JSON payload to your registered webhook URL(s) after each tip."
-              badge="delivering"
+              badge={prefs.webhookEnabled ? "delivering" : undefined}
               checked={prefs.webhookEnabled}
               disabled={saving}
               onChange={(v) => handleChange("webhookEnabled", v)}
