@@ -14,13 +14,14 @@ import { useWallet } from "@/contexts/WalletContext";
 import { useCreator } from "@/contexts/CreatorContext";
 import { getTipUrl } from "@/lib/tipUrl";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { NotificationPreferences } from "@/components/NotificationPreferences";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { SlugRenameCard } from "@/components/settings/SlugRenameCard";
 
 export default function SettingsPage() {
   const { jwt } = useWallet();
-  const { creator, loading, error: loadError, setCreator } = useCreator();
+  const { creator, loading, error: loadError, refresh, setCreator } = useCreator();
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
@@ -31,11 +32,7 @@ export default function SettingsPage() {
       </div>
 
       {/* Load error */}
-      {loadError && (
-        <div className="rounded-xl bg-danger/10 border border-danger/20 px-4 py-3">
-          <p className="text-sm text-danger">{loadError}</p>
-        </div>
-      )}
+      {loadError && <ErrorPanel message={loadError} onRetry={refresh} retrying={loading} />}
 
       {/* Loading skeleton */}
       {loading && (
@@ -56,7 +53,7 @@ export default function SettingsPage() {
 
       {/* Profile form */}
       {!loading && jwt && creator && (
-        <ProfileForm jwt={jwt} creator={creator} onUpdate={setCreator} />
+        <ProfileForm jwt={jwt} creator={creator} onUpdate={setCreator} disabled={!!loadError} />
       )}
 
       {/* Notification preferences */}
