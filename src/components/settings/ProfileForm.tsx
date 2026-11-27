@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 const DISPLAY_NAME_MAX = 80;
 const BIO_MAX = 300;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AVATAR_PREVIEW_DEBOUNCE_MS = 500;
 
 function validateDisplayName(value: string): string | undefined {
   if (value.length > DISPLAY_NAME_MAX)
@@ -55,12 +56,14 @@ interface ProfileFormProps {
   jwt: string;
   creator: CreatorProfile;
   onUpdate: (updated: CreatorProfile) => void;
+  disabled?: boolean;
 }
 
-export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
+export function ProfileForm({ jwt, creator, onUpdate, disabled = false }: ProfileFormProps) {
   const [displayName, setDisplayName] = useState(creator.displayName ?? "");
   const [bio, setBio] = useState(creator.bio ?? "");
   const [avatarUrl, setAvatarUrl] = useState(creator.avatarUrl ?? "");
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(creator.avatarUrl ?? "");
   const [email, setEmail] = useState(creator.email ?? "");
   const [touched, setTouched] = useState({
     displayName: false,
@@ -81,8 +84,18 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
     setDisplayName(creator.displayName ?? "");
     setBio(creator.bio ?? "");
     setAvatarUrl(creator.avatarUrl ?? "");
+    setAvatarPreviewUrl(creator.avatarUrl ?? "");
     setEmail(creator.email ?? "");
   }, [creator]);
+
+  // ── Debounce avatar preview ────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAvatarPreviewUrl(avatarUrl);
+    }, AVATAR_PREVIEW_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [avatarUrl]);
 
   // ── Validation ─────────────────────────────────────────────────────────────
 
@@ -126,7 +139,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
   async function handleProfileSave(e: React.FormEvent) {
     e.preventDefault();
     setTouched({ displayName: true, bio: true, avatarUrl: true, email: true });
-    if (profileSaving || profileHasErrors) return;
+    if (profileSaving || profileHasErrors || disabled) return;
 
     setProfileSaving(true);
     setProfileError(null);
@@ -146,6 +159,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
       setDisplayName(r.creator.displayName ?? "");
       setBio(r.creator.bio ?? "");
       setAvatarUrl(r.creator.avatarUrl ?? "");
+      setAvatarPreviewUrl(r.creator.avatarUrl ?? "");
       setEmail(r.creator.email ?? "");
       setProfileSaved(true);
       setTouched({ displayName: false, bio: false, avatarUrl: false, email: false });
@@ -157,8 +171,10 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
   }
 
   // Avatar preview
-  const avatarPreviewUrl =
-    avatarUrl && !validateAvatarUrl(avatarUrl) ? avatarUrl : (creator.avatarUrl ?? null);
+  const finalAvatarPreviewUrl =
+    avatarPreviewUrl && !validateAvatarUrl(avatarPreviewUrl)
+      ? avatarPreviewUrl
+      : creator.avatarUrl ?? null;
 
   return (
     <form onSubmit={handleProfileSave} noValidate>
@@ -173,7 +189,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
             <div className="shrink-0">
               <div className="relative h-16 w-16 rounded-full overflow-hidden ring-2 ring-brand-500/20">
                 <Avatar
-                  src={avatarPreviewUrl}
+                  src={finalAvatarPreviewUrl}
                   displayName={displayName || creator.displayName || creator.slug}
                   slug={creator.slug}
                 />
@@ -189,10 +205,13 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
                   setAvatarUrl(e.target.value);
                   setProfileSaved(false);
                 }}
-                onBlur={() => touchProfileField("avatarUrl")}
+                onBlur={() => {
+                  touchProfileField("avatarUrl");
+                  setAvatarPreviewUrl(avatarUrl);
+                }}
                 error={profileErrors.avatarUrl}
                 hint="Must be an https:// URL. Leave blank to keep your current avatar."
-                disabled={profileSaving}
+                disabled={profileSaving || disabled}
                 autoComplete="off"
               />
             </div>
@@ -211,7 +230,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
               }}
               onBlur={() => touchProfileField("displayName")}
               error={profileErrors.displayName}
-              disabled={profileSaving}
+              disabled={profileSaving || disabled}
               autoComplete="off"
             />
             <p className="text-xs text-fg-faint mt-1 text-right">
@@ -234,7 +253,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
                 setProfileSaved(false);
               }}
               onBlur={() => touchProfileField("bio")}
-              disabled={profileSaving}
+              disabled={profileSaving || disabled}
               className={[
                 "w-full rounded-xl bg-surface-strong border px-4 py-2.5",
                 "text-fg placeholder:text-fg-dim text-sm resize-none",
@@ -269,7 +288,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
               onBlur={() => touchProfileField("email")}
               error={profileErrors.email}
               hint="Get an email on every tip. Leave blank to turn notifications off."
-              disabled={profileSaving}
+              disabled={profileSaving || disabled}
               autoComplete="off"
             />
           </div>
@@ -296,12 +315,12 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
               type="submit"
               size="md"
               loading={profileSaving}
-              disabled={profileSaving || profileHasErrors || !profileDirty}
+              disabled={profileSaving || profileHasErrors || !profileDirty || disabled}
               aria-label="Save profile changes"
             >
               {profileSaving ? "Saving…" : "Save changes"}
             </Button>
-            {profileDirty && !profileSaving && (
+            {profileDirty && !profileSaving && !disabled && (
               <button
                 type="button"
                 className="text-sm text-fg-faint hover:text-fg transition-colors"
@@ -309,6 +328,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
                   setDisplayName(creator.displayName ?? "");
                   setBio(creator.bio ?? "");
                   setAvatarUrl(creator.avatarUrl ?? "");
+                  setAvatarPreviewUrl(creator.avatarUrl ?? "");
                   setEmail(creator.email ?? "");
                   setTouched({
                     displayName: false,

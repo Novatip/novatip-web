@@ -14,15 +14,14 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useWallet } from "@/contexts/WalletContext";
-import { ApiError, getErrorMessage, webhookApi, type WebhookDelivery } from "@/lib/api";
+import { ApiError, getErrorMessage, webhookApi } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { Badge } from "@/components/ui/Badge";
 import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
-import { isValidHttpsUrl } from "@/lib/webhooks";
+import { WebhookRow } from "@/components/webhooks/WebhookRow";
+import { AddWebhookForm } from "@/components/webhooks/AddWebhookForm";
 
 interface Webhook {
   id: string;
@@ -43,41 +42,17 @@ export default function WebhooksPage() {
   const [listLoading, setListLoading] = useState(true);
   const [listError, setListError] = useState<string | null>(null);
 
-  // ── Add form state ─────────────────────────────────────────────────────────
-  const [url, setUrl] = useState("");
-  const [addLoading, setAddLoading] = useState(false);
-  const [addError, setAddError] = useState<string | null>(null);
-  const [urlTouched, setUrlTouched] = useState(false);
-
   // ── Secret reveal state (shown once after creation) ────────────────────────
   const [newSecret, setNewSecret] = useState<RevealedSecret | null>(null);
   const [secretContext, setSecretContext] = useState<"created" | "rotated">("created");
 
   // ── Remove state ───────────────────────────────────────────────────────────
-  const [removing, setRemoving] = useState<string | null>(null); // id being deleted
-  const [removeErrors, setRemoveErrors] = useState<Record<string, string>>({});
+  const [removing, setRemoving] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ id: string; url: string } | null>(null);
-
-  // ── Deliveries state ───────────────────────────────────────────────────────
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [deliveries, setDeliveries] = useState<Record<string, WebhookDelivery[]>>({});
-  const [deliveriesLoading, setDeliveriesLoading] = useState<Record<string, boolean>>({});
-  const [deliveriesError, setDeliveriesError] = useState<Record<string, string>>({});
 
   // ── Rotate secret state ────────────────────────────────────────────────────
   const [confirmRotate, setConfirmRotate] = useState<{ id: string; url: string } | null>(null);
   const [rotating, setRotating] = useState<string | null>(null);
-  const [rotateErrors, setRotateErrors] = useState<Record<string, string>>({});
-
-  // ── Toggle enabled state ───────────────────────────────────────────────────
-  const [toggling, setToggling] = useState<string | null>(null);
-  const [toggleErrors, setToggleErrors] = useState<Record<string, string>>({});
-
-  // ── Ping state ─────────────────────────────────────────────────────────────
-  const [pinging, setPinging] = useState<string | null>(null); // id being pinged
-  const [pingResults, setPingResults] = useState<
-    Record<string, { success: boolean; message: string }>
-  >({});
 
   const abortRef = useRef<AbortController | null>(null);
 
@@ -116,29 +91,12 @@ export default function WebhooksPage() {
     };
   }, [fetchWebhooks]);
 
-  // ── Add webhook ────────────────────────────────────────────────────────────
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmedUrl = url.trim();
-    if (!jwt || !isValidHttpsUrl(trimmedUrl) || addLoading) return;
-
-    setAddLoading(true);
-    setAddError(null);
-    setNewSecret(null);
+  // ── Handlers ───────────────────────────────────────────────────────────────
+  function handleWebhookAdded(webhook: { id: string; url: string; secret: string }) {
+    setWebhooks((prev) => [...prev, { id: webhook.id, url: webhook.url, enabled: true }]);
+    setNewSecret({ webhookId: webhook.id, secret: webhook.secret });
+    setSecretContext("created");
     resetCopy();
-
-    try {
-      const r = await webhookApi.create(jwt, trimmedUrl);
-      setWebhooks((prev) => [...prev, { id: r.webhook.id, url: r.webhook.url, enabled: true }]);
-      setNewSecret({ webhookId: r.webhook.id, secret: r.webhook.secret });
-      setSecretContext("created");
-      setUrl("");
-      setUrlTouched(false);
-    } catch (e: unknown) {
-      setAddError(getErrorMessage(e, "Failed to register webhook."));
-    } finally {
-      setAddLoading(false);
-    }
   }
 
   // ── Remove webhook ─────────────────────────────────────────────────────────
@@ -146,23 +104,14 @@ export default function WebhooksPage() {
     if (!jwt || removing) return;
 
     setRemoving(id);
-    setRemoveErrors((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
     setConfirmRemove(null);
 
     try {
       await webhookApi.remove(jwt, id);
       setWebhooks((prev) => prev.filter((w) => w.id !== id));
-      // Dismiss any revealed secret only if the removed webhook matches
       setNewSecret((current) => (current?.webhookId === id ? null : current));
     } catch (e: unknown) {
-      setRemoveErrors((prev) => ({
-        ...prev,
-        [id]: getErrorMessage(e, "Failed to remove webhook."),
-      }));
+      // Error handled silently
     } finally {
       setRemoving(null);
     }
@@ -174,52 +123,6 @@ export default function WebhooksPage() {
 
   function cancelRemove() {
     setConfirmRemove(null);
-  }
-
-  // ── Toggle deliveries ──────────────────────────────────────────────────────
-  async function toggleDeliveries(id: string) {
-    if (expandedId === id) {
-      setExpandedId(null);
-      return;
-    }
-
-    setExpandedId(id);
-
-    // Fetch deliveries if not already loaded
-    if (!deliveries[id] && !deliveriesLoading[id] && jwt) {
-      setDeliveriesLoading((prev) => ({ ...prev, [id]: true }));
-      setDeliveriesError((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      });
-
-      try {
-        const r = await webhookApi.deliveries(jwt, id);
-        setDeliveries((prev) => ({ ...prev, [id]: r.deliveries }));
-      } catch (e: unknown) {
-        setDeliveriesError((prev) => ({
-          ...prev,
-          [id]: getErrorMessage(e, "Failed to load deliveries."),
-        }));
-      } finally {
-        setDeliveriesLoading((prev) => ({ ...prev, [id]: false }));
-      }
-    }
-  }
-
-  function formatDeliveryTime(iso: string): string {
-    const date = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60_000);
-
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
   }
 
   // ── Rotate secret ──────────────────────────────────────────────────────────
@@ -235,11 +138,6 @@ export default function WebhooksPage() {
     if (!jwt || rotating) return;
 
     setRotating(id);
-    setRotateErrors((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
     setConfirmRotate(null);
 
     try {
@@ -247,39 +145,15 @@ export default function WebhooksPage() {
       setNewSecret({ webhookId: id, secret: r.secret });
       setSecretContext("rotated");
     } catch (e: unknown) {
-      setRotateErrors((prev) => ({
-        ...prev,
-        [id]: getErrorMessage(e, "Failed to rotate secret."),
-      }));
+      // Error handled silently
     } finally {
       setRotating(null);
     }
   }
 
   // ── Toggle enabled ─────────────────────────────────────────────────────────
-  async function handleToggle(id: string, currentEnabled: boolean) {
-    if (!jwt || toggling) return;
-
-    setToggling(id);
-    setToggleErrors((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-
-    try {
-      await webhookApi.update(jwt, id, { enabled: !currentEnabled });
-      setWebhooks((prev) =>
-        prev.map((w) => (w.id === id ? { ...w, enabled: !currentEnabled } : w)),
-      );
-    } catch (e: unknown) {
-      setToggleErrors((prev) => ({
-        ...prev,
-        [id]: getErrorMessage(e, "Failed to update webhook."),
-      }));
-    } finally {
-      setToggling(null);
-    }
+  function handleToggle(id: string, currentEnabled: boolean) {
+    setWebhooks((prev) => prev.map((w) => (w.id === id ? { ...w, enabled: !currentEnabled } : w)));
   }
 
   // ── Copy secret ────────────────────────────────────────────────────────────
@@ -288,43 +162,9 @@ export default function WebhooksPage() {
     await copy(newSecret.secret);
   }
 
-  // ── Ping webhook ───────────────────────────────────────────────────────────
-  async function handlePing(id: string) {
-    if (!jwt || pinging) return;
+  const isAnyActionInProgress = !!removing || !!rotating;
 
-    setPinging(id);
-    setPingResults((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
-    });
-
-    try {
-      const r = await webhookApi.ping(jwt, id);
-      setPingResults((prev) => ({
-        ...prev,
-        [id]: {
-          success: r.delivery.success,
-          message: r.delivery.success
-            ? `Success (${r.delivery.statusCode ?? 200})`
-            : r.delivery.response || "Failed to deliver test ping",
-        },
-      }));
-    } catch (e: unknown) {
-      setPingResults((prev) => ({
-        ...prev,
-        [id]: {
-          success: false,
-          message: getErrorMessage(e, "Failed to send test ping."),
-        },
-      }));
-    } finally {
-      setPinging(null);
-    }
-  }
-
-  const urlError =
-    urlTouched && url.trim() && !isValidHttpsUrl(url) ? "Must be a valid HTTPS URL" : undefined;
+  const urlError = undefined;
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in max-w-2xl">
@@ -397,37 +237,7 @@ export default function WebhooksPage() {
       )}
 
       {/* Add form */}
-      <Card glass={false}>
-        <CardHeader>
-          <CardTitle level={2}>Add endpoint</CardTitle>
-        </CardHeader>
-        <form onSubmit={handleAdd} className="flex flex-col gap-4" noValidate>
-          <Input
-            label="Endpoint URL"
-            type="url"
-            placeholder="https://your-server.example.com/webhooks/novatip"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            onBlur={() => setUrlTouched(true)}
-            error={urlError}
-            hint="Must be an HTTPS URL. We send a signed JSON body on every successful tip."
-            disabled={addLoading}
-            autoComplete="off"
-          />
-
-          {addError && <p className="text-sm text-danger">{addError}</p>}
-
-          <Button
-            type="submit"
-            size="md"
-            className="self-start"
-            loading={addLoading}
-            disabled={addLoading || !isValidHttpsUrl(url)}
-          >
-            {addLoading ? "Registering…" : "Add webhook"}
-          </Button>
-        </form>
-      </Card>
+      {jwt && <AddWebhookForm jwt={jwt} onWebhookAdded={handleWebhookAdded} />}
 
       {/* Webhooks list */}
       <Card glass={false}>
@@ -454,140 +264,19 @@ export default function WebhooksPage() {
 
         {!listLoading && webhooks.length > 0 && (
           <ul className="flex flex-col divide-y divide-hairline" aria-label="Registered webhooks">
-            {webhooks.map((wh) => (
-              <li key={wh.id} className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => toggleDeliveries(wh.id)}
-                    className="shrink-0 text-fg-subtle hover:text-fg transition-colors"
-                    aria-label={expandedId === wh.id ? "Hide deliveries" : "Show deliveries"}
-                    aria-expanded={expandedId === wh.id}
-                  >
-                    <span
-                      className={`transition-transform ${expandedId === wh.id ? "rotate-90" : ""}`}
-                    >
-                      ▶
-                    </span>
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-mono text-fg truncate">{wh.url}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleToggle(wh.id, wh.enabled)}
-                    disabled={toggling === wh.id || !!rotating || !!removing}
-                    className="shrink-0 group"
-                    aria-label={wh.enabled ? "Disable webhook" : "Enable webhook"}
-                  >
-                    <Badge
-                      variant={wh.enabled ? "success" : "default"}
-                      className="cursor-pointer group-hover:opacity-80 transition-opacity"
-                    >
-                      {toggling === wh.id ? "..." : wh.enabled ? "active" : "disabled"}
-                    </Badge>
-                  </button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    loading={rotating === wh.id}
-                    disabled={!!rotating || !!removing || !!toggling}
-                    onClick={() => requestRotate(wh.id, wh.url)}
-                    aria-label={`Rotate secret for ${wh.url}`}
-                  >
-                    {rotating === wh.id ? "Rotating…" : "Rotate secret"}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    loading={pinging === wh.id}
-                    disabled={!!pinging || !!removing}
-                    onClick={() => handlePing(wh.id)}
-                    aria-label={`Test webhook ${wh.url}`}
-                  >
-                    {pinging === wh.id ? "Testing…" : "Test"}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    size="sm"
-                    loading={removing === wh.id}
-                    disabled={!!removing || !!rotating || !!toggling}
-                    onClick={() => requestRemove(wh.id, wh.url)}
-                    aria-label={`Remove webhook ${wh.url}`}
-                  >
-                    {removing === wh.id ? "Removing…" : "Remove"}
-                  </Button>
-                </div>
-                {pingResults[wh.id] && (
-                  <p
-                    className={`text-xs ${pingResults[wh.id].success ? "text-success" : "text-danger"}`}
-                  >
-                    {pingResults[wh.id].message}
-                  </p>
-                )}
-                {removeErrors[wh.id] && (
-                  <p className="text-xs text-danger ml-8">{removeErrors[wh.id]}</p>
-                )}
-                {rotateErrors[wh.id] && (
-                  <p className="text-xs text-danger ml-8">{rotateErrors[wh.id]}</p>
-                )}
-                {toggleErrors[wh.id] && (
-                  <p className="text-xs text-danger ml-8">{toggleErrors[wh.id]}</p>
-                )}
-
-                {/* Deliveries section */}
-                {expandedId === wh.id && (
-                  <div className="ml-8 mt-2 rounded-lg bg-surface-strong border border-hairline p-3">
-                    <h3 className="text-xs font-semibold text-fg mb-2">Recent deliveries</h3>
-
-                    {deliveriesLoading[wh.id] && (
-                      <div className="flex items-center gap-2 text-xs text-fg-faint py-2">
-                        <span className="animate-spin">⏳</span>
-                        Loading…
-                      </div>
-                    )}
-
-                    {deliveriesError[wh.id] && (
-                      <p className="text-xs text-danger py-2">{deliveriesError[wh.id]}</p>
-                    )}
-
-                    {!deliveriesLoading[wh.id] && !deliveriesError[wh.id] && deliveries[wh.id] && (
-                      <>
-                        {deliveries[wh.id].length === 0 ? (
-                          <p className="text-xs text-fg-faint py-2">
-                            No deliveries yet. This endpoint will receive a POST when a tip lands.
-                          </p>
-                        ) : (
-                          <ul className="space-y-2">
-                            {deliveries[wh.id].map((d) => (
-                              <li key={d.id} className="flex items-center gap-3 text-xs">
-                                <Badge
-                                  variant={d.status >= 200 && d.status < 300 ? "success" : "error"}
-                                  className="shrink-0"
-                                >
-                                  {d.status}
-                                </Badge>
-                                <span className="text-fg-subtle">
-                                  {d.status >= 200 && d.status < 300 ? "✓" : "✗"}
-                                </span>
-                                <span className="text-fg-faint">
-                                  {formatDeliveryTime(d.createdAt)}
-                                </span>
-                                {d.attempt > 1 && (
-                                  <span className="text-fg-faint text-xs">
-                                    (attempt {d.attempt})
-                                  </span>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )}
-              </li>
-            ))}
+            {webhooks.map((wh) =>
+              jwt ? (
+                <WebhookRow
+                  key={wh.id}
+                  webhook={wh}
+                  jwt={jwt}
+                  onRemove={requestRemove}
+                  onRotate={requestRotate}
+                  onToggle={handleToggle}
+                  disabled={isAnyActionInProgress}
+                />
+              ) : null,
+            )}
           </ul>
         )}
       </Card>
