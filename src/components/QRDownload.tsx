@@ -147,7 +147,11 @@ export function QRDownload({ slug, pngUrl, className }: QRDownloadProps) {
         </Button>
       </div>
 
-      {downloadError && <p className="no-print text-xs text-danger text-center">{downloadError}</p>}
+      {downloadError && (
+        <p role="alert" className="no-print text-xs text-danger text-center">
+          {downloadError}
+        </p>
+      )}
 
       <p className="text-xs text-fg-faint text-center">
         Print or share your QR code so anyone can tap to tip you
