@@ -20,6 +20,7 @@ import { Avatar } from "@/components/Avatar";
 const DISPLAY_NAME_MAX = 80;
 const BIO_MAX = 300;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const AVATAR_PREVIEW_DEBOUNCE_MS = 500;
 
 function validateDisplayName(value: string): string | undefined {
   if (value.length > DISPLAY_NAME_MAX)
@@ -61,6 +62,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
   const [displayName, setDisplayName] = useState(creator.displayName ?? "");
   const [bio, setBio] = useState(creator.bio ?? "");
   const [avatarUrl, setAvatarUrl] = useState(creator.avatarUrl ?? "");
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState(creator.avatarUrl ?? "");
   const [email, setEmail] = useState(creator.email ?? "");
   const [touched, setTouched] = useState({
     displayName: false,
@@ -81,8 +83,18 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
     setDisplayName(creator.displayName ?? "");
     setBio(creator.bio ?? "");
     setAvatarUrl(creator.avatarUrl ?? "");
+    setAvatarPreviewUrl(creator.avatarUrl ?? "");
     setEmail(creator.email ?? "");
   }, [creator]);
+
+  // ── Debounce avatar preview ────────────────────────────────────────────────
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setAvatarPreviewUrl(avatarUrl);
+    }, AVATAR_PREVIEW_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [avatarUrl]);
 
   // ── Validation ─────────────────────────────────────────────────────────────
 
@@ -146,6 +158,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
       setDisplayName(r.creator.displayName ?? "");
       setBio(r.creator.bio ?? "");
       setAvatarUrl(r.creator.avatarUrl ?? "");
+      setAvatarPreviewUrl(r.creator.avatarUrl ?? "");
       setEmail(r.creator.email ?? "");
       setProfileSaved(true);
       setTouched({ displayName: false, bio: false, avatarUrl: false, email: false });
@@ -157,8 +170,10 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
   }
 
   // Avatar preview
-  const avatarPreviewUrl =
-    avatarUrl && !validateAvatarUrl(avatarUrl) ? avatarUrl : (creator.avatarUrl ?? null);
+  const finalAvatarPreviewUrl =
+    avatarPreviewUrl && !validateAvatarUrl(avatarPreviewUrl)
+      ? avatarPreviewUrl
+      : creator.avatarUrl ?? null;
 
   return (
     <form onSubmit={handleProfileSave} noValidate>
@@ -173,7 +188,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
             <div className="shrink-0">
               <div className="relative h-16 w-16 rounded-full overflow-hidden ring-2 ring-brand-500/20">
                 <Avatar
-                  src={avatarPreviewUrl}
+                  src={finalAvatarPreviewUrl}
                   displayName={displayName || creator.displayName || creator.slug}
                   slug={creator.slug}
                 />
@@ -189,7 +204,10 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
                   setAvatarUrl(e.target.value);
                   setProfileSaved(false);
                 }}
-                onBlur={() => touchProfileField("avatarUrl")}
+                onBlur={() => {
+                  touchProfileField("avatarUrl");
+                  setAvatarPreviewUrl(avatarUrl);
+                }}
                 error={profileErrors.avatarUrl}
                 hint="Must be an https:// URL. Leave blank to keep your current avatar."
                 disabled={profileSaving}
@@ -309,6 +327,7 @@ export function ProfileForm({ jwt, creator, onUpdate }: ProfileFormProps) {
                   setDisplayName(creator.displayName ?? "");
                   setBio(creator.bio ?? "");
                   setAvatarUrl(creator.avatarUrl ?? "");
+                  setAvatarPreviewUrl(creator.avatarUrl ?? "");
                   setEmail(creator.email ?? "");
                   setTouched({
                     displayName: false,
