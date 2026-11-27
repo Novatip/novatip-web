@@ -431,7 +431,7 @@ the directory structure rather than written from memory.
 
 This table maps each screen to the backend API endpoints it calls. The mapping
 is derived from `src/lib/api.ts` (which defines all client methods) and the
-screen component files under `src/app`.
+component files under `src/app` and `src/components`.
 
 Endpoints marked **[NOT IMPLEMENTED]** do not yet exist on the backend.
 
@@ -439,13 +439,13 @@ Endpoints marked **[NOT IMPLEMENTED]** do not yet exist on the backend.
 |--------|------------------|-------|
 | `/` (home) | None | Static landing page |
 | `/[slug]` (tip page) | `GET /resolve/:slug` | Fetches creator profile, splits, and recent tips |
-| `/onboarding` | `GET /auth/me`<br>`GET /creators/:slug`<br>`POST /creators/claim` | Checks session, fetches existing creator data if resuming, claims slug |
-| `/dashboard` (overview) | `GET /auth/me`<br>`GET /creators/:slug`<br>`GET /analytics/totals` | Fetches creator profile and earnings summary |
+| `/onboarding` | `POST /auth/challenge`<br>`POST /auth/verify`<br>`GET /auth/me`<br>`GET /creators/check/:slug`<br>`POST /creators/claim`<br>`GET /creators/:slug` | SIWS authentication, slug availability check, claim slug, and optional profile fetch if resuming |
+| `/dashboard` (overview) | `GET /auth/me`<br>`GET /creators/:slug`<br>`GET /analytics/totals`<br>`GET /analytics/timeseries`<br>`GET /analytics/recent`<br>`GET /analytics/top-supporters`<br>`GET /analytics/collaborators` | Fetches creator profile, totals summary, and renders TipChart, RecentTips, Leaderboard, and CollaboratorEarnings components |
 | `/dashboard/history` | `GET /analytics/recent` | Paginated tip history with offset |
 | `/dashboard/qr` | `GET /auth/me` | Fetches slug to generate QR code client-side |
 | `/dashboard/settings` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me`<br>`PATCH /creators/me/slug`<br>`GET /creators/check/:slug` | Profile editing and slug rename |
 | `/dashboard/splits` | `GET /auth/me`<br>`GET /creators/:slug`<br>`PATCH /creators/me/splits` | Collaborator split configuration |
-| `/dashboard/webhooks` | `GET /webhooks`<br>`POST /webhooks`<br>`DELETE /webhooks/:id`<br>`POST /webhooks/:id/ping` | Webhook management and test pings use the backend routes. |
+| `/dashboard/webhooks` | `GET /webhooks`<br>`POST /webhooks`<br>`DELETE /webhooks/:id`<br>`GET /webhooks/:id/deliveries`<br>`POST /webhooks/:id/ping`<br>`POST /webhooks/:id/secret`<br>`PATCH /webhooks/:id` | Full webhook management: list, create, delete, view delivery history, test with ping, rotate secret, and enable/disable |
 
 ### Authentication flow
 
