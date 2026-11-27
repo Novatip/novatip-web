@@ -1,6 +1,6 @@
 # novatip-web
 
-Next.js 14 frontend for Novatip.
+Next.js 15 frontend for Novatip.
 
 ## Table of Contents
 
@@ -28,7 +28,7 @@ Next.js 14 frontend for Novatip.
 - [License](#license)
 
 ## Stack
-Next.js 14 App Router, TypeScript 5, Tailwind CSS 3, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
+Next.js 15 App Router, React 19, TypeScript 5, Tailwind CSS 3, Vitest, Testing Library, Freighter via @novatip/sdk, qrcode.react, canvas-confetti, React context.
 
 ## Local Development
 Prerequisites: Node.js (the version in `.nvmrc` — run `nvm use`; `.nvmrc` is the single source of truth, CI reads it too, so bump it there), novatip-backend on port 3001, Freighter browser extension

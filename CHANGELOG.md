@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - PNG icons (192, 512, maskable 512 and 180 Apple touch) for the web app manifest and iOS home screen
-- Next.js 14 App Router frontend for Novatip tipping platform
+- Next.js 15 App Router frontend for Novatip tipping platform
 - Freighter wallet integration via @novatip/sdk for Stellar blockchain
 - Creator onboarding flow with slug claiming and split configuration
 - Public tip pages at `/slug` URLs with customizable profiles
@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accessibility features including ARIA labels, keyboard navigation, and screen reader support
 
 ### Changed
+- Upgraded to Next.js 15 and React 19
 - Send `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and `X-Frame-Options` headers on every route via `next.config.mjs`
 - Pinned @novatip/sdk to exact commit SHA to prevent stale deployment cache issues
 - Configured Vercel builds to use `npm ci` instead of `npm install` for reproducible deployments
