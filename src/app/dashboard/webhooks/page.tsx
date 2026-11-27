@@ -23,6 +23,8 @@ import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { CopyFallback } from "@/components/CopyFallback";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
 import { isValidHttpsUrl } from "@/lib/webhooks";
+import { timeAgo } from "@/lib/time";
+import { TimeAgo } from "@/components/ui/TimeAgo";
 
 interface Webhook {
   id: string;
@@ -206,20 +208,6 @@ export default function WebhooksPage() {
         setDeliveriesLoading((prev) => ({ ...prev, [id]: false }));
       }
     }
-  }
-
-  function formatDeliveryTime(iso: string): string {
-    const date = new Date(iso);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60_000);
-
-    if (diffMins < 1) return "just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
   }
 
   // ── Rotate secret ──────────────────────────────────────────────────────────
@@ -570,9 +558,9 @@ export default function WebhooksPage() {
                                 <span className="text-fg-subtle">
                                   {d.status >= 200 && d.status < 300 ? "✓" : "✗"}
                                 </span>
-                                <span className="text-fg-faint">
-                                  {formatDeliveryTime(d.createdAt)}
-                                </span>
+                                <TimeAgo iso={d.createdAt} className="text-fg-faint">
+                                  {timeAgo(d.createdAt)}
+                                </TimeAgo>
                                 {d.attempt > 1 && (
                                   <span className="text-fg-faint text-xs">
                                     (attempt {d.attempt})
