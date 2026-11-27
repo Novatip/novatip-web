@@ -937,6 +937,16 @@ The project uses [Vitest](https://vitest.dev) with [React Testing Library](https
     npm run test:watch      # watch mode — re-runs on file changes
     npm run test:coverage   # single run with v8 coverage report (text + lcov)
 
+**Running a single test file**
+
+    npx vitest run src/lib/time.test.ts
+
+**Running a single test by name**
+
+    npx vitest run -t "timeAgo returns just now for recent timestamps"
+
+In watch mode, press `p` to filter by filename or `t` to filter by test name.
+
 Coverage output goes to `coverage/`. The lcov report (`coverage/lcov.info`) is
 consumed by editor plugins and CI coverage services. Requires
 `@vitest/coverage-v8` which is listed in `devDependencies`; run `npm install`
