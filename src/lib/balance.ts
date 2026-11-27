@@ -13,11 +13,17 @@ import { config } from "./config";
 import { getNetworkConfig } from "./wallet";
 
 /**
+ * Build and simulate a USDC balance call for the given address.
+ *
  * A source account is needed to build the envelope, but a read-only
  * simulation is never signed or submitted, so any valid address does — the
  * account being queried is itself the obvious choice.
+ *
+ * @internal Shared by getUsdcBalance and canReceiveUsdc (trustline.ts).
  */
-export async function getUsdcBalance(address: string): Promise<bigint> {
+export async function simulateUsdcBalance(
+  address: string,
+): Promise<rpc.Api.SimulateTransactionResponse> {
   const network = getNetworkConfig();
   const server = createRpcServer(network);
   const token = new Contract(config.stellar.usdcContractId);
@@ -27,7 +33,14 @@ export async function getUsdcBalance(address: string): Promise<bigint> {
     .addOperation(token.call("balance", nativeToScVal(address, { type: "address" })))
     .build();
 
-  const sim = await server.simulateTransaction(tx);
+  return server.simulateTransaction(tx);
+}
+
+/**
+ * Read a Stellar account's USDC balance.
+ */
+export async function getUsdcBalance(address: string): Promise<bigint> {
+  const sim = await simulateUsdcBalance(address);
   if (rpc.Api.isSimulationError(sim) || !sim.result) {
     throw new Error("Could not read USDC balance.");
   }
