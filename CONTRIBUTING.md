@@ -48,6 +48,14 @@ npm test
 npm run build
 ```
 
+## PR safety check
+
+Every pull request goes through a safety check that flags potentially risky changes such as edits to workflow files, install scripts, Dockerfiles, or hidden Unicode characters. The check never runs code from your pull request; it only analyzes the diff.
+
+If your pull request is flagged, it means the change requires careful review, not that there is anything wrong with your contribution. Leave a comment explaining what the change does and why it is needed. A maintainer will review it and can merge once they confirm the change is legitimate.
+
+The check is defined in [`.github/workflows/pr-safety-check.yml`](.github/workflows/pr-safety-check.yml).
+
 ## Pull request checklist
 
 Before opening a pull request, check off each of the following:

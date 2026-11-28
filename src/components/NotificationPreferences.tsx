@@ -20,7 +20,7 @@
  * environments.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   ApiError,
   getErrorMessage,
@@ -28,6 +28,7 @@ import {
   type NotificationPreferences as Prefs,
 } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import { ErrorPanel } from "@/components/ui/ErrorPanel";
 import { cn } from "@/lib/utils";
 
 // ── Toggle ────────────────────────────────────────────────────────────────────
@@ -116,13 +117,12 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
 
   // ── Load ───────────────────────────────────────────────────────────────────
 
-  useEffect(() => {
+  const loadPreferences = useCallback(() => {
     abortControllerRef.current?.abort();
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     setLoading(true);
-    setPrefs(null);
     setError(null);
     notificationsApi
       .getPreferences(jwt, { signal: controller.signal })
@@ -143,11 +143,15 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
           setLoading(false);
         }
       });
+  }, [jwt]);
+
+  useEffect(() => {
+    loadPreferences();
 
     return () => {
       abortControllerRef.current?.abort();
     };
-  }, [jwt]);
+  }, [loadPreferences]);
 
   // ── Save ───────────────────────────────────────────────────────────────────
 
@@ -189,12 +193,8 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
           </span>
         </p>
 
-        {/* Error banner */}
-        {error && (
-          <div role="alert" className="rounded-xl border border-danger/30 bg-danger/10 px-3 py-2">
-            <p className="text-xs text-danger">{error}</p>
-          </div>
-        )}
+        {/* Error banner with retry */}
+        {error && <ErrorPanel message={error} onRetry={loadPreferences} retrying={loading} />}
 
         {/* Loading skeleton */}
         {loading && (
@@ -215,7 +215,7 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
               id="notif-email"
               label="Email"
               description="Receive an email for every tip received."
-              badge="delivering"
+              badge={prefs.emailEnabled ? "delivering" : undefined}
               checked={prefs.emailEnabled}
               disabled={saving}
               onChange={(v) => handleChange("emailEnabled", v)}
@@ -225,7 +225,7 @@ export function NotificationPreferences({ jwt }: NotificationPreferencesProps) {
               id="notif-webhook"
               label="Webhook"
               description="POST a JSON payload to your registered webhook URL(s) after each tip."
-              badge="delivering"
+              badge={prefs.webhookEnabled ? "delivering" : undefined}
               checked={prefs.webhookEnabled}
               disabled={saving}
               onChange={(v) => handleChange("webhookEnabled", v)}
