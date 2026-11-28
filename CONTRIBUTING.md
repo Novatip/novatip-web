@@ -15,17 +15,11 @@ git clone https://github.com/YOUR_USERNAME/novatip-web
 cd novatip-web
 git remote add upstream https://github.com/Novatip/novatip-web
 git checkout -b fix/short-description
-```
-
-This app resolves `@novatip/sdk` from a sibling checkout, so clone and build
-it alongside this repo:
-
-```bash
-git clone https://github.com/Novatip/novatip-sdk ../novatip-sdk
-(cd ../novatip-sdk && npm ci && npm run build)
 npm install
 cp .env.example .env.local   # NEXT_PUBLIC_TIP_SPLITTER_CONTRACT_ID is required
 ```
+
+For working on the SDK locally, see the [SDK development section in the README](./README.md#working-on-novatipsdk-locally).
 
 ## Accessibility
 

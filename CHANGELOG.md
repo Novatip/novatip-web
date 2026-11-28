@@ -9,11 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - PNG icons (192, 512, maskable 512 and 180 Apple touch) for the web app manifest and iOS home screen
-- Next.js 14 App Router frontend for Novatip tipping platform
+- Next.js 15 App Router frontend for Novatip tipping platform
 - Freighter wallet integration via @novatip/sdk for Stellar blockchain
 - Creator onboarding flow with slug claiming and split configuration
-- Public tip pages at `/@slug` URLs with customizable profiles
+- Public tip pages at `/slug` URLs with customizable profiles
 - Dashboard for creators with earnings overview, transaction history, and analytics
+- Webhooks page for registering tip notification endpoints
+- Notification preferences for email alerts on tips
+- Slug rename functionality for updating creator URLs
+- History pagination for transaction listings
+- Optimistic tip feed showing pending transactions
 - Tip splitter management for configuring collaborator payouts
 - QR code generation and share link tools for creators
 - WebAuthn-style SIWS (Sign-In With Stellar) authentication
@@ -24,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Accessibility features including ARIA labels, keyboard navigation, and screen reader support
 
 ### Changed
+- Upgraded to Next.js 15 and React 19
 - Send `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and `X-Frame-Options` headers on every route via `next.config.mjs`
 - Pinned @novatip/sdk to exact commit SHA to prevent stale deployment cache issues
 - Configured Vercel builds to use `npm ci` instead of `npm install` for reproducible deployments
@@ -39,10 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme flash prevention by applying theme before first paint
 - Environment variable substitution issues with `NEXT_PUBLIC_` variables in production builds
 
-## [0.1.0] - 2024
+## [0.1.0] - 2026
 
 ### Added
 - Initial release
 
 [Unreleased]: https://github.com/Novatip/novatip-web/compare/v0.1.0...HEAD
-[0.1.0]: https://github.com/Novatip/novatip-web/releases/tag/v0.1.0
