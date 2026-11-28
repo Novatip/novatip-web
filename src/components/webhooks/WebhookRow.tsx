@@ -33,6 +33,20 @@ export function WebhookRow({
   const [pinging, setPinging] = useState(false);
   const [pingResult, setPingResult] = useState<{ success: boolean; message: string } | null>(null);
 
+  async function fetchDeliveries() {
+    setDeliveriesLoading(true);
+    setDeliveriesError(null);
+
+    try {
+      const r = await webhookApi.deliveries(jwt, webhook.id);
+      setDeliveries(r.deliveries);
+    } catch (e: unknown) {
+      setDeliveriesError(getErrorMessage(e, "Failed to load deliveries."));
+    } finally {
+      setDeliveriesLoading(false);
+    }
+  }
+
   async function toggleDeliveries() {
     if (expanded) {
       setExpanded(false);
@@ -40,20 +54,7 @@ export function WebhookRow({
     }
 
     setExpanded(true);
-
-    if (deliveries.length === 0 && !deliveriesLoading) {
-      setDeliveriesLoading(true);
-      setDeliveriesError(null);
-
-      try {
-        const r = await webhookApi.deliveries(jwt, webhook.id);
-        setDeliveries(r.deliveries);
-      } catch (e: unknown) {
-        setDeliveriesError(getErrorMessage(e, "Failed to load deliveries."));
-      } finally {
-        setDeliveriesLoading(false);
-      }
-    }
+    await fetchDeliveries();
   }
 
   async function handleToggle() {
@@ -85,6 +86,11 @@ export function WebhookRow({
           ? `Success (${r.delivery.statusCode ?? 200})`
           : r.delivery.response || "Failed to deliver test ping",
       });
+      
+      // Refresh deliveries list if currently expanded
+      if (expanded) {
+        await fetchDeliveries();
+      }
     } catch (e: unknown) {
       setPingResult({
         success: false,

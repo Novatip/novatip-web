@@ -6,7 +6,7 @@ import { getErrorMessage } from "@/lib/api";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { isValidHttpsUrl } from "@/lib/webhooks";
+import { isValidHttpsUrl, isPublicWebhookUrl } from "@/lib/webhooks";
 
 interface AddWebhookFormProps {
   jwt: string;
@@ -22,7 +22,7 @@ export function AddWebhookForm({ jwt, onWebhookAdded }: AddWebhookFormProps) {
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     const trimmedUrl = url.trim();
-    if (!jwt || !isValidHttpsUrl(trimmedUrl) || addLoading) return;
+    if (!jwt || !isValidHttpsUrl(trimmedUrl) || !isPublicWebhookUrl(trimmedUrl) || addLoading) return;
 
     setAddLoading(true);
     setAddError(null);
@@ -43,8 +43,13 @@ export function AddWebhookForm({ jwt, onWebhookAdded }: AddWebhookFormProps) {
     }
   }
 
-  const urlError =
-    urlTouched && url.trim() && !isValidHttpsUrl(url) ? "Must be a valid HTTPS URL" : undefined;
+  const urlError = urlTouched && url.trim()
+    ? !isValidHttpsUrl(url)
+      ? "Must be a valid HTTPS URL"
+      : !isPublicWebhookUrl(url)
+        ? "Cannot use private or local addresses"
+        : undefined
+    : undefined;
 
   return (
     <Card glass={false}>
@@ -72,7 +77,7 @@ export function AddWebhookForm({ jwt, onWebhookAdded }: AddWebhookFormProps) {
           size="md"
           className="self-start"
           loading={addLoading}
-          disabled={addLoading || !isValidHttpsUrl(url)}
+          disabled={addLoading || !isValidHttpsUrl(url) || !isPublicWebhookUrl(url)}
         >
           {addLoading ? "Registering…" : "Add webhook"}
         </Button>
